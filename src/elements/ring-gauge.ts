@@ -1,0 +1,208 @@
+import * as THREE from 'three';
+import { BaseElement } from './base-element';
+import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
+
+/**
+ * Circular ring gauge — a thick arc that fills clockwise to indicate a value,
+ * with numerical readout and tick marks. Think fuel gauge, AT field strength.
+ */
+export class RingGaugeElement extends BaseElement {
+  private bgRing!: THREE.Line;
+  private fillRing!: THREE.Line;
+  private ticks!: THREE.LineSegments;
+  private canvas!: HTMLCanvasElement;
+  private ctx!: CanvasRenderingContext2D;
+  private texture!: THREE.CanvasTexture;
+  private labelMesh!: THREE.Mesh;
+  private value: number = 0;
+  private targetValue: number = 0;
+  private velocity: number = 0;
+  private label: string = '';
+  private segments: number = 64;
+  private cycleTimer: number = 0;
+  private pulseTimer: number = 0;
+  private glitchTimer: number = 0;
+  private renderAccum: number = 0;
+
+  build(): void {
+    const { x, y, w, h } = this.px;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const outerR = Math.min(w, h) / 2 * 0.85;
+    const innerR = outerR * 0.7;
+    const midR = (outerR + innerR) / 2;
+    this.targetValue = this.rng.float(0.3, 0.95);
+
+    const labels = ['AT FIELD', 'PWR LVL', 'SYNC', 'SHIELD', 'CHARGE', 'OUTPUT', 'SIGNAL', 'CORE'];
+    this.label = this.rng.pick(labels);
+
+    // Background ring (full circle, dim)
+    const bgPositions: number[] = [];
+    for (let i = 0; i <= this.segments; i++) {
+      const a = (i / this.segments) * Math.PI * 2 - Math.PI / 2;
+      bgPositions.push(cx + Math.cos(a) * midR, cy + Math.sin(a) * midR, 0);
+    }
+    const bgGeo = new THREE.BufferGeometry();
+    bgGeo.setAttribute('position', new THREE.Float32BufferAttribute(bgPositions, 3));
+    this.bgRing = new THREE.Line(bgGeo, new THREE.LineBasicMaterial({
+      color: this.palette.dim,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.group.add(this.bgRing);
+
+    // Fill ring (partial arc)
+    const fillPositions = new Float32Array((this.segments + 1) * 3);
+    const fillGeo = new THREE.BufferGeometry();
+    fillGeo.setAttribute('position', new THREE.BufferAttribute(fillPositions, 3));
+    this.fillRing = new THREE.Line(fillGeo, new THREE.LineBasicMaterial({
+      color: this.palette.primary,
+      transparent: true,
+      opacity: 0,
+      linewidth: 2,
+    }));
+    this.group.add(this.fillRing);
+
+    // Tick marks
+    const tickCount = 12;
+    const tickVerts: number[] = [];
+    for (let i = 0; i < tickCount; i++) {
+      const a = (i / tickCount) * Math.PI * 2 - Math.PI / 2;
+      const t1 = i % 3 === 0 ? outerR * 1.05 : outerR;
+      tickVerts.push(
+        cx + Math.cos(a) * innerR * 0.95, cy + Math.sin(a) * innerR * 0.95, 1,
+        cx + Math.cos(a) * t1, cy + Math.sin(a) * t1, 1,
+      );
+    }
+    const tickGeo = new THREE.BufferGeometry();
+    tickGeo.setAttribute('position', new THREE.Float32BufferAttribute(tickVerts, 3));
+    this.ticks = new THREE.LineSegments(tickGeo, new THREE.LineBasicMaterial({
+      color: this.palette.dim,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.group.add(this.ticks);
+
+    // Center label
+    const scale = Math.min(2, window.devicePixelRatio);
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = Math.ceil(innerR * 1.6 * scale);
+    this.canvas.height = Math.ceil(innerR * 1.2 * scale);
+    this.ctx = this.canvas.getContext('2d')!;
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.minFilter = THREE.LinearFilter;
+    const labelGeo = new THREE.PlaneGeometry(innerR * 1.6, innerR * 1.2);
+    this.labelMesh = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
+      map: this.texture,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.labelMesh.position.set(cx, cy, 2);
+    this.group.add(this.labelMesh);
+  }
+
+  update(dt: number, time: number): void {
+    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const { x, y, w, h } = this.px;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const outerR = Math.min(w, h) / 2 * 0.85;
+    const innerR = outerR * 0.7;
+    const midR = (outerR + innerR) / 2;
+
+    if (this.pulseTimer > 0) {
+      this.pulseTimer -= dt;
+      opacity *= pulse(this.pulseTimer);
+    }
+
+    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
+    if (this.glitchTimer > 0) this.glitchTimer -= dt;
+    this.group.position.x = gx;
+
+    // Cycle target
+    this.cycleTimer += dt;
+    if (this.cycleTimer > 3) {
+      this.cycleTimer = 0;
+      this.targetValue = this.rng.float(0.15, 1.0);
+    }
+
+    // Spring physics for value
+    const force = (this.targetValue - this.value) * 15;
+    this.velocity += force * dt;
+    this.velocity *= Math.exp(-3 * dt);
+    this.value += this.velocity * dt;
+    this.value = Math.max(0, Math.min(1.1, this.value));
+
+    // Update fill arc
+    const fillPos = this.fillRing.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const fillAngle = this.value * Math.PI * 2;
+    for (let i = 0; i <= this.segments; i++) {
+      const a = (i / this.segments) * fillAngle - Math.PI / 2;
+      fillPos.setXYZ(i, cx + Math.cos(a) * midR, cy + Math.sin(a) * midR, 1);
+    }
+    fillPos.needsUpdate = true;
+
+    // Color shifts at high values
+    const fillColor = this.value > 0.9 ? this.palette.alert
+      : this.value > 0.7 ? this.palette.secondary
+      : this.palette.primary;
+    (this.fillRing.material as THREE.LineBasicMaterial).color.copy(fillColor);
+    (this.fillRing.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
+    (this.bgRing.material as THREE.LineBasicMaterial).opacity = opacity * 0.2;
+    (this.ticks.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+
+    // Render label at reduced rate
+    this.renderAccum += dt;
+    if (this.renderAccum >= 1 / 10) {
+      this.renderAccum = 0;
+      this.renderLabel();
+    }
+    (this.labelMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.7;
+  }
+
+  private renderLabel(): void {
+    const { ctx, canvas } = this;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const bigSize = Math.floor(canvas.height * 0.4);
+    const smallSize = Math.floor(canvas.height * 0.2);
+    const primaryHex = '#' + this.palette.primary.getHexString();
+    const dimHex = '#' + this.palette.dim.getHexString();
+
+    // Value percentage
+    ctx.font = `bold ${bigSize}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = primaryHex;
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = primaryHex;
+    const pct = Math.round(Math.min(this.value, 1) * 100);
+    ctx.fillText(`${pct}%`, canvas.width / 2, canvas.height * 0.4);
+    ctx.shadowBlur = 0;
+
+    // Label
+    ctx.font = `${smallSize}px monospace`;
+    ctx.fillStyle = dimHex;
+    ctx.fillText(this.label, canvas.width / 2, canvas.height * 0.72);
+
+    this.texture.needsUpdate = true;
+  }
+
+  onAction(action: string): void {
+    super.onAction(action);
+    if (action === 'pulse') {
+      this.pulseTimer = 0.5;
+      this.velocity += 3;
+    }
+    if (action === 'glitch') this.glitchTimer = 0.5;
+    if (action === 'alert') {
+      this.targetValue = 1.0;
+      this.pulseTimer = 2.0;
+    }
+  }
+
+  dispose(): void {
+    this.texture.dispose();
+    super.dispose();
+  }
+}
