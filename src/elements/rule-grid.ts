@@ -167,14 +167,15 @@ export class RuleGridElement extends BaseElement {
       this.stepAccum -= this.stepInterval;
       this.stepAutomaton();
 
-      // Check if the newest row is all-dead (all zeros) or all-alive (all ones)
-      const lastRowOffset = (this.rows - 1) * this.cols;
-      let alive = 0;
-      for (let c = 0; c < this.cols; c++) alive += this.grid[lastRowOffset + c];
+      // Only check for dead patterns after the grid has fully filled
+      if (this.filledRows >= this.rows) {
+        const lastRowOffset = (this.rows - 1) * this.cols;
+        let alive = 0;
+        for (let c = 0; c < this.cols; c++) alive += this.grid[lastRowOffset + c];
 
-      if (alive === 0 || alive === this.cols) {
-        this.deadRowCount++;
-        if (this.deadRowCount >= this.DEAD_THRESHOLD) {
+        if (alive === 0 || alive === this.cols) {
+          this.deadRowCount++;
+          if (this.deadRowCount >= this.DEAD_THRESHOLD) {
           // Pattern died or went uniform — pick a new rule and restart
           let newRule: number;
           do {
@@ -186,8 +187,9 @@ export class RuleGridElement extends BaseElement {
           this.initTopRow();
           this.deadRowCount = 0;
         }
-      } else {
-        this.deadRowCount = 0;
+        } else {
+          this.deadRowCount = 0;
+        }
       }
     }
 
