@@ -9,6 +9,7 @@ import { type BaseElement } from './elements/base-element';
 import { generateTimeline, type Timeline } from './animation/timeline';
 import { createPostFXPipeline, type PostFXPipeline } from './postfx/pipeline';
 import { createGUI, type GUIControls } from './gui/controls';
+import { MobileToolbar, TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
 import { takeScreenshot, createVideoRecorder, type VideoRecorder } from './export/exporter';
 import { AudioSynth } from './audio/synth';
 import { loadConfig, saveConfig, updateURL } from './persistence';
@@ -36,6 +37,8 @@ export class Engine {
   private pendingBuild: { element: BaseElement; wrapper: THREE.Group }[] = [];
   private readonly BUILD_BATCH_SIZE = 3;
   private showcase!: ShowcaseMode;
+  private mobileToolbar: MobileToolbar | null = null;
+  private mobileQuery!: MediaQueryList;
 
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
@@ -51,10 +54,13 @@ export class Engine {
 
   /** Compute and apply canvas size from aspect ratio + window dimensions. */
   private applyAspect(): void {
+    const viewportHeight = this.mobileToolbar
+      ? window.innerHeight - TOOLBAR_HEIGHT
+      : window.innerHeight;
     const { width, height, offsetX, offsetY } = computeAspectSize(
       this.config.aspectRatio,
       window.innerWidth,
-      window.innerHeight
+      viewportHeight
     );
     this.config.width = width;
     this.config.height = height;
@@ -105,7 +111,50 @@ export class Engine {
       () => this.applyAspectAndRegenerate(),
     );
 
-    this.generate(this.config.seed);
+    // Mobile toolbar: create/destroy based on viewport width
+    this.mobileQuery = window.matchMedia('(max-width: 767px)');
+    const handleMobileChange = (matches: boolean) => {
+      if (matches && !this.mobileToolbar) {
+        this.mobileToolbar = new MobileToolbar({
+          onRegenerate: () => {
+            this.config.seed = Math.floor(Math.random() * 100000);
+            this.generate(this.config.seed);
+          },
+          onTogglePause: () => {
+            this.togglePause();
+            this.mobileToolbar?.setPaused(this.isPaused);
+          },
+          onToggleMute: () => {
+            this.audio.muted = !this.audio.muted;
+            this.mobileToolbar?.setMuted(this.audio.muted);
+          },
+          onScreenshot: () => takeScreenshot(this.ctx.renderer.domElement),
+          onShowcase: () => {
+            if (!this.showcase.isActive) this.showcase.enter();
+          },
+          onToggleSettings: () => this.gui.toggle(),
+          onResumeAudio: () => this.audio.blip(0, 0),
+        });
+        this.applyAspect();
+        resizeRenderer(this.ctx, this.config.width, this.config.height);
+        this.pipeline.resize(this.config.width, this.config.height);
+        this.generate(this.config.seed);
+      } else if (!matches && this.mobileToolbar) {
+        this.mobileToolbar.destroy();
+        this.mobileToolbar = null;
+        this.applyAspect();
+        resizeRenderer(this.ctx, this.config.width, this.config.height);
+        this.pipeline.resize(this.config.width, this.config.height);
+        this.generate(this.config.seed);
+      }
+    };
+    handleMobileChange(this.mobileQuery.matches);
+    this.mobileQuery.addEventListener('change', (e) => handleMobileChange(e.matches));
+
+    if (!this.mobileToolbar) {
+      // Only generate here if mobile didn't already trigger it
+      this.generate(this.config.seed);
+    }
     this.setupEvents();
   }
 
@@ -416,10 +465,12 @@ export class Engine {
           break;
         case 'm':
           this.audio.muted = !this.audio.muted;
+          this.mobileToolbar?.setMuted(this.audio.muted);
           break;
         case ' ':
           e.preventDefault();
           this.togglePause();
+          this.mobileToolbar?.setPaused(this.isPaused);
           break;
         case 'backspace':
           if (!e.ctrlKey && !e.metaKey) {
@@ -454,6 +505,8 @@ export class Engine {
     }
     this.showcase.dispose();
     this.gui.destroy();
+    this.mobileToolbar?.destroy();
+    this.mobileToolbar = null;
     this.audio.dispose();
     this.ctx.renderer.dispose();
   }

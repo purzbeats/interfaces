@@ -135,7 +135,10 @@ export function createGUI(
     show();
     window.removeEventListener('click', showOnClick);
   };
-  window.addEventListener('click', showOnClick);
+  // On mobile, the toolbar's MENU button drives settings visibility instead
+  if (!matchMedia('(max-width: 767px)').matches) {
+    window.addEventListener('click', showOnClick);
+  }
 
   return {
     gui,

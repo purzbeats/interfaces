@@ -9,6 +9,53 @@ import { type PostFXPipeline } from './postfx/pipeline';
 import { type Config, computeAspectSize } from './config';
 import { getMeta } from './elements/tags';
 
+class TouchSwipeHandler {
+  private startX = 0;
+  private startY = 0;
+  private el: HTMLElement;
+  private onSwipe: (dir: 'left' | 'right' | 'down' | 'tap') => void;
+  private boundStart: (e: TouchEvent) => void;
+  private boundEnd: (e: TouchEvent) => void;
+
+  constructor(el: HTMLElement, onSwipe: (dir: 'left' | 'right' | 'down' | 'tap') => void) {
+    this.el = el;
+    this.onSwipe = onSwipe;
+    this.boundStart = (e) => this.handleStart(e);
+    this.boundEnd = (e) => this.handleEnd(e);
+    this.el.addEventListener('touchstart', this.boundStart, { passive: true });
+    this.el.addEventListener('touchend', this.boundEnd, { passive: true });
+  }
+
+  private handleStart(e: TouchEvent): void {
+    const t = e.touches[0];
+    this.startX = t.clientX;
+    this.startY = t.clientY;
+  }
+
+  private handleEnd(e: TouchEvent): void {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - this.startX;
+    const dy = t.clientY - this.startY;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (absDx < 10 && absDy < 10) {
+      this.onSwipe('tap');
+    } else if (dy > 60 && absDy > absDx) {
+      this.onSwipe('down');
+    } else if (dx < -40 && absDx > absDy) {
+      this.onSwipe('left');
+    } else if (dx > 40 && absDx > absDy) {
+      this.onSwipe('right');
+    }
+  }
+
+  destroy(): void {
+    this.el.removeEventListener('touchstart', this.boundStart);
+    this.el.removeEventListener('touchend', this.boundEnd);
+  }
+}
+
 /**
  * Showcase mode: cycles through every element type fullscreen
  * with a title card overlay. Left/Right arrows to navigate.
@@ -29,6 +76,7 @@ export class ShowcaseMode {
   private keyHandler: (e: KeyboardEvent) => void;
   private resizeHandler: () => void;
   private stashedChildren: THREE.Object3D[] = [];
+  private swipeHandler: TouchSwipeHandler | null = null;
 
   constructor(ctx: RendererContext, pipeline: PostFXPipeline, config: Config, onExit: () => void) {
     this.ctx = ctx;
@@ -94,7 +142,7 @@ export class ShowcaseMode {
           </div>
         </div>
         <div style="font-size:11px; opacity:0.4; text-align:right; white-space:nowrap;">
-          \u2190 \u2192 navigate &nbsp;\u00b7&nbsp; G exit
+          ${this.isMobile() ? 'swipe to navigate' : '\u2190 \u2192 navigate \u00a0\u00b7\u00a0 G exit'}
         </div>
       </div>
     `;
@@ -118,6 +166,25 @@ export class ShowcaseMode {
 
     window.addEventListener('keydown', this.keyHandler);
     window.addEventListener('resize', this.resizeHandler);
+    this.swipeHandler = new TouchSwipeHandler(
+      this.ctx.renderer.domElement,
+      (dir) => {
+        switch (dir) {
+          case 'left':
+            this.currentIndex = (this.currentIndex + 1) % this.types.length;
+            this.spawnElement();
+            break;
+          case 'right':
+            this.currentIndex = (this.currentIndex - 1 + this.types.length) % this.types.length;
+            this.spawnElement();
+            break;
+          case 'down':
+          case 'tap':
+            this.exit();
+            break;
+        }
+      }
+    );
     this.spawnElement();
   }
 
@@ -126,6 +193,8 @@ export class ShowcaseMode {
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('resize', this.resizeHandler);
+    this.swipeHandler?.destroy();
+    this.swipeHandler = null;
     this.clearElement();
 
     // Restore stashed scene children
@@ -236,7 +305,13 @@ export class ShowcaseMode {
     this.pipeline.composer.render();
   }
 
+  private isMobile(): boolean {
+    return window.matchMedia('(max-width: 767px)').matches;
+  }
+
   dispose(): void {
+    this.swipeHandler?.destroy();
+    this.swipeHandler = null;
     this.clearElement();
     this.overlay.remove();
     window.removeEventListener('keydown', this.keyHandler);
