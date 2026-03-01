@@ -69,5 +69,9 @@ export class GridOverlayElement extends BaseElement {
     super.onAction(action);
     if (action === 'pulse') this.pulseTimer = 0.4;
     if (action === 'glitch') this.glitchTimer = 0.35;
+    if (action === 'alert') {
+      this.pulseTimer = 1.5;
+      (this.crosshair.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
+    }
   }
 }

@@ -42,7 +42,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
     },
     bspOptions: { maxDepth: 1, splitVariance: 0.15, minWidth: 0.15, minHeight: 0.15 },
     elementWeights: {
-      'radar-sweep': 2, 'target-reticle': 2, 'bracket-frame': 2,
+      'radar-sweep': 2, 'bracket-frame': 2,
       waveform: 1, 'grid-overlay': 1, 'cross-scope': 1, 'concentric-rings': 1,
       'radial-scanner': 2, 'scan-line': 1, 'coord-grid': 1, 'thermal-map': 1,
     },
@@ -58,7 +58,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
     bspOptions: { maxDepth: 3, splitVariance: 0.25, minWidth: 0.12, minHeight: 0.1 },
     elementWeights: {
       graph: 3, waveform: 2, 'progress-bar': 2, 'ring-gauge': 2,
-      'signal-bars': 2, 'arc-reactor': 1, 'status-readout': 1, 'text-label': 1,
+      'signal-bars': 2, 'status-readout': 1, 'text-label': 1,
       'freq-analyzer': 2, 'level-rings': 2, 'phase-indicator': 1, 'threat-meter': 1,
       'thermal-map': 1, 'memory-map': 1,
     },
@@ -75,7 +75,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
     ],
     bspOptions: { maxDepth: 2, splitVariance: 0.2, minWidth: 0.08, minHeight: 0.06 },
     elementWeights: {
-      'radar-sweep': 2, 'target-reticle': 2, 'scrolling-numbers': 2, 'text-label': 2, 'status-readout': 1,
+      'radar-sweep': 2, 'scrolling-numbers': 2, 'text-label': 2, 'status-readout': 1,
       'hex-grid': 1, 'bracket-frame': 1,
       'radial-scanner': 2, 'coord-grid': 2, 'scan-line': 1, 'threat-meter': 1,
       'segment-display': 1, 'clock-display': 1, 'phase-indicator': 1,
@@ -131,7 +131,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
     },
     bspOptions: { maxDepth: 1, splitVariance: 0.1, minWidth: 0.12, minHeight: 0.12 },
     elementWeights: {
-      'concentric-rings': 3, 'diamond-gauge': 2, 'hex-grid': 2,
+      'concentric-rings': 3, 'hex-grid': 2,
       'level-rings': 2, 'radial-scanner': 2, 'phase-indicator': 1,
       'thermal-map': 1, 'coord-grid': 1,
     },
