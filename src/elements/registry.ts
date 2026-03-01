@@ -68,7 +68,7 @@ import { BoidsSwarmElement } from './boids-swarm';
 import { RuleGridElement } from './rule-grid';
 import { LorenzAttractorElement } from './lorenz-attractor';
 import { NeuralMeshElement } from './neural-mesh';
-import { ReactionDiffusionElement } from './reaction-diffusion';
+import { HarmonographElement } from './harmonograph';
 import { PlasmaFieldElement } from './plasma-field';
 import { DnaHelixElement } from './dna-helix';
 import { PendulumWaveElement } from './pendulum-wave';
@@ -154,7 +154,7 @@ const REGISTRY: Record<string, ElementFactory> = {
  'rule-grid':          f(RuleGridElement),
  'lorenz-attractor':   f(LorenzAttractorElement),
  'neural-mesh':        f(NeuralMeshElement),
- 'reaction-diffusion': f(ReactionDiffusionElement),
+ 'harmonograph': f(HarmonographElement),
  'plasma-field':       f(PlasmaFieldElement),
  'dna-helix':          f(DnaHelixElement),
  'pendulum-wave':      f(PendulumWaveElement),

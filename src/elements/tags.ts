@@ -77,7 +77,7 @@ const ELEMENT_META: Record<string, ElementMeta> = {
   'rule-grid':          { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
   'lorenz-attractor':   { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
   'neural-mesh':        { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
-  'reaction-diffusion': { shape: 'radial', roles: ['decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+  'harmonograph': { shape: 'radial', roles: ['decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
   'plasma-field':       { shape: 'rectangular', roles: ['decorative'],               moods: ['ambient'],                sizes: ['needs-medium', 'needs-large'] },
   'dna-helix':          { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
   'pendulum-wave':      { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },

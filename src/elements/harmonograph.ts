@@ -8,7 +8,7 @@ import { BaseElement } from './base-element';
  * decay. Resets with new parameters when the pattern fades out.
  * Pure geometry (Line), loads instantly, always moving.
  */
-export class ReactionDiffusionElement extends BaseElement {
+export class HarmonographElement extends BaseElement {
   private line!: THREE.Line;
   private lineMat!: THREE.LineBasicMaterial;
   private fadeLine!: THREE.Line;

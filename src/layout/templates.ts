@@ -32,7 +32,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'countdown-timer': 2, 'heart-monitor': 1, 'flight-ladder': 1,
       'cpu-cores': 1, 'audio-meter': 1, 'data-table': 1,
       'uptime-counter': 1, 'pressure-gauge': 1,
-      'neural-mesh': 1, 'rule-grid': 1, 'reaction-diffusion': 1,
+      'neural-mesh': 1, 'rule-grid': 1, 'harmonograph': 1,
     },
   },
 
@@ -106,7 +106,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'target-lock': 2, 'topology-map': 1, 'hex-tunnel': 1,
       'countdown-timer': 2, 'flight-ladder': 2, 'depth-sounder': 1,
       'satellite-track': 2, 'pressure-gauge': 1,
-      'boids-swarm': 1, 'reaction-diffusion': 1, 'fractal-tree': 1,
+      'boids-swarm': 1, 'harmonograph': 1, 'fractal-tree': 1,
     },
   },
 
@@ -153,7 +153,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'spectrogram': 2, 'pulse-wave': 1, 'dot-matrix': 1, 'particle-field': 1,
       'uptime-counter': 1, 'boot-sequence': 2, 'network-graph': 2,
       'data-table': 2, 'cpu-cores': 1, 'voltage-arc': 1,
-      'reaction-diffusion': 2, 'flow-field': 1, 'neural-mesh': 1, 'rule-grid': 1,
+      'harmonograph': 2, 'flow-field': 1, 'neural-mesh': 1, 'rule-grid': 1,
     },
   },
 

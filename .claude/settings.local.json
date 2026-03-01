@@ -7,7 +7,23 @@
       "Bash(npx vite:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gh auth:*)",
+      "Bash(where:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git push:*)",
+      "Bash(node run.js:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npm ls:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "Bash(node -e:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(git status:*)",
+      "Bash(ls:*)"
     ]
   }
 }
