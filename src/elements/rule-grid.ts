@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { applyScanlines, drawGlowText } from '../animation/retro-text';
+import { applyScanlines } from '../animation/retro-text';
 
 /**
  * Wolfram elementary cellular automaton display.
@@ -39,9 +39,6 @@ export class RuleGridElement extends BaseElement {
   // Alert flash
   private alertFlashTimer: number = 0;
 
-  // Looping: detect dead/uniform patterns and restart
-  private deadRowCount: number = 0;
-  private readonly DEAD_THRESHOLD = 8; // consecutive dead bottom rows before restart
 
   private static readonly GOOD_RULES = [
     30, 45, 54, 60, 73, 75, 86, 89, 90, 105, 110, 124, 135, 150, 169, 182, 193, 225,
@@ -167,29 +164,16 @@ export class RuleGridElement extends BaseElement {
       this.stepAccum -= this.stepInterval;
       this.stepAutomaton();
 
-      // Only check for dead patterns after the grid has fully filled
-      if (this.filledRows >= this.rows) {
-        const lastRowOffset = (this.rows - 1) * this.cols;
-        let alive = 0;
-        for (let c = 0; c < this.cols; c++) alive += this.grid[lastRowOffset + c];
-
-        if (alive === 0 || alive === this.cols) {
-          this.deadRowCount++;
-          if (this.deadRowCount >= this.DEAD_THRESHOLD) {
-          // Pattern died or went uniform — pick a new rule and restart
-          let newRule: number;
-          do {
-            newRule = this.rng.pick(RuleGridElement.GOOD_RULES);
-          } while (newRule === this.ruleNumber && RuleGridElement.GOOD_RULES.length > 1);
-          this.ruleNumber = newRule;
-          this.buildRuleTable(newRule, this.ruleTable);
-          this.glitchRuleTimer = 0;
-          this.initTopRow();
-          this.deadRowCount = 0;
-        }
-        } else {
-          this.deadRowCount = 0;
-        }
+      // Reset at 256 generations with a new rule
+      if (this.generation >= 256) {
+        let newRule: number;
+        do {
+          newRule = this.rng.pick(RuleGridElement.GOOD_RULES);
+        } while (newRule === this.ruleNumber && RuleGridElement.GOOD_RULES.length > 1);
+        this.ruleNumber = newRule;
+        this.buildRuleTable(newRule, this.ruleTable);
+        this.glitchRuleTimer = 0;
+        this.initTopRow();
       }
     }
 
@@ -290,19 +274,6 @@ export class RuleGridElement extends BaseElement {
       ctx.fillRect(0, 0, cw, ch);
       ctx.globalAlpha = 1;
     }
-
-    // Header label: "RULE {N}"
-    const labelFontSize = Math.max(8, Math.floor(Math.min(cw, ch) * 0.04));
-    ctx.font = `${labelFontSize}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    drawGlowText(ctx, `RULE ${this.ruleNumber}`, cw / 2, 3, dimHex, 3);
-
-    // Generation counter at bottom
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    const genStr = 'GEN: ' + String(this.generation).padStart(5, '0');
-    drawGlowText(ctx, genStr, 4, ch - 4, dimHex, 2);
 
     // Scanlines
     applyScanlines(ctx, canvas, 0.04, time);
