@@ -64,6 +64,16 @@ import { DataTableElement } from './data-table';
 import { BootSequenceElement } from './boot-sequence';
 
 import { CipherWheelElement } from './cipher-wheel';
+import { BoidsSwarmElement } from './boids-swarm';
+import { LifeGridElement } from './life-grid';
+import { LorenzAttractorElement } from './lorenz-attractor';
+import { NeuralMeshElement } from './neural-mesh';
+import { MatrixRainElement } from './matrix-rain';
+import { PlasmaFieldElement } from './plasma-field';
+import { DnaHelixElement } from './dna-helix';
+import { PendulumWaveElement } from './pendulum-wave';
+import { FractalTreeElement } from './fractal-tree';
+import { FlowFieldElement } from './flow-field';
 
 type ElementFactory = (
   region: Region,
@@ -140,6 +150,16 @@ const REGISTRY: Record<string, ElementFactory> = {
  'boot-sequence':      f(BootSequenceElement),
 
  'cipher-wheel':       f(CipherWheelElement),
+ 'boids-swarm':        f(BoidsSwarmElement),
+ 'life-grid':          f(LifeGridElement),
+ 'lorenz-attractor':   f(LorenzAttractorElement),
+ 'neural-mesh':        f(NeuralMeshElement),
+ 'matrix-rain':        f(MatrixRainElement),
+ 'plasma-field':       f(PlasmaFieldElement),
+ 'dna-helix':          f(DnaHelixElement),
+ 'pendulum-wave':      f(PendulumWaveElement),
+ 'fractal-tree':       f(FractalTreeElement),
+ 'flow-field':         f(FlowFieldElement),
 };
 
 export function createElement(

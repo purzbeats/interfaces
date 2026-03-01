@@ -1,6 +1,6 @@
 # INTERFACES
 
-Procedural sci-fi interface generator built with Three.js and TypeScript. Produces animated HUD-style compositions from 54 visual element types — radar sweeps, waveforms, data cascades, oscilloscopes, star fields, cipher wheels, and more — arranged via BSP-subdivided layout templates with seeded randomness for deterministic output.
+Procedural sci-fi interface generator built with Three.js and TypeScript. Produces animated HUD-style compositions from 64 visual element types — radar sweeps, waveforms, data cascades, oscilloscopes, star fields, cipher wheels, and more — arranged via BSP-subdivided layout templates with seeded randomness for deterministic output.
 
 ## Quick Start
 
@@ -37,7 +37,7 @@ src/
 ├── engine.ts            # Core engine — orchestrates layout, rendering, timeline
 ├── config.ts            # Runtime configuration (seed, palette, template, post-fx)
 ├── random.ts            # Seeded PRNG (mulberry32)
-├── elements/            # 54 visual element types + registry + tag metadata
+├── elements/            # 64 visual element types + registry + tag metadata
 │   ├── base-element.ts  # Abstract base class (pulse/glitch/opacity effects)
 │   ├── registry.ts      # Element factory registry
 │   └── tags.ts          # Shape/role/mood/size tag taxonomy
@@ -62,10 +62,13 @@ src/
 
 Seven built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `tactical`, `nerv`, `datastream`, `geometry`. Use `auto` for random selection.
 
-## Elements (54)
+## Elements (64)
 
 ### Data Display
 `graph`, `scrolling-numbers`, `data-cascade`, `signal-bars`, `waveform`, `cross-scope`, `freq-analyzer`, `spectrogram`, `dot-matrix`, `pulse-wave`, `binary-stream`, `cpu-cores`, `data-table`, `network-graph`, `oscilloscope`, `audio-meter`, `heart-monitor`, `voltage-arc`
+
+### Simulations
+`boids-swarm`, `life-grid`, `lorenz-attractor`, `neural-mesh`, `flow-field`, `pendulum-wave`
 
 ### Scanners
 `radar-sweep`, `radial-scanner`, `coord-grid`, `grid-overlay`, `bracket-frame`, `scan-line`, `target-lock`, `depth-sounder`, `satellite-track`, `thermal-map`, `topology-map`
@@ -77,7 +80,7 @@ Seven built-in layout templates: `command-center`, `surveillance`, `diagnostic`,
 `text-label`, `status-readout`, `clock-display`, `uptime-counter`, `boot-sequence`
 
 ### Decorative
-`concentric-rings`, `hex-grid`, `hex-tunnel`, `orbital-display`, `particle-field`, `memory-map`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`
+`concentric-rings`, `hex-grid`, `hex-tunnel`, `orbital-display`, `particle-field`, `memory-map`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `matrix-rain`, `plasma-field`, `dna-helix`, `fractal-tree`
 
 ### Structural
 `panel`, `separator`, `power-grid`

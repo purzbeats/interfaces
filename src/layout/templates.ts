@@ -32,6 +32,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'countdown-timer': 2, 'heart-monitor': 1, 'flight-ladder': 1,
       'cpu-cores': 1, 'audio-meter': 1, 'data-table': 1,
       'uptime-counter': 1, 'pressure-gauge': 1,
+      'neural-mesh': 1, 'life-grid': 1, 'matrix-rain': 1,
     },
   },
 
@@ -57,6 +58,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'target-lock': 2, 'hex-tunnel': 1, 'orbital-display': 1,
       'satellite-track': 2, 'depth-sounder': 1, 'cipher-wheel': 1,
       'pressure-gauge': 1, 'network-graph': 1,
+      'boids-swarm': 2, 'flow-field': 1, 'neural-mesh': 1,
     },
   },
 
@@ -79,6 +81,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'heart-monitor': 2, 'power-grid': 1, 'data-table': 1,
       'boot-sequence': 1, 'voltage-arc': 1, 'uptime-counter': 1,
       'thermal-map': 1, 'memory-map': 1,
+      'lorenz-attractor': 2, 'dna-helix': 2, 'pendulum-wave': 1,
+      'life-grid': 1, 'neural-mesh': 1, 'plasma-field': 1,
     },
   },
 
@@ -102,6 +106,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'target-lock': 2, 'topology-map': 1, 'hex-tunnel': 1,
       'countdown-timer': 2, 'flight-ladder': 2, 'depth-sounder': 1,
       'satellite-track': 2, 'pressure-gauge': 1,
+      'boids-swarm': 1, 'matrix-rain': 1, 'fractal-tree': 1,
     },
   },
 
@@ -126,6 +131,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'hex-tunnel': 3, 'orbital-display': 2, 'dot-matrix': 1, 'target-lock': 1,
       'warp-tunnel': 2, 'cipher-wheel': 2, 'wave-interference': 1,
       'star-field': 1, 'voltage-arc': 1, 'boot-sequence': 1,
+      'plasma-field': 2, 'lorenz-attractor': 1, 'dna-helix': 1,
+      'fractal-tree': 1, 'flow-field': 1, 'pendulum-wave': 1,
     },
   },
 
@@ -146,6 +153,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'spectrogram': 2, 'pulse-wave': 1, 'dot-matrix': 1, 'particle-field': 1,
       'uptime-counter': 1, 'boot-sequence': 2, 'network-graph': 2,
       'data-table': 2, 'cpu-cores': 1, 'voltage-arc': 1,
+      'matrix-rain': 2, 'flow-field': 1, 'neural-mesh': 1, 'life-grid': 1,
     },
   },
 
@@ -173,6 +181,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'particle-field': 1, 'dot-matrix': 1,
       'warp-tunnel': 2, 'cipher-wheel': 2, 'pressure-gauge': 1,
       'wave-interference': 2, 'star-field': 1,
+      'lorenz-attractor': 2, 'pendulum-wave': 2, 'plasma-field': 1,
+      'dna-helix': 1, 'fractal-tree': 1, 'boids-swarm': 1,
     },
   },
 };
