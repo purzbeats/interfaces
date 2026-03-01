@@ -8,6 +8,7 @@ export interface Region {
   width: number;   // [0,1]
   height: number;  // [0,1]
   padding: number; // inner padding as fraction of region size
+  isDivider?: boolean;
   elementType?: string;
   children?: Region[];
 }

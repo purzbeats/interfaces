@@ -3,6 +3,7 @@ import type { Region } from './region';
 import { subdivide, resetRegionCounter } from './grid';
 import { getTemplate, type TemplateConfig } from './templates';
 import { getMeta, allElementNames } from '../elements/tags';
+import { injectDividers, resetDividerCounter } from './dividers';
 
 export interface CompositorResult {
   template: TemplateConfig;
@@ -286,15 +287,21 @@ export function compose(
   rng: SeededRandom
 ): CompositorResult {
   resetRegionCounter();
+  resetDividerCounter();
   const template = getTemplate(templateName, rng);
   const topRegions = template.createRegions(rng);
 
-  // Subdivide each top-level region
+  // Inject dividers: carve through template regions before BSP
+  const { contentRegions, dividerRegions } = injectDividers(topRegions, rng);
+
+  // Subdivide each content region (not dividers)
   const leafRegions: Region[] = [];
-  for (const region of topRegions) {
+  for (const region of contentRegions) {
     const leaves = subdivide(region, rng, template.bspOptions);
     leafRegions.push(...leaves);
   }
+  // Add divider regions as leaf regions (no subdivision)
+  leafRegions.push(...dividerRegions);
 
   // Resolve base weights from tagWeights + elementWeights
   const baseWeights = resolveWeights(template);
@@ -320,6 +327,7 @@ export function compose(
   // Process remaining regions sequentially, building context
   for (const region of leafRegions) {
     if (preAssigned.has(region)) continue;
+    if (region.isDivider) continue;
 
     const regionShape = classifyRegion(region);
 

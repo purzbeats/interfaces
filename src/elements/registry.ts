@@ -13,18 +13,24 @@ import { TextLabelElement } from './text-label';
 import { StatusReadoutElement } from './status-readout';
 import { SeparatorElement } from './separator';
 import { HexGridElement } from './hex-grid';
-import { TargetReticleElement } from './target-reticle';
 import { ConcentricRingsElement } from './concentric-rings';
-import { DiamondGaugeElement } from './diamond-gauge';
-import { TriScannerElement } from './tri-scanner';
 import { DataCascadeElement } from './data-cascade';
-import { ArcReactorElement } from './arc-reactor';
 import { SignalBarsElement } from './signal-bars';
-import { RotatingGeometryElement } from './rotating-geometry';
-import { OrbitalDotsElement } from './orbital-dots';
 import { BracketFrameElement } from './bracket-frame';
 import { CrossScopeElement } from './cross-scope';
 import { RingGaugeElement } from './ring-gauge';
+import { ThreatMeterElement } from './threat-meter';
+import { ScanLineElement } from './scan-line';
+import { BinaryStreamElement } from './binary-stream';
+import { ClockDisplayElement } from './clock-display';
+import { FreqAnalyzerElement } from './freq-analyzer';
+import { PhaseIndicatorElement } from './phase-indicator';
+import { SegmentDisplayElement } from './segment-display';
+import { ThermalMapElement } from './thermal-map';
+import { MemoryMapElement } from './memory-map';
+import { CoordGridElement } from './coord-grid';
+import { LevelRingsElement } from './level-rings';
+import { RadialScannerElement } from './radial-scanner';
 
 type ElementFactory = (
   region: Region,
@@ -50,18 +56,24 @@ const REGISTRY: Record<string, ElementFactory> = {
   'status-readout':     f(StatusReadoutElement),
   'separator':          f(SeparatorElement),
   'hex-grid':           f(HexGridElement),
-  'target-reticle':     f(TargetReticleElement),
-  'concentric-rings':   f(ConcentricRingsElement),
-  'diamond-gauge':      f(DiamondGaugeElement),
-  'tri-scanner':        f(TriScannerElement),
-  'data-cascade':       f(DataCascadeElement),
-  'arc-reactor':        f(ArcReactorElement),
-  'signal-bars':        f(SignalBarsElement),
-  'rotating-geometry':  f(RotatingGeometryElement),
-  'orbital-dots':       f(OrbitalDotsElement),
-  'bracket-frame':      f(BracketFrameElement),
-  'cross-scope':        f(CrossScopeElement),
-  'ring-gauge':         f(RingGaugeElement),
+ 'concentric-rings':   f(ConcentricRingsElement),
+ 'data-cascade':       f(DataCascadeElement),
+ 'signal-bars':        f(SignalBarsElement),
+ 'bracket-frame':      f(BracketFrameElement),
+ 'cross-scope':        f(CrossScopeElement),
+ 'ring-gauge':         f(RingGaugeElement),
+ 'threat-meter':       f(ThreatMeterElement),
+ 'scan-line':          f(ScanLineElement),
+ 'binary-stream':      f(BinaryStreamElement),
+ 'clock-display':      f(ClockDisplayElement),
+ 'freq-analyzer':      f(FreqAnalyzerElement),
+ 'phase-indicator':    f(PhaseIndicatorElement),
+ 'segment-display':    f(SegmentDisplayElement),
+ 'thermal-map':        f(ThermalMapElement),
+ 'memory-map':         f(MemoryMapElement),
+ 'coord-grid':         f(CoordGridElement),
+ 'level-rings':        f(LevelRingsElement),
+ 'radial-scanner':     f(RadialScannerElement),
 };
 
 export function createElement(

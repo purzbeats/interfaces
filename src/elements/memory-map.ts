@@ -1,0 +1,179 @@
+import * as THREE from 'three';
+import { BaseElement } from './base-element';
+import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
+
+/**
+ * Grid of tiny blocks showing allocation/deallocation waves.
+ * Canvas-based rendering of memory block states.
+ */
+export class MemoryMapElement extends BaseElement {
+  private canvas!: HTMLCanvasElement;
+  private ctx!: CanvasRenderingContext2D;
+  private texture!: THREE.CanvasTexture;
+  private mesh!: THREE.Mesh;
+  private borderLines!: THREE.LineSegments;
+  private gridW: number = 0;
+  private gridH: number = 0;
+  private blockStates: number[] = []; // 0=free, 1=allocated, transitioning values
+  private wavePhase: number = 0;
+  private waveSpeed: number = 0;
+  private allocTimer: number = 0;
+  private pulseTimer: number = 0;
+  private glitchTimer: number = 0;
+  private renderAccum: number = 0;
+  private readonly RENDER_INTERVAL = 1 / 15;
+
+  build(): void {
+    const { x, y, w, h } = this.px;
+    const blockSize = this.rng.pick([4, 5, 6]);
+    this.gridW = Math.max(8, Math.floor(w / blockSize));
+    this.gridH = Math.max(8, Math.floor(h / blockSize));
+    this.waveSpeed = this.rng.float(1, 3);
+
+    // Initialize with random allocation
+    for (let i = 0; i < this.gridW * this.gridH; i++) {
+      this.blockStates.push(this.rng.chance(0.4) ? 1 : 0);
+    }
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.gridW;
+    this.canvas.height = this.gridH;
+    this.ctx = this.canvas.getContext('2d')!;
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
+
+    const geo = new THREE.PlaneGeometry(w, h);
+    this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      map: this.texture,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.mesh.position.set(x + w / 2, y + h / 2, 1);
+    this.group.add(this.mesh);
+
+    // Border
+    const bv = new Float32Array([
+      x, y, 0, x + w, y, 0,
+      x + w, y, 0, x + w, y + h, 0,
+      x + w, y + h, 0, x, y + h, 0,
+      x, y + h, 0, x, y, 0,
+    ]);
+    const bg = new THREE.BufferGeometry();
+    bg.setAttribute('position', new THREE.BufferAttribute(bv, 3));
+    this.borderLines = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({
+      color: this.palette.dim,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.group.add(this.borderLines);
+  }
+
+  update(dt: number, _time: number): void {
+    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+
+    if (this.pulseTimer > 0) {
+      this.pulseTimer -= dt;
+      opacity *= pulse(this.pulseTimer);
+    }
+
+    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
+    if (this.glitchTimer > 0) this.glitchTimer -= dt;
+    this.group.position.x = gx;
+
+    // Advance wave
+    this.wavePhase += dt * this.waveSpeed;
+
+    // Periodic allocation/deallocation events
+    this.allocTimer += dt;
+    if (this.allocTimer > 0.1) {
+      this.allocTimer = 0;
+      // Allocate/deallocate small blocks in waves
+      const waveX = ((Math.sin(this.wavePhase) + 1) / 2) * this.gridW;
+      const waveY = ((Math.cos(this.wavePhase * 0.7) + 1) / 2) * this.gridH;
+      const radius = 3;
+
+      for (let gy = Math.max(0, Math.floor(waveY - radius)); gy < Math.min(this.gridH, Math.ceil(waveY + radius)); gy++) {
+        for (let gx2 = Math.max(0, Math.floor(waveX - radius)); gx2 < Math.min(this.gridW, Math.ceil(waveX + radius)); gx2++) {
+          const dist = Math.sqrt((gx2 - waveX) ** 2 + (gy - waveY) ** 2);
+          if (dist < radius) {
+            const idx = gy * this.gridW + gx2;
+            this.blockStates[idx] = this.rng.chance(0.6) ? 1 : 0;
+          }
+        }
+      }
+
+      // Random scattered changes
+      for (let i = 0; i < 5; i++) {
+        const idx = this.rng.int(0, this.blockStates.length - 1);
+        this.blockStates[idx] = this.rng.chance(0.5) ? 1 : 0;
+      }
+    }
+
+    this.renderAccum += dt;
+    if (this.renderAccum >= this.RENDER_INTERVAL) {
+      this.renderAccum = 0;
+      this.renderCanvas();
+    }
+
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
+    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+  }
+
+  private renderCanvas(): void {
+    const { ctx, canvas } = this;
+    const imgData = ctx.createImageData(canvas.width, canvas.height);
+    const data = imgData.data;
+
+    const primary = this.palette.primary;
+    const dim = this.palette.dim;
+    const secondary = this.palette.secondary;
+    const isGlitching = this.glitchTimer > 0;
+
+    for (let i = 0; i < this.blockStates.length; i++) {
+      const v = this.blockStates[i];
+      let color: THREE.Color;
+
+      if (isGlitching) {
+        color = this.rng.chance(0.5) ? secondary : primary;
+      } else if (v > 0.5) {
+        color = primary;
+      } else {
+        color = dim;
+      }
+
+      const brightness = v > 0.5 ? 1 : 0.3;
+      data[i * 4] = Math.floor(color.r * 255 * brightness);
+      data[i * 4 + 1] = Math.floor(color.g * 255 * brightness);
+      data[i * 4 + 2] = Math.floor(color.b * 255 * brightness);
+      data[i * 4 + 3] = 255;
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    this.texture.needsUpdate = true;
+  }
+
+  onAction(action: string): void {
+    super.onAction(action);
+    if (action === 'pulse') this.pulseTimer = 0.5;
+    if (action === 'glitch') {
+      this.glitchTimer = 0.5;
+      // Scramble blocks
+      for (let i = 0; i < this.blockStates.length; i++) {
+        this.blockStates[i] = this.rng.chance(0.5) ? 1 : 0;
+      }
+    }
+    if (action === 'alert') {
+      this.pulseTimer = 1.5;
+      // Flood allocate
+      for (let i = 0; i < this.blockStates.length; i++) {
+        this.blockStates[i] = 1;
+      }
+    }
+  }
+
+  dispose(): void {
+    this.texture.dispose();
+    super.dispose();
+  }
+}

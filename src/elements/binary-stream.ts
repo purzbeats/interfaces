@@ -1,0 +1,148 @@
+import * as THREE from 'three';
+import { BaseElement } from './base-element';
+import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
+
+/**
+ * Scrolling ribbon of binary/hex characters flowing left-to-right.
+ * Canvas-based rendering at reduced framerate.
+ */
+export class BinaryStreamElement extends BaseElement {
+  private canvas!: HTMLCanvasElement;
+  private ctx!: CanvasRenderingContext2D;
+  private texture!: THREE.CanvasTexture;
+  private mesh!: THREE.Mesh;
+  private borderLines!: THREE.LineSegments;
+  private rows: number = 0;
+  private columns: number = 0;
+  private scrollOffset: number = 0;
+  private scrollSpeed: number = 0;
+  private isHex: boolean = false;
+  private pulseTimer: number = 0;
+  private glitchTimer: number = 0;
+  private renderAccum: number = 0;
+  private readonly RENDER_INTERVAL = 1 / 15;
+
+  build(): void {
+    const { x, y, w, h } = this.px;
+    const charW = 8;
+    const charH = 14;
+    this.columns = Math.max(4, Math.floor(w / charW));
+    this.rows = Math.max(1, Math.floor(h / charH));
+    this.isHex = this.rng.chance(0.4);
+    this.scrollSpeed = this.rng.float(8, 25);
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.columns * charW;
+    this.canvas.height = this.rows * charH;
+    this.ctx = this.canvas.getContext('2d')!;
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
+
+    const geo = new THREE.PlaneGeometry(w, h);
+    const mat = new THREE.MeshBasicMaterial({
+      map: this.texture,
+      transparent: true,
+      opacity: 0,
+    });
+    this.mesh = new THREE.Mesh(geo, mat);
+    this.mesh.position.set(x + w / 2, y + h / 2, 1);
+    this.group.add(this.mesh);
+
+    // Border
+    const bv = new Float32Array([
+      x, y, 0, x + w, y, 0,
+      x + w, y, 0, x + w, y + h, 0,
+      x + w, y + h, 0, x, y + h, 0,
+      x, y + h, 0, x, y, 0,
+    ]);
+    const bg = new THREE.BufferGeometry();
+    bg.setAttribute('position', new THREE.BufferAttribute(bv, 3));
+    this.borderLines = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({
+      color: this.palette.dim,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.group.add(this.borderLines);
+  }
+
+  update(dt: number, _time: number): void {
+    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+
+    if (this.pulseTimer > 0) {
+      this.pulseTimer -= dt;
+      opacity *= pulse(this.pulseTimer);
+    }
+
+    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
+    if (this.glitchTimer > 0) this.glitchTimer -= dt;
+    this.group.position.x = gx;
+
+    this.scrollOffset += dt * this.scrollSpeed;
+
+    this.renderAccum += dt;
+    if (this.renderAccum >= this.RENDER_INTERVAL) {
+      this.renderAccum = 0;
+      this.renderCanvas();
+    }
+
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
+    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+  }
+
+  private renderCanvas(): void {
+    const { ctx, canvas } = this;
+    const charW = canvas.width / this.columns;
+    const charH = canvas.height / this.rows;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = `${Math.floor(charH * 0.75)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const primaryHex = '#' + this.palette.primary.getHexString();
+    const dimHex = '#' + this.palette.dim.getHexString();
+    const secondaryHex = '#' + this.palette.secondary.getHexString();
+    const isGlitching = this.glitchTimer > 0;
+
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.columns; c++) {
+        const idx = Math.floor(this.scrollOffset + c + r * 31) & 0xFFFF;
+        const hash = (idx * 2654435761) >>> 0;
+        let char: string;
+
+        if (isGlitching && (hash & 7) === 0) {
+          char = String.fromCharCode(33 + (hash % 60));
+        } else if (this.isHex) {
+          char = (hash & 0xF).toString(16).toUpperCase();
+        } else {
+          char = (hash & 1).toString();
+        }
+
+        const bright = (hash & 3) === 0;
+        ctx.fillStyle = isGlitching ? secondaryHex : bright ? primaryHex : dimHex;
+        ctx.fillText(char, c * charW + charW / 2, r * charH + charH / 2);
+      }
+    }
+
+    this.texture.needsUpdate = true;
+  }
+
+  onAction(action: string): void {
+    super.onAction(action);
+    if (action === 'pulse') this.pulseTimer = 0.4;
+    if (action === 'glitch') {
+      this.glitchTimer = 0.5;
+      this.scrollSpeed *= 4;
+      setTimeout(() => { this.scrollSpeed /= 4; }, 500);
+    }
+    if (action === 'alert') {
+      this.pulseTimer = 1.5;
+    }
+  }
+
+  dispose(): void {
+    this.texture.dispose();
+    super.dispose();
+  }
+}
