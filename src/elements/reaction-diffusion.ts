@@ -42,7 +42,7 @@ export class ReactionDiffusionElement extends BaseElement {
 
   // Cycle management
   private cycleAge: number = 0;
-  private readonly CYCLE_DURATION = 18; // seconds before reset
+  private readonly CYCLE_DURATION = 8; // seconds before reset
   private fadeOutStart: number = 0;
 
   build(): void {
