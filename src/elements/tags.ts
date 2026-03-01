@@ -48,6 +48,31 @@ const ELEMENT_META: Record<string, ElementMeta> = {
   'particle-field':     { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient'],              sizes: ['needs-medium', 'needs-large'] },
   'topology-map':       { shape: 'rectangular', roles: ['scanner', 'decorative'],    moods: ['tactical', 'ambient'],    sizes: ['needs-medium', 'needs-large'] },
   'target-lock':        { shape: 'radial',      roles: ['scanner', 'gauge'],         moods: ['tactical'],               sizes: ['needs-medium', 'needs-large'] },
+  'voltage-arc':        { shape: 'linear',      roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'],  sizes: ['works-small', 'needs-medium'] },
+  'countdown-timer':    { shape: 'rectangular', roles: ['text', 'gauge'],            moods: ['tactical'],               sizes: ['works-small', 'needs-medium'] },
+  'heart-monitor':      { shape: 'linear',      roles: ['data-display', 'gauge'],    moods: ['diagnostic', 'tactical'], sizes: ['works-small', 'needs-medium'] },
+
+  'uptime-counter':     { shape: 'linear',      roles: ['text', 'data-display'],     moods: ['diagnostic', 'ambient'],  sizes: ['works-small'] },
+
+  'pressure-gauge':     { shape: 'radial',      roles: ['gauge'],                    moods: ['diagnostic', 'tactical'], sizes: ['works-small', 'needs-medium'] },
+
+  'oscilloscope':       { shape: 'rectangular', roles: ['data-display', 'gauge'],    moods: ['diagnostic'],             sizes: ['needs-medium'] },
+  'audio-meter':        { shape: 'rectangular', roles: ['gauge', 'data-display'],    moods: ['diagnostic'],             sizes: ['works-small', 'needs-medium'] },
+
+
+  'depth-sounder':      { shape: 'rectangular', roles: ['data-display', 'scanner'],  moods: ['tactical'],               sizes: ['needs-medium'] },
+  'satellite-track':    { shape: 'rectangular', roles: ['scanner', 'data-display'],  moods: ['tactical'],               sizes: ['needs-medium', 'needs-large'] },
+  'network-graph':      { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  'cpu-cores':          { shape: 'rectangular', roles: ['data-display', 'gauge'],    moods: ['diagnostic'],             sizes: ['works-small', 'needs-medium'] },
+  'power-grid':         { shape: 'rectangular', roles: ['data-display', 'structural'], moods: ['diagnostic'],           sizes: ['needs-medium', 'needs-large'] },
+  'star-field':         { shape: 'rectangular', roles: ['decorative'],               moods: ['ambient'],                sizes: ['needs-medium', 'needs-large'] },
+  'warp-tunnel':        { shape: 'radial',      roles: ['decorative'],               moods: ['ambient'],                sizes: ['needs-medium', 'needs-large'] },
+  'wave-interference':  { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+  'flight-ladder':      { shape: 'linear',      roles: ['gauge', 'text'],            moods: ['tactical'],               sizes: ['works-small', 'needs-medium'] },
+  'data-table':         { shape: 'rectangular', roles: ['data-display', 'text'],     moods: ['diagnostic'],             sizes: ['needs-medium', 'needs-large'] },
+  'boot-sequence':      { shape: 'rectangular', roles: ['text', 'data-display'],     moods: ['diagnostic', 'ambient'],  sizes: ['needs-medium', 'needs-large'] },
+
+  'cipher-wheel':       { shape: 'radial',      roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'],  sizes: ['needs-medium', 'needs-large'] },
 };
 
 export function getMeta(name: string): ElementMeta | undefined {

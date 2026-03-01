@@ -31,7 +31,7 @@ export class MobileToolbar {
     const style = document.createElement('style');
     style.id = 'mobile-toolbar-styles';
     style.textContent = `
-      @media (max-width: 767px) {
+      @media (max-width: 767px) and (pointer: coarse) {
         .lil-gui.root {
           position: fixed !important;
           top: auto !important;

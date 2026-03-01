@@ -11,7 +11,7 @@ export class AudioSynth {
   private reverb: ConvolverNode | null = null;
   private reverbGain: GainNode | null = null;
   private dryGain: GainNode | null = null;
-  private _muted: boolean = false;
+  private _muted: boolean = true;
   private _volume: number = 0.1;
 
   get muted(): boolean { return this._muted; }

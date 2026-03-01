@@ -21,25 +21,20 @@ export function injectDividers(
   regions: Region[],
   rng: SeededRandom
 ): DividerResult {
-  // 60% chance dividers appear at all
-  if (!rng.chance(0.6)) {
-    return { contentRegions: regions, dividerRegions: [] };
-  }
+  // Always produce at least 1 divider; total range is 1–5
+  // Horizontal 1-3, vertical 0-2
+  const hCount = rng.weighted([0, 40, 40, 20]); // 0,1,2,3
+  const vCount = rng.weighted([30, 45, 25]);     // 0,1,2
 
-  // Pick counts: horizontal 0-3, vertical 0-2
-  const hCount = rng.weighted([20, 40, 30, 10]); // 0,1,2,3
-  const vCount = rng.weighted([30, 45, 25]);      // 0,1,2
-
-  if (hCount === 0 && vCount === 0) {
-    return { contentRegions: regions, dividerRegions: [] };
-  }
+  // Guarantee at least 1 horizontal if both rolled 0
+  const hFinal = (hCount === 0 && vCount === 0) ? 1 : hCount;
 
   const MIN_GAP = 0.1;
   const MIN_THICK = 0.02;
   const MAX_THICK = 0.05;
 
   // Pick horizontal positions
-  const hDividers = pickPositions(hCount, MIN_GAP, MIN_THICK, MAX_THICK, rng);
+  const hDividers = pickPositions(hFinal, MIN_GAP, MIN_THICK, MAX_THICK, rng);
   // Pick vertical positions
   const vDividers = pickPositions(vCount, MIN_GAP, MIN_THICK, MAX_THICK, rng);
 

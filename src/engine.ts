@@ -13,6 +13,7 @@ import { MobileToolbar, TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
 import { takeScreenshot, createVideoRecorder, type VideoRecorder } from './export/exporter';
 import { AudioSynth } from './audio/synth';
 import { loadConfig, saveConfig, updateURL } from './persistence';
+import { setDividerBrightness, setDividerThickness } from './elements/separator';
 import type { Region } from './layout/region';
 import * as THREE from 'three';
 
@@ -54,13 +55,14 @@ export class Engine {
 
   /** Compute and apply canvas size from aspect ratio + window dimensions. */
   private applyAspect(): void {
+    const pad = this.config.overscanPadding;
     const viewportHeight = this.mobileToolbar
       ? window.innerHeight - TOOLBAR_HEIGHT
       : window.innerHeight;
     const { width, height, offsetX, offsetY } = computeAspectSize(
       this.config.aspectRatio,
-      window.innerWidth,
-      viewportHeight
+      window.innerWidth - pad * 2,
+      viewportHeight - pad * 2
     );
     this.config.width = width;
     this.config.height = height;
@@ -68,14 +70,16 @@ export class Engine {
     if (this.ctx) {
       const canvas = this.ctx.renderer.domElement;
       canvas.style.position = 'absolute';
-      canvas.style.left = `${offsetX}px`;
-      canvas.style.top = `${offsetY}px`;
+      canvas.style.left = `${offsetX + pad + this.config.overscanX}px`;
+      canvas.style.top = `${offsetY + pad + this.config.overscanY}px`;
       // Set background to black for letterbox/pillarbox bars
       document.body.style.background = '#000';
     }
   }
 
   init(): void {
+    setDividerBrightness(this.config.dividerBrightness);
+    setDividerThickness(this.config.dividerThickness);
     this.config.width = window.innerWidth;
     this.config.height = window.innerHeight;
 
@@ -112,7 +116,7 @@ export class Engine {
     );
 
     // Mobile toolbar: create/destroy based on viewport width
-    this.mobileQuery = window.matchMedia('(max-width: 767px)');
+    this.mobileQuery = window.matchMedia('(max-width: 767px) and (pointer: coarse)');
     const handleMobileChange = (matches: boolean) => {
       if (matches && !this.mobileToolbar) {
         this.mobileToolbar = new MobileToolbar({
@@ -217,6 +221,9 @@ export class Engine {
       // Wrapper group architecture: scene → wrapper → element.group
       const wrapper = new THREE.Group();
       wrapper.add(element.group);
+      if (region.isDivider) {
+        wrapper.renderOrder = 10;
+      }
       this.wrapperMap.set(element.id, wrapper);
       this.ctx.scene.add(wrapper);
     }
@@ -293,6 +300,9 @@ export class Engine {
       this.elementTypeMap.set(element.id, elementType);
 
       const wrapper = new THREE.Group();
+      if (region.isDivider) {
+        wrapper.renderOrder = 10;
+      }
       this.wrapperMap.set(element.id, wrapper);
 
       // Queue for staggered build
@@ -483,6 +493,43 @@ export class Engine {
         case 'g':
           if (!this.showcase.isActive) {
             this.showcase.enter();
+          }
+          break;
+        case '+':
+        case '=':
+          this.config.overscanPadding = Math.min(this.config.overscanPadding + 1, 100);
+          this.applyAspectAndRegenerate();
+          break;
+        case '-':
+          this.config.overscanPadding = Math.max(this.config.overscanPadding - 1, 0);
+          this.applyAspectAndRegenerate();
+          break;
+        case 'ArrowLeft':
+          if (e.shiftKey) {
+            e.preventDefault();
+            this.config.overscanX = Math.max(this.config.overscanX - 1, -100);
+            this.applyAspect();
+          }
+          break;
+        case 'ArrowRight':
+          if (e.shiftKey) {
+            e.preventDefault();
+            this.config.overscanX = Math.min(this.config.overscanX + 1, 100);
+            this.applyAspect();
+          }
+          break;
+        case 'ArrowUp':
+          if (e.shiftKey) {
+            e.preventDefault();
+            this.config.overscanY = Math.max(this.config.overscanY - 1, -100);
+            this.applyAspect();
+          }
+          break;
+        case 'ArrowDown':
+          if (e.shiftKey) {
+            e.preventDefault();
+            this.config.overscanY = Math.min(this.config.overscanY + 1, 100);
+            this.applyAspect();
           }
           break;
       }

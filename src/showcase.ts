@@ -306,7 +306,7 @@ export class ShowcaseMode {
   }
 
   private isMobile(): boolean {
-    return window.matchMedia('(max-width: 767px)').matches;
+    return window.matchMedia('(max-width: 767px) and (pointer: coarse)').matches;
   }
 
   dispose(): void {

@@ -4,6 +4,7 @@ import { ASPECT_RATIOS } from '../config';
 import type { AudioSynth } from '../audio/synth';
 import { paletteNames } from '../color/palettes';
 import { templateNames } from '../layout/templates';
+import { setDividerBrightness, setDividerThickness } from '../elements/separator';
 
 export interface GUIControls {
   gui: GUI;
@@ -31,6 +32,21 @@ export function createGUI(
   genFolder.add(config, 'template', templateNames()).name('Template').onChange(onRegenerate);
   genFolder.add(config, 'aspectRatio', ASPECT_RATIOS).name('Aspect Ratio').onChange(() => {
     if (onAspectChange) onAspectChange();
+  });
+  genFolder.add(config, 'overscanPadding', 0, 100, 1).name('Overscan (+/-)').onChange(() => {
+    if (onAspectChange) onAspectChange();
+  });
+  genFolder.add(config, 'overscanX', -100, 100, 1).name('Overscan X').onChange(() => {
+    if (onAspectChange) onAspectChange();
+  });
+  genFolder.add(config, 'overscanY', -100, 100, 1).name('Overscan Y').onChange(() => {
+    if (onAspectChange) onAspectChange();
+  });
+  genFolder.add(config, 'dividerBrightness', 0, 3, 0.05).name('Divider Brightness').onChange((v: number) => {
+    setDividerBrightness(v);
+  });
+  genFolder.add(config, 'dividerThickness', 1, 5, 0.5).name('Divider Thickness').onChange((v: number) => {
+    setDividerThickness(v);
   });
   genFolder.add({ regenerate: onRegenerate }, 'regenerate').name('Regenerate (R)');
   genFolder.add({
@@ -136,7 +152,7 @@ export function createGUI(
     window.removeEventListener('click', showOnClick);
   };
   // On mobile, the toolbar's MENU button drives settings visibility instead
-  if (!matchMedia('(max-width: 767px)').matches) {
+  if (!matchMedia('(max-width: 767px) and (pointer: coarse)').matches) {
     window.addEventListener('click', showOnClick);
   }
 

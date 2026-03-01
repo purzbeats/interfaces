@@ -16,6 +16,7 @@ export function createRenderer(width: number, height: number): RendererContext {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setClearColor(0x000000, 1);
   renderer.autoClear = true;
+  renderer.localClippingEnabled = true;
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();

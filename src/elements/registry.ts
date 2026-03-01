@@ -39,6 +39,31 @@ import { SpectrogramElement } from './spectrogram';
 import { ParticleFieldElement } from './particle-field';
 import { TopologyMapElement } from './topology-map';
 import { TargetLockElement } from './target-lock';
+import { VoltageArcElement } from './voltage-arc';
+import { CountdownTimerElement } from './countdown-timer';
+import { HeartMonitorElement } from './heart-monitor';
+
+import { UptimeCounterElement } from './uptime-counter';
+
+import { PressureGaugeElement } from './pressure-gauge';
+
+import { OscilloscopeElement } from './oscilloscope';
+import { AudioMeterElement } from './audio-meter';
+
+
+import { DepthSounderElement } from './depth-sounder';
+import { SatelliteTrackElement } from './satellite-track';
+import { NetworkGraphElement } from './network-graph';
+import { CpuCoresElement } from './cpu-cores';
+import { PowerGridElement } from './power-grid';
+import { StarFieldElement } from './star-field';
+import { WarpTunnelElement } from './warp-tunnel';
+import { WaveInterferenceElement } from './wave-interference';
+import { FlightLadderElement } from './flight-ladder';
+import { DataTableElement } from './data-table';
+import { BootSequenceElement } from './boot-sequence';
+
+import { CipherWheelElement } from './cipher-wheel';
 
 type ElementFactory = (
   region: Region,
@@ -90,6 +115,31 @@ const REGISTRY: Record<string, ElementFactory> = {
  'particle-field':     f(ParticleFieldElement),
  'topology-map':       f(TopologyMapElement),
  'target-lock':        f(TargetLockElement),
+ 'voltage-arc':        f(VoltageArcElement),
+ 'countdown-timer':    f(CountdownTimerElement),
+ 'heart-monitor':      f(HeartMonitorElement),
+
+ 'uptime-counter':     f(UptimeCounterElement),
+
+ 'pressure-gauge':     f(PressureGaugeElement),
+
+ 'oscilloscope':       f(OscilloscopeElement),
+ 'audio-meter':        f(AudioMeterElement),
+
+
+ 'depth-sounder':      f(DepthSounderElement),
+ 'satellite-track':    f(SatelliteTrackElement),
+ 'network-graph':      f(NetworkGraphElement),
+ 'cpu-cores':          f(CpuCoresElement),
+ 'power-grid':         f(PowerGridElement),
+ 'star-field':         f(StarFieldElement),
+ 'warp-tunnel':        f(WarpTunnelElement),
+ 'wave-interference':  f(WaveInterferenceElement),
+ 'flight-ladder':      f(FlightLadderElement),
+ 'data-table':         f(DataTableElement),
+ 'boot-sequence':      f(BootSequenceElement),
+
+ 'cipher-wheel':       f(CipherWheelElement),
 };
 
 export function createElement(

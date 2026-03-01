@@ -71,6 +71,11 @@ export interface Config {
     flicker: boolean;
     flickerIntensity: number;
   };
+  dividerBrightness: number;
+  dividerThickness: number;
+  overscanPadding: number;
+  overscanX: number;
+  overscanY: number;
   export: {
     fps: number;
     duration: number;
@@ -106,6 +111,11 @@ export const DEFAULT_CONFIG: Config = {
     flicker: true,
     flickerIntensity: 0.03,
   },
+  dividerBrightness: 3,
+  dividerThickness: 1,
+  overscanPadding: 0,
+  overscanX: 0,
+  overscanY: 0,
   export: {
     fps: 60,
     duration: 30,

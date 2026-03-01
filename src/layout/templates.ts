@@ -29,6 +29,9 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'freq-analyzer': 1, 'binary-stream': 1, 'scan-line': 1,
       'radar-sweep': 1, 'cross-scope': 1,
       'pulse-wave': 2, 'spectrogram': 1, 'target-lock': 1,
+      'countdown-timer': 2, 'heart-monitor': 1, 'flight-ladder': 1,
+      'cpu-cores': 1, 'audio-meter': 1, 'data-table': 1,
+      'uptime-counter': 1, 'pressure-gauge': 1,
     },
   },
 
@@ -52,6 +55,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'radial-scanner': 2, 'scan-line': 1, 'coord-grid': 1,
       'ring-gauge': 1, 'level-rings': 1,
       'target-lock': 2, 'hex-tunnel': 1, 'orbital-display': 1,
+      'satellite-track': 2, 'depth-sounder': 1, 'cipher-wheel': 1,
+      'pressure-gauge': 1, 'network-graph': 1,
     },
   },
 
@@ -70,6 +75,9 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'freq-analyzer': 2, 'level-rings': 2, 'phase-indicator': 1, 'threat-meter': 1,
       'cross-scope': 1, 'clock-display': 1, 'scan-line': 1, 'segment-display': 1,
       'pulse-wave': 2, 'spectrogram': 2, 'dot-matrix': 1,
+      'oscilloscope': 2, 'audio-meter': 2, 'cpu-cores': 2,
+      'heart-monitor': 2, 'power-grid': 1, 'data-table': 1,
+      'boot-sequence': 1, 'voltage-arc': 1, 'uptime-counter': 1,
     },
   },
 
@@ -91,6 +99,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'segment-display': 1, 'clock-display': 1, 'phase-indicator': 1,
       'cross-scope': 1, 'waveform': 1,
       'target-lock': 2, 'topology-map': 1, 'hex-tunnel': 1,
+      'countdown-timer': 2, 'flight-ladder': 2, 'depth-sounder': 1,
+      'satellite-track': 2, 'pressure-gauge': 1,
     },
   },
 
@@ -113,6 +123,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'segment-display': 1, 'bracket-frame': 1,
       'scan-line': 1, 'waveform': 1,
       'hex-tunnel': 3, 'orbital-display': 2, 'dot-matrix': 1, 'target-lock': 1,
+      'warp-tunnel': 2, 'cipher-wheel': 2, 'wave-interference': 1,
+      'star-field': 1, 'voltage-arc': 1, 'boot-sequence': 1,
     },
   },
 
@@ -131,6 +143,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'binary-stream': 2, 'freq-analyzer': 1, 'clock-display': 1,
       'scan-line': 1, 'progress-bar': 1, 'threat-meter': 1,
       'spectrogram': 2, 'pulse-wave': 1, 'dot-matrix': 1, 'particle-field': 1,
+      'uptime-counter': 1, 'boot-sequence': 2, 'network-graph': 2,
+      'data-table': 2, 'cpu-cores': 1, 'voltage-arc': 1,
     },
   },
 
@@ -156,6 +170,8 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'radar-sweep': 2,
       'hex-tunnel': 3, 'orbital-display': 2, 'topology-map': 1, 'target-lock': 1,
       'particle-field': 1, 'dot-matrix': 1,
+      'warp-tunnel': 2, 'cipher-wheel': 2, 'pressure-gauge': 1,
+      'wave-interference': 2, 'star-field': 1,
     },
   },
 };
