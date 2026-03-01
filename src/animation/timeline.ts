@@ -48,11 +48,6 @@ export class Timeline {
 
     this.elapsed += dt;
 
-    // Loop: restart when finished
-    if (this.loop && this.elapsed >= this.totalDuration) {
-      this.reset();
-    }
-
     while (this.index < this.cues.length && this.cues[this.index].time <= this.elapsed) {
       onCue(this.cues[this.index]);
       this.index++;

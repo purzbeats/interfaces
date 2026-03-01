@@ -30,6 +30,8 @@ export class Engine {
   private palette!: Palette;
   private elapsed: number = 0;
   private disposed: boolean = false;
+  private loopDwell: number = 0;
+  private readonly LOOP_DWELL_TIME = 1.5; // seconds of darkness between compositions
 
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
@@ -136,10 +138,12 @@ export class Engine {
       this.ctx.scene.add(wrapper);
     }
 
-    // Generate timeline
+    // Generate timeline (preserve loop state across regenerations)
+    const wasLooping = this.timeline?.loop ?? false;
     const timelineRng = rng.fork();
     const elementIds = this.elements.map((e) => e.id);
     this.timeline = generateTimeline(elementIds, this.config.timeline, timelineRng);
+    this.timeline.loop = wasLooping;
 
     // Persist state
     saveConfig(this.config);
@@ -149,6 +153,19 @@ export class Engine {
   update(dt: number): void {
     if (this.disposed) return;
     this.elapsed += dt;
+
+    // Loop dwell: waiting in darkness before next composition
+    if (this.loopDwell > 0) {
+      this.loopDwell -= dt;
+      if (this.loopDwell <= 0) {
+        // Dwell finished — generate new seed and start fresh
+        this.config.seed = Math.floor(Math.random() * 100000);
+        this.generate(this.config.seed);
+      }
+      // Still in dwell period — just render the empty scene
+      this.pipeline.update(this.elapsed, this.config);
+      return;
+    }
 
     // Advance timeline
     this.timeline.update(dt, (cue) => {
@@ -175,6 +192,11 @@ export class Engine {
         }
       }
     });
+
+    // Check if timeline finished and loop is enabled
+    if (this.timeline.finished && this.timeline.loop) {
+      this.loopDwell = this.LOOP_DWELL_TIME;
+    }
 
     // Update elements
     for (const el of this.elements) {
@@ -260,6 +282,9 @@ export class Engine {
           if (!e.ctrlKey && !e.metaKey) {
             this.restart();
           }
+          break;
+        case 'l':
+          this.timeline.loop = !this.timeline.loop;
           break;
       }
     });

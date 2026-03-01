@@ -39,7 +39,7 @@ export function createGUI(
     const pbFolder = gui.addFolder('Playback');
     pbFolder.add({ pausePlay: playback.onPause }, 'pausePlay').name('Pause / Play (Space)');
     pbFolder.add({ restart: playback.onRestart }, 'restart').name('Restart (Backspace)');
-    pbFolder.add({ loop: false }, 'loop').name('Loop').onChange(playback.onLoopToggle);
+    pbFolder.add({ loop: false }, 'loop').name('Continuous (L)').onChange(playback.onLoopToggle);
   }
 
   // Audio
