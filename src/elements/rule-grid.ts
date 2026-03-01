@@ -245,20 +245,18 @@ export class RuleGridElement extends BaseElement {
         const cy = r * cellH;
 
         if (pulseFlash) {
-          // Moderate flash on pulse
+          ctx.fillStyle = primaryHex;
+          ctx.shadowBlur = 2;
+          ctx.shadowColor = primaryHex;
+          ctx.globalAlpha = 0.95;
+        } else if (r >= activeFrontStart) {
           ctx.fillStyle = primaryHex;
           ctx.shadowBlur = 0;
-          ctx.globalAlpha = 0.8;
-        } else if (r >= activeFrontStart) {
-          // Active front rows: dim secondary color, no glow
+          ctx.globalAlpha = 0.85;
+        } else {
           ctx.fillStyle = dimHex;
           ctx.shadowBlur = 0;
           ctx.globalAlpha = 0.7;
-        } else {
-          // Normal ON cells: dim primary, no glow
-          ctx.fillStyle = dimHex;
-          ctx.shadowBlur = 0;
-          ctx.globalAlpha = 0.5;
         }
 
         ctx.fillRect(cx, cy, cellW, cellH);
