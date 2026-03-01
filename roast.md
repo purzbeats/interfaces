@@ -48,7 +48,7 @@ Canvas-rendered monospace text with no glow, no scan interference, no phosphor b
 ### 8. ~~Glitch Action: Mostly Unimplemented~~ ✅ FIXED
 ~~Out of 10 element types, only 2 respond to glitch.~~
 
-All 29 element types now handle pulse, glitch, and alert actions.
+All 54 element types now handle pulse, glitch, and alert actions. Pulse/glitch boilerplate extracted into `BaseElement.applyEffects()`.
 
 ---
 
