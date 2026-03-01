@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
 import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
+import { drawGlowText } from '../animation/retro-text';
 
 /**
  * Circular ring gauge — a thick arc that fills clockwise to indicate a value,
@@ -169,21 +170,17 @@ export class RingGaugeElement extends BaseElement {
     const primaryHex = '#' + this.palette.primary.getHexString();
     const dimHex = '#' + this.palette.dim.getHexString();
 
-    // Value percentage
+    // Value percentage with phosphor glow
     ctx.font = `bold ${bigSize}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = primaryHex;
-    ctx.shadowBlur = 4;
-    ctx.fillStyle = primaryHex;
     const pct = Math.round(Math.min(this.value, 1) * 100);
-    ctx.fillText(`${pct}%`, canvas.width / 2, canvas.height * 0.4);
-    ctx.shadowBlur = 0;
+    const valueColor = this.value > 0.9 ? '#' + this.palette.alert.getHexString() : primaryHex;
+    drawGlowText(ctx, `${pct}%`, canvas.width / 2, canvas.height * 0.4, valueColor, 6);
 
     // Label
     ctx.font = `${smallSize}px monospace`;
-    ctx.fillStyle = dimHex;
-    ctx.fillText(this.label, canvas.width / 2, canvas.height * 0.72);
+    drawGlowText(ctx, this.label, canvas.width / 2, canvas.height * 0.72, dimHex, 2);
 
     this.texture.needsUpdate = true;
   }

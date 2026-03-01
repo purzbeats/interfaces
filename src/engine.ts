@@ -61,7 +61,12 @@ export class Engine {
         if (this.recorder.isRecording) this.recorder.stop();
         else this.recorder.start();
       },
-      this.audio
+      this.audio,
+      {
+        onPause: () => this.togglePause(),
+        onRestart: () => this.restart(),
+        onLoopToggle: (v: boolean) => { this.timeline.loop = v; },
+      }
     );
 
     this.generate(this.config.seed);
@@ -185,6 +190,28 @@ export class Engine {
     this.pipeline.composer.render();
   }
 
+  togglePause(): void {
+    this.timeline.paused = !this.timeline.paused;
+  }
+
+  restart(): void {
+    this.timeline.reset();
+    this.timeline.paused = false;
+    // Force all elements to idle, then let timeline re-activate them
+    for (const el of this.elements) {
+      el.stateMachine.forceIdle();
+      el.group.visible = false;
+    }
+  }
+
+  get isPaused(): boolean {
+    return this.timeline.paused;
+  }
+
+  get timelineProgress(): number {
+    return this.timeline.normalizedTime;
+  }
+
   private setupEvents(): void {
     window.addEventListener('resize', () => {
       this.config.width = window.innerWidth;
@@ -224,6 +251,15 @@ export class Engine {
           break;
         case 'm':
           this.audio.muted = !this.audio.muted;
+          break;
+        case ' ':
+          e.preventDefault();
+          this.togglePause();
+          break;
+        case 'backspace':
+          if (!e.ctrlKey && !e.metaKey) {
+            this.restart();
+          }
           break;
       }
     });

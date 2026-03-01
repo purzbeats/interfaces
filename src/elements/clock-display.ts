@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
 import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
+import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
  * Mission clock with large HH:MM:SS.mmm digits, blinking colon, and sweep indicator.
@@ -129,34 +130,30 @@ export class ClockDisplayElement extends BaseElement {
     const primaryHex = '#' + this.palette.primary.getHexString();
     const dimHex = '#' + this.palette.dim.getHexString();
 
-    // Time display
+    // Time display with phosphor glow
     const bigSize = Math.floor(canvas.height * 0.45);
     ctx.font = `bold ${bigSize}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = primaryHex;
-    ctx.shadowBlur = 4;
 
     if (this.glitchTimer > 0) {
-      // Garbled characters during glitch
       const garbled = timeStr.split('').map((c, i) =>
         Math.sin(i * 17 + this.glitchTimer * 40) > 0.5
           ? String.fromCharCode(33 + ((c.charCodeAt(0) * 7) % 60))
           : c
       ).join('');
-      ctx.fillStyle = '#' + this.palette.secondary.getHexString();
-      ctx.fillText(garbled, canvas.width / 2, canvas.height * 0.45);
+      drawGlowText(ctx, garbled, canvas.width / 2, canvas.height * 0.45, '#' + this.palette.secondary.getHexString(), 10);
     } else {
-      ctx.fillStyle = primaryHex;
-      ctx.fillText(timeStr, canvas.width / 2, canvas.height * 0.45);
+      drawGlowText(ctx, timeStr, canvas.width / 2, canvas.height * 0.45, primaryHex, 8);
     }
-    ctx.shadowBlur = 0;
 
-    // Label
+    // Label with subtle glow
     const smallSize = Math.floor(canvas.height * 0.15);
     ctx.font = `${smallSize}px monospace`;
-    ctx.fillStyle = dimHex;
-    ctx.fillText(this.label, canvas.width / 2, canvas.height * 0.8);
+    drawGlowText(ctx, this.label, canvas.width / 2, canvas.height * 0.8, dimHex, 2);
+
+    // Scanline overlay
+    applyScanlines(ctx, canvas, 0.08, this.missionTime);
 
     this.texture.needsUpdate = true;
   }

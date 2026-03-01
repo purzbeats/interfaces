@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
 import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
+import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 const STATUS_MESSAGES = [
   'ALL SYSTEMS NOMINAL', 'WARNING: THRESHOLD EXCEEDED', 'STANDBY',
@@ -93,29 +94,28 @@ export class StatusReadoutElement extends BaseElement {
     const dimHex = '#' + this.palette.dim.getHexString();
     const alertHex = '#' + this.palette.alert.getHexString();
 
-    // Status indicator dot (blinking)
+    // Status indicator dot (blinking) with glow
     const blink = Math.sin(this.blinkTimer * 4) > 0;
     const dotColor = this.isAlert ? alertHex : primaryHex;
+    ctx.shadowColor = dotColor;
+    ctx.shadowBlur = blink ? 6 : 0;
     ctx.fillStyle = blink ? dotColor : dimHex;
     ctx.beginPath();
     ctx.arc(10, fontSize / 2 + 6, 4, 0, Math.PI * 2);
     ctx.fill();
-
-    // Message with glow
-    const msg = this.messages[this.currentMsg];
-    const msgIsAlert = msg.includes('WARNING') || msg.includes('ALERT') || this.isAlert;
-    ctx.shadowColor = msgIsAlert ? alertHex : primaryHex;
-    ctx.shadowBlur = 4;
-    ctx.fillStyle = msgIsAlert ? alertHex : primaryHex;
-    ctx.fillText(msg, 22, 6);
     ctx.shadowBlur = 0;
 
-    // Timestamp
+    // Message with phosphor glow
+    const msg = this.messages[this.currentMsg];
+    const msgIsAlert = msg.includes('WARNING') || msg.includes('ALERT') || this.isAlert;
+    const msgColor = msgIsAlert ? alertHex : primaryHex;
+    drawGlowText(ctx, msg, 22, 6, msgColor, msgIsAlert ? 8 : 5);
+
+    // Timestamp with dim glow
     const minutes = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
     const ts = `T+${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    ctx.fillStyle = dimHex;
-    ctx.fillText(ts, 6, fontSize + 12);
+    drawGlowText(ctx, ts, 6, fontSize + 12, dimHex, 2);
 
     // Glitch: draw corrupted overlay
     if (this.glitchTimer > 0) {
@@ -127,6 +127,9 @@ export class StatusReadoutElement extends BaseElement {
       ctx.fillText(corruptText, 22 + 2, 6 + 1);
       ctx.globalAlpha = 1;
     }
+
+    // Scanline overlay
+    applyScanlines(ctx, canvas, 0.08, time);
 
     this.texture.needsUpdate = true;
   }

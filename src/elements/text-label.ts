@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
 import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
+import { applyScanlines, drawJitteredText, drawGlowText } from '../animation/retro-text';
 
 const LABELS = [
   'SYSTEM STATUS: NOMINAL', 'CORE TEMP: 2847K', 'MEM ALLOC: 94.7%',
@@ -100,6 +101,7 @@ export class TextLabelElement extends BaseElement {
     const fontSize = Math.min(Math.floor(canvas.height * 0.5), 28);
     ctx.font = `${fontSize}px monospace`;
     ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
 
     const shown = this.text.slice(0, Math.floor(this.revealIndex));
     const isGlitching = this.glitchTimer > 0;
@@ -116,19 +118,25 @@ export class TextLabelElement extends BaseElement {
 
     const primaryHex = '#' + this.palette.primary.getHexString();
 
-    // Text glow (draw twice for bloom effect on canvas)
-    ctx.shadowColor = primaryHex;
-    ctx.shadowBlur = isGlitching ? 12 : 6;
-    ctx.fillStyle = primaryHex;
-    ctx.fillText(displayText, 6, canvas.height / 2);
-    ctx.shadowBlur = 0;
-    ctx.fillText(displayText, 6, canvas.height / 2);
+    // Draw text with per-character jitter and phosphor glow
+    if (isGlitching) {
+      drawGlowText(ctx, displayText, 6, canvas.height / 2, primaryHex, 12);
+    } else {
+      drawJitteredText(ctx, displayText, 6, canvas.height / 2, primaryHex, this.cursorBlink, 0.5, 6);
+    }
 
     // Blinking cursor
     if (!this.isRevealed && showCursor) {
       const cursorX = ctx.measureText(shown).width + 6;
+      ctx.shadowColor = primaryHex;
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = primaryHex;
       ctx.fillRect(cursorX, canvas.height * 0.25, fontSize * 0.55, fontSize);
+      ctx.shadowBlur = 0;
     }
+
+    // Scanline overlay
+    applyScanlines(ctx, canvas, 0.1, this.cursorBlink);
 
     this.texture.needsUpdate = true;
   }

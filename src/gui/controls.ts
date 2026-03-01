@@ -16,7 +16,8 @@ export function createGUI(
   onRegenerate: () => void,
   onScreenshot: () => void,
   onRecord: () => void,
-  audio: AudioSynth
+  audio: AudioSynth,
+  playback?: { onPause: () => void; onRestart: () => void; onLoopToggle: (v: boolean) => void }
 ): GUIControls {
   const gui = new GUI({ title: 'INTERFACES' });
   gui.domElement.style.zIndex = '1000';
@@ -32,6 +33,14 @@ export function createGUI(
       navigator.clipboard.writeText(window.location.href);
     }
   }, 'copyURL').name('Copy Seed URL');
+
+  // Playback
+  if (playback) {
+    const pbFolder = gui.addFolder('Playback');
+    pbFolder.add({ pausePlay: playback.onPause }, 'pausePlay').name('Pause / Play (Space)');
+    pbFolder.add({ restart: playback.onRestart }, 'restart').name('Restart (Backspace)');
+    pbFolder.add({ loop: false }, 'loop').name('Loop').onChange(playback.onLoopToggle);
+  }
 
   // Audio
   const audioFolder = gui.addFolder('Audio');

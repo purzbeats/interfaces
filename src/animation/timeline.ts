@@ -13,6 +13,8 @@ export class Timeline {
   private index: number = 0;
   private elapsed: number = 0;
   public totalDuration: number = 30;
+  public paused: boolean = false;
+  public loop: boolean = false;
 
   get currentTime(): number {
     return this.elapsed;
@@ -20,6 +22,10 @@ export class Timeline {
 
   get normalizedTime(): number {
     return this.elapsed / this.totalDuration;
+  }
+
+  get finished(): boolean {
+    return this.elapsed >= this.totalDuration;
   }
 
   addCue(cue: Cue): void {
@@ -38,7 +44,15 @@ export class Timeline {
   }
 
   update(dt: number, onCue: (cue: Cue) => void): void {
+    if (this.paused) return;
+
     this.elapsed += dt;
+
+    // Loop: restart when finished
+    if (this.loop && this.elapsed >= this.totalDuration) {
+      this.reset();
+    }
+
     while (this.index < this.cues.length && this.cues[this.index].time <= this.elapsed) {
       onCue(this.cues[this.index]);
       this.index++;
