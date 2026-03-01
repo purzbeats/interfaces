@@ -95,7 +95,7 @@ export class ReactionDiffusionElement extends BaseElement {
     }
 
     // Run simulation substeps every frame
-    const substeps = 6;
+    const substeps = 3;
     this.simulate(substeps);
 
     // Detect stagnation: if v-sum barely changes, pattern has converged
@@ -228,13 +228,10 @@ export class ReactionDiffusionElement extends BaseElement {
     const bg = this.palette.bg;
     const dim = this.palette.dim;
     const primary = this.palette.primary;
-    const secondary = this.palette.secondary;
 
-    // Pre-compute palette RGB values
     const bgR = bg.r * 255, bgG = bg.g * 255, bgB = bg.b * 255;
     const dimR = dim.r * 255, dimG = dim.g * 255, dimB = dim.b * 255;
     const priR = primary.r * 255, priG = primary.g * 255, priB = primary.b * 255;
-    const secR = secondary.r * 255, secG = secondary.g * 255, secB = secondary.b * 255;
 
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
@@ -242,32 +239,35 @@ export class ReactionDiffusionElement extends BaseElement {
         const val = Math.min(1, Math.max(0, this.v[idx]));
         const px = (y * cols + x) * 4;
 
-        let r: number, g: number, b: number;
+        let r: number, g: number, b: number, a: number;
 
-        if (val < 0.15) {
-          // Background to dim (wider bg zone)
-          const t = val / 0.15;
-          r = bgR + (dimR - bgR) * t * 0.5;
-          g = bgG + (dimG - bgG) * t * 0.5;
-          b = bgB + (dimB - bgB) * t * 0.5;
-        } else if (val < 0.4) {
-          // Dim to primary (subdued)
-          const t = (val - 0.15) / 0.25;
-          r = dimR * 0.5 + (priR * 0.6 - dimR * 0.5) * t;
-          g = dimG * 0.5 + (priG * 0.6 - dimG * 0.5) * t;
-          b = dimB * 0.5 + (priB * 0.6 - dimB * 0.5) * t;
+        if (val < 0.2) {
+          // Mostly transparent background
+          const t = val / 0.2;
+          r = bgR;
+          g = bgG;
+          b = bgB;
+          a = t * 40;
+        } else if (val < 0.5) {
+          // Dim traces
+          const t = (val - 0.2) / 0.3;
+          r = dimR * 0.6;
+          g = dimG * 0.6;
+          b = dimB * 0.6;
+          a = 40 + t * 80;
         } else {
-          // Primary at reduced intensity — no bright bloom
-          const t = Math.min(1, (val - 0.4) / 0.6);
-          r = priR * 0.6 + (secR * 0.5 - priR * 0.6) * t;
-          g = priG * 0.6 + (secG * 0.5 - priG * 0.6) * t;
-          b = priB * 0.6 + (secB * 0.5 - priB * 0.6) * t;
+          // Subtle primary peaks
+          const t = Math.min(1, (val - 0.5) / 0.5);
+          r = dimR + (priR * 0.5 - dimR) * t;
+          g = dimG + (priG * 0.5 - dimG) * t;
+          b = dimB + (priB * 0.5 - dimB) * t;
+          a = 120 + t * 50;
         }
 
         data[px]     = Math.floor(r);
         data[px + 1] = Math.floor(g);
         data[px + 2] = Math.floor(b);
-        data[px + 3] = 255;
+        data[px + 3] = Math.floor(a);
       }
     }
 
