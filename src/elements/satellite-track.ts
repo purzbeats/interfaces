@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Sinusoidal orbit ground track over lat/lon grid.
@@ -16,10 +15,8 @@ export class SatelliteTrackElement extends BaseElement {
   private satSpeed: number = 0;
   private inclination: number = 0;
   private frequency: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
-
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.numPoints = 200;
     this.satSpeed = this.rng.float(15, 40);
@@ -86,17 +83,8 @@ export class SatelliteTrackElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     this.satPosition += this.satSpeed * dt;
 
@@ -126,13 +114,10 @@ export class SatelliteTrackElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.frequency = this.rng.float(1, 6);
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       (this.satDot.material as THREE.PointsMaterial).color.copy(this.palette.alert);
     }
   }

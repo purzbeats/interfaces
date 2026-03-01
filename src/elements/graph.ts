@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, glitchOffset } from '../animation/fx';
 
 export class GraphElement extends BaseElement {
   private line!: THREE.Line;
@@ -11,8 +10,6 @@ export class GraphElement extends BaseElement {
   private numPoints: number = 0;
   private updateTimer: number = 0;
   private updateInterval: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private barBaseWidth: number = 0;
 
   build(): void {
@@ -78,18 +75,7 @@ export class GraphElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    const state = this.stateMachine.state;
-    const progress = this.stateMachine.progress;
-
-    let opacity: number;
-    if (state === 'activating') opacity = progress;
-    else if (state === 'deactivating') opacity = 1 - progress;
-    else opacity = 1;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
+    const opacity = this.applyEffects(dt);
 
     // Animate data
     this.updateTimer += dt;
@@ -105,8 +91,7 @@ export class GraphElement extends BaseElement {
     const { x, y, w, h } = this.px;
 
     // Glitch: horizontal jitter
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
+    const gx = this.group.position.x;
 
     if (this.isBarGraph) {
       for (let i = 0; i < this.bars.length; i++) {
@@ -135,11 +120,8 @@ export class GraphElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
-    if (action === 'glitch') this.glitchTimer = 0.4;
     if (action === 'alert') {
       this.targetPoints = this.dataPoints.map(() => this.rng.float(0.7, 1.0));
-      this.pulseTimer = 1.0;
     }
   }
 }

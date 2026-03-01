@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 export class ScrollingNumbersElement extends BaseElement {
   private canvas!: HTMLCanvasElement;
@@ -13,8 +12,6 @@ export class ScrollingNumbersElement extends BaseElement {
   private isHex: boolean = false;
   private scrollSpeeds: number[] = [];
   private scrollOffsets: number[] = [];
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private readonly RENDER_INTERVAL = 1 / 20; // 20fps for canvas (saves perf)
 
@@ -67,16 +64,7 @@ export class ScrollingNumbersElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Advance scroll offsets every frame (cheap)
     for (let c = 0; c < this.columns; c++) {
@@ -130,16 +118,11 @@ export class ScrollingNumbersElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.4;
     if (action === 'glitch') {
-      this.glitchTimer = 0.6;
       for (let c = 0; c < this.columns; c++) {
         this.scrollSpeeds[c] = this.rng.float(15, 80);
       }
       this.emitAudio('seekSound', 150);
-    }
-    if (action === 'alert') {
-      this.pulseTimer = 1.0;
     }
   }
 

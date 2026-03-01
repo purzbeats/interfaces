@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 export class WaveformElement extends BaseElement {
   private line!: THREE.Line;
@@ -10,10 +9,9 @@ export class WaveformElement extends BaseElement {
   private phase: number = 0;
   private noiseFreq: number = 0;
   private waveType: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     this.numPoints = this.rng.int(64, 200);
     this.frequency = this.rng.float(2, 8);
     this.amplitude = this.rng.float(0.3, 0.45);
@@ -49,16 +47,9 @@ export class WaveformElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
+    const gx = this.group.position.x;
 
     const positions = this.line.geometry.getAttribute('position') as THREE.BufferAttribute;
     const cy = y + h / 2;
@@ -103,14 +94,11 @@ export class WaveformElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.4;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.frequency = this.rng.float(2, 12);
     }
     if (action === 'alert') {
       (this.line.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
-      this.pulseTimer = 1.0;
     }
   }
 }

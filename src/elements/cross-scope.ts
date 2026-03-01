@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Cross-shaped oscilloscope — two perpendicular waveforms (X and Y axis)
@@ -14,8 +13,6 @@ export class CrossScopeElement extends BaseElement {
   private hFreq: number = 0;
   private vFreq: number = 0;
   private lissPoints: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -75,19 +72,10 @@ export class CrossScopeElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Horizontal waveform
     const hPos = this.hLine.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -132,9 +120,7 @@ export class CrossScopeElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.hFreq = this.rng.float(1, 8);
       this.vFreq = this.rng.float(1, 8);
     }

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Node-link diagram with pulsing data packets along edges.
@@ -13,9 +12,6 @@ export class NetworkGraphElement extends BaseElement {
   private nodes: Array<{ x: number; y: number }> = [];
   private edges: Array<{ from: number; to: number }> = [];
   private packets: Array<{ edge: number; t: number; speed: number }> = [];
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
-
   build(): void {
     const { x, y, w, h } = this.px;
     const nodeCount = this.rng.int(8, 16);
@@ -113,16 +109,7 @@ export class NetworkGraphElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Update packets
     const packetPos = this.packetPoints.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -150,13 +137,10 @@ export class NetworkGraphElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       for (const p of this.packets) p.speed = this.rng.float(1.5, 4);
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       (this.nodePoints.material as THREE.PointsMaterial).color.copy(this.palette.alert);
     }
   }

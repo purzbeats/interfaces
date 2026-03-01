@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * ECG trace with leading dot and QRS complex waveform.
@@ -15,8 +14,6 @@ export class HeartMonitorElement extends BaseElement {
   private speed: number = 0;
   private bpm: number = 0;
   private ecgPhase: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private flatline: boolean = false;
 
   build(): void {
@@ -71,17 +68,8 @@ export class HeartMonitorElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Advance write head
     const advance = dt * this.speed;
@@ -108,7 +96,7 @@ export class HeartMonitorElement extends BaseElement {
     // Update dot position
     const dotIdx = Math.floor(this.writeHead) % this.numPoints;
     const dotPos = this.dot.geometry.getAttribute('position') as THREE.BufferAttribute;
-    dotPos.setXY(0, x + (w * dotIdx) / (this.numPoints - 1) + gx, pos.getY(dotIdx));
+    dotPos.setXY(0, x + (w * dotIdx) / (this.numPoints - 1), pos.getY(dotIdx));
     dotPos.needsUpdate = true;
 
     (this.line.material as THREE.LineBasicMaterial).opacity = opacity;
@@ -138,14 +126,11 @@ export class HeartMonitorElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.bpm = this.rng.float(140, 200);
     }
     if (action === 'alert') {
       this.flatline = true;
-      this.pulseTimer = 2.0;
       (this.line.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
       setTimeout(() => { this.flatline = false; }, 3000);
     }

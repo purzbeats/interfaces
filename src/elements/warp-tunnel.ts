@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Converging radial lines with expanding depth rings.
@@ -15,10 +14,9 @@ export class WarpTunnelElement extends BaseElement {
   private spawnInterval: number = 0;
   private nextRing: number = 0;
   private expandSpeed: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
@@ -68,19 +66,10 @@ export class WarpTunnelElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Spawn rings
     this.spawnTimer += dt;
@@ -120,9 +109,7 @@ export class WarpTunnelElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.expandSpeed = this.rng.float(300, 600);
     }
     if (action === 'alert') {

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Subtle electrical arc between two electrodes.
@@ -10,13 +9,12 @@ export class VoltageArcElement extends BaseElement {
   private arcLines!: THREE.LineSegments;
   private electrodeLines!: THREE.LineSegments;
   private arcSegments: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private regenAccum: number = 0;
   private regenRate: number = 0;
   private arcSeed: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.arcSegments = this.rng.int(8, 14);
     this.regenRate = this.rng.float(6, 12); // regens per second
@@ -51,16 +49,8 @@ export class VoltageArcElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
 
     (this.electrodeLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
 
@@ -72,8 +62,8 @@ export class VoltageArcElement extends BaseElement {
 
       const pos = this.arcLines.geometry.getAttribute('position') as THREE.BufferAttribute;
       const cy = y + h / 2;
-      const startX = x + w * 0.08 + gx;
-      const endX = x + w * 0.92 + gx;
+      const startX = x + w * 0.08;
+      const endX = x + w * 0.92;
       const spread = h * 0.15; // much tighter spread
       let vi = 0;
 
@@ -106,13 +96,10 @@ export class VoltageArcElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.6;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.regenRate = this.rng.float(20, 40); // crackle faster briefly
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       (this.arcLines.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
     }
   }

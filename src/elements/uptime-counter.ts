@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
@@ -13,12 +12,11 @@ export class UptimeCounterElement extends BaseElement {
   private texture!: THREE.CanvasTexture;
   private mesh!: THREE.Mesh;
   private uptime: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private label: string = '';
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     // Random start: up to ~2 years in seconds
     this.uptime = this.rng.float(86400, 86400 * 730);
@@ -43,16 +41,7 @@ export class UptimeCounterElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     this.uptime += dt;
 
@@ -104,11 +93,8 @@ export class UptimeCounterElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.4;
-    if (action === 'glitch') this.glitchTimer = 0.5;
     if (action === 'alert') {
       this.uptime = 0; // Reset uptime on alert
-      this.pulseTimer = 1.5;
     }
   }
 

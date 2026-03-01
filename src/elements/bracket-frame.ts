@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Animated bracket frame — corner brackets that expand outward from center,
@@ -15,8 +14,6 @@ export class BracketFrameElement extends BaseElement {
   private labelMesh!: THREE.Mesh;
   private expandProgress: number = 0;
   private expandTarget: number = 1;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private coordText: string = '';
 
@@ -105,16 +102,7 @@ export class BracketFrameElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Corners expand from center with overshoot
     const diff = this.expandTarget - this.expandProgress;
@@ -157,11 +145,9 @@ export class BracketFrameElement extends BaseElement {
       this.expandTarget = 1;
     }
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       this.expandTarget = 0.8;
       setTimeout(() => { this.expandTarget = 1; }, 200);
     }
-    if (action === 'glitch') this.glitchTimer = 0.4;
     if (action === 'alert') {
       this.pulseTimer = 1.5;
       for (const c of this.corners) {

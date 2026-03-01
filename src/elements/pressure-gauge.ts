@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Analog Bourdon tube gauge with needle, tick marks, and danger zone arc.
@@ -16,9 +15,6 @@ export class PressureGaugeElement extends BaseElement {
   private needleVelocity: number = 0;
   private updateTimer: number = 0;
   private updateInterval: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
-
   build(): void {
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
@@ -105,19 +101,11 @@ export class PressureGaugeElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const radius = Math.min(w, h) / 2 * 0.85;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
 
     // Update target periodically
     this.updateTimer += dt;
@@ -138,8 +126,8 @@ export class PressureGaugeElement extends BaseElement {
     const arcEnd = Math.PI * 2.25;
     const needleAngle = arcStart + (arcEnd - arcStart) * this.needleValue;
     const pos = this.needle.geometry.getAttribute('position') as THREE.BufferAttribute;
-    pos.setXY(0, cx + gx, cy);
-    pos.setXY(1, cx + Math.cos(needleAngle) * radius * 0.8 + gx, cy + Math.sin(needleAngle) * radius * 0.8);
+    pos.setXY(0, cx, cy);
+    pos.setXY(1, cx + Math.cos(needleAngle) * radius * 0.8, cy + Math.sin(needleAngle) * radius * 0.8);
     pos.needsUpdate = true;
 
     // Color needle based on danger zone
@@ -156,16 +144,13 @@ export class PressureGaugeElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       this.needleVelocity += this.rng.float(2, 5);
     }
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.needleValue = this.rng.float(0, 1);
     }
     if (action === 'alert') {
       this.needleTarget = 1.0;
-      this.pulseTimer = 2.0;
     }
   }
 }

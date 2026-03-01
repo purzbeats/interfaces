@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Horizontal line sweeping top-to-bottom with fading trail.
@@ -16,8 +15,6 @@ export class ScanLineElement extends BaseElement {
   private borderLines!: THREE.LineSegments;
   private scanY: number = 0;
   private scanSpeed: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -91,17 +88,8 @@ export class ScanLineElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Advance scan line
     this.scanY += this.scanSpeed * dt;
@@ -154,9 +142,7 @@ export class ScanLineElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.scanSpeed *= 3;
       setTimeout(() => { this.scanSpeed /= 3; }, 400);
     }

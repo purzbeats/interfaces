@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 export class GridOverlayElement extends BaseElement {
   private lines!: THREE.LineSegments;
   private crosshair!: THREE.LineSegments;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     const cols = this.rng.int(4, 10);
     const rows = this.rng.int(4, 8);
@@ -50,16 +48,7 @@ export class GridOverlayElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     (this.lines.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
     (this.crosshair.material as THREE.LineBasicMaterial).opacity = opacity * 1.0;
@@ -67,10 +56,7 @@ export class GridOverlayElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.4;
-    if (action === 'glitch') this.glitchTimer = 0.35;
     if (action === 'alert') {
-      this.pulseTimer = 1.5;
       (this.crosshair.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
     }
   }

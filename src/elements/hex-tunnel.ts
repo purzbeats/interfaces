@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Concentric hexagonal rings expanding outward like looking down a hex tunnel.
@@ -14,12 +13,11 @@ export class HexTunnelElement extends BaseElement {
   private cx: number = 0;
   private cy: number = 0;
   private speed: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private rotationSpeed: number = 0;
   private rotationAngle: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
     this.cy = y + h / 2;
@@ -54,11 +52,7 @@ export class HexTunnelElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-    if (this.pulseTimer > 0) { this.pulseTimer -= dt; opacity *= pulse(this.pulseTimer); }
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     this.rotationAngle += this.rotationSpeed * dt;
 
@@ -89,10 +83,9 @@ export class HexTunnelElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') { this.pulseTimer = 0.5; this.speed *= 1.5; setTimeout(() => { this.speed /= 1.5; }, 500); }
-    if (action === 'glitch') { this.glitchTimer = 0.4; this.rotationSpeed *= -1; }
+    if (action === 'pulse') { this.speed *= 1.5; setTimeout(() => { this.speed /= 1.5; }, 500); }
+    if (action === 'glitch') { this.rotationSpeed *= -1; }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       for (const ring of this.rings) {
         (ring.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
       }

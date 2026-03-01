@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 const STATUS_MESSAGES = [
@@ -19,8 +18,6 @@ export class StatusReadoutElement extends BaseElement {
   private currentMsg: number = 0;
   private switchInterval: number = 0;
   private switchTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private isAlert: boolean = false;
 
@@ -53,16 +50,7 @@ export class StatusReadoutElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     this.blinkTimer += dt;
     this.switchTimer += dt;
@@ -143,13 +131,10 @@ export class StatusReadoutElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.4;
-    if (action === 'glitch') this.glitchTimer = 0.5;
     if (action === 'alert') {
       this.isAlert = true;
       this.messages.unshift('!! CRITICAL ALERT !!');
       this.currentMsg = 0;
-      this.pulseTimer = 2.0;
     }
   }
 

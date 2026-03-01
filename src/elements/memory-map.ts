@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Grid of tiny blocks showing allocation/deallocation waves.
@@ -18,8 +17,6 @@ export class MemoryMapElement extends BaseElement {
   private wavePhase: number = 0;
   private waveSpeed: number = 0;
   private allocTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private readonly RENDER_INTERVAL = 1 / 15;
 
@@ -70,16 +67,7 @@ export class MemoryMapElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Advance wave
     this.wavePhase += dt * this.waveSpeed;
@@ -155,16 +143,13 @@ export class MemoryMapElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       // Scramble blocks
       for (let i = 0; i < this.blockStates.length; i++) {
         this.blockStates[i] = this.rng.chance(0.5) ? 1 : 0;
       }
     }
     if (action === 'alert') {
-      this.pulseTimer = 1.5;
       // Flood allocate
       for (let i = 0; i < this.blockStates.length; i++) {
         this.blockStates[i] = 1;

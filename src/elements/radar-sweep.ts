@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
+import { glitchOffset } from '../animation/fx';
 
 export class RadarSweepElement extends BaseElement {
   private sweepLine!: THREE.Line;
@@ -9,11 +9,10 @@ export class RadarSweepElement extends BaseElement {
   private angle: number = 0;
   private speed: number = 0;
   private blipData: Array<{ angle: number; radius: number; brightness: number }> = [];
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private alertMode: boolean = false;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
@@ -88,26 +87,18 @@ export class RadarSweepElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const radius = Math.min(w, h) / 2 * 0.9;
 
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-
     this.angle += dt * this.speed;
 
     // Update sweep line endpoint
     const positions = this.sweepLine.geometry.getAttribute('position') as THREE.BufferAttribute;
-    positions.setXY(0, cx + gx, cy);
-    positions.setXY(1, cx + Math.cos(this.angle) * radius + gx, cy + Math.sin(this.angle) * radius);
+    positions.setXY(0, cx, cy);
+    positions.setXY(1, cx + Math.cos(this.angle) * radius, cy + Math.sin(this.angle) * radius);
     positions.needsUpdate = true;
 
     const sweepColor = this.alertMode ? this.palette.alert : this.palette.primary;
@@ -138,9 +129,7 @@ export class RadarSweepElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.6;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.speed = this.rng.float(4, 12); // spin fast briefly
     }
     if (action === 'alert') {

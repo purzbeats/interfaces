@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Grid of small circles whose brightness animates in wave patterns.
@@ -15,8 +14,6 @@ export class DotMatrixElement extends BaseElement {
   private waveFreqY: number = 0;
   private waveSpeed: number = 0;
   private waveMode: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -71,11 +68,7 @@ export class DotMatrixElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-    if (this.pulseTimer > 0) { this.pulseTimer -= dt; opacity *= pulse(this.pulseTimer); }
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     (this.dotMesh.material as THREE.PointsMaterial).opacity = opacity;
 
@@ -133,8 +126,6 @@ export class DotMatrixElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
-    if (action === 'glitch') { this.glitchTimer = 0.4; this.waveMode = (this.waveMode + 1) % 4; }
-    if (action === 'alert') this.pulseTimer = 2.0;
+    if (action === 'glitch') { this.waveMode = (this.waveMode + 1) % 4; }
   }
 }

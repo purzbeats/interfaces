@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Parallax star field with per-star twinkling, occasional shooting stars,
@@ -21,10 +20,9 @@ export class StarFieldElement extends BaseElement {
   private nebulaGlow!: THREE.Mesh;
   private nebulaX: number = 0;
   private nebulaY: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
@@ -105,19 +103,10 @@ export class StarFieldElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Nebula pulse
     (this.nebulaGlow.material as THREE.MeshBasicMaterial).opacity =
@@ -196,9 +185,7 @@ export class StarFieldElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       for (const data of this.layerData) {
         for (const v of data.velocities) {
           v.vx *= this.rng.float(2, 5);

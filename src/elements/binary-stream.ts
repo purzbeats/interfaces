@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Scrolling ribbon of binary/hex characters flowing left-to-right.
@@ -17,12 +16,11 @@ export class BinaryStreamElement extends BaseElement {
   private scrollOffset: number = 0;
   private scrollSpeed: number = 0;
   private isHex: boolean = false;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private readonly RENDER_INTERVAL = 1 / 15;
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     const charW = 8;
     const charH = 14;
@@ -67,16 +65,7 @@ export class BinaryStreamElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     this.scrollOffset += dt * this.scrollSpeed;
 
@@ -130,14 +119,9 @@ export class BinaryStreamElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.4;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.scrollSpeed *= 4;
       setTimeout(() => { this.scrollSpeed /= 4; }, 500);
-    }
-    if (action === 'alert') {
-      this.pulseTimer = 1.5;
     }
   }
 

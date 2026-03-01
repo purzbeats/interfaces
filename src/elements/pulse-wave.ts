@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * ECG/heartbeat-style sharp pulse waveform with scrolling trace.
@@ -14,11 +13,10 @@ export class PulseWaveElement extends BaseElement {
   private heartRate: number = 0;
   private phaseOffset: number = 0;
   private noiseAmp: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private flatline: boolean = false;
 
   build(): void {
+    this.glitchAmount = 6;
     const { x, y, w, h } = this.px;
     this.numPoints = Math.max(80, Math.floor(w / 2));
     this.scrollSpeed = this.rng.float(60, 120);
@@ -91,11 +89,7 @@ export class PulseWaveElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-    if (this.pulseTimer > 0) { this.pulseTimer -= dt; opacity *= pulse(this.pulseTimer); }
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 6) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     (this.gridLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.15;
     (this.traceLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.9;
@@ -126,9 +120,8 @@ export class PulseWaveElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') { this.pulseTimer = 0.5; this.emitAudio('seekSound', 300); }
+    if (action === 'pulse') { this.emitAudio('seekSound', 300); }
     if (action === 'glitch') {
-      this.glitchTimer = 0.4;
       this.flatline = !this.flatline;
       if (this.flatline) {
         (this.traceLine.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
@@ -137,7 +130,6 @@ export class PulseWaveElement extends BaseElement {
       }
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       this.heartRate *= 1.8;
       (this.traceLine.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
     }

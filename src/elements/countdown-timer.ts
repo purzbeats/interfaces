@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
@@ -16,13 +15,12 @@ export class CountdownTimerElement extends BaseElement {
   private startValue: number = 0;
   private colonVisible: boolean = true;
   private colonTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private label: string = '';
   private urgentThreshold: number = 60;
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     this.startValue = this.rng.int(120, 36000);
     this.remaining = this.startValue;
@@ -48,16 +46,7 @@ export class CountdownTimerElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Count down
     this.remaining -= dt;
@@ -134,11 +123,8 @@ export class CountdownTimerElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
-    if (action === 'glitch') this.glitchTimer = 0.5;
     if (action === 'alert') {
       this.remaining = this.urgentThreshold * 0.5;
-      this.pulseTimer = 2.0;
     }
   }
 

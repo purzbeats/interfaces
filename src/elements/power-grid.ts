@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Schematic power distribution network with animated current flow.
@@ -17,10 +16,9 @@ export class PowerGridElement extends BaseElement {
   private paths: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
   private flows: Array<{ path: number; t: number; speed: number }> = [];
   private loadTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
 
     // Root at bottom-center
@@ -140,16 +138,7 @@ export class PowerGridElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Update junction loads
     this.loadTimer += dt;
@@ -199,12 +188,6 @@ export class PowerGridElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
-    if (action === 'glitch') {
-      this.glitchTimer = 0.5;
-      for (const f of this.flows) f.speed = this.rng.float(2, 5);
-      for (const j of this.junctions) j.load = this.rng.float(0, 1);
-    }
     if (action === 'alert') {
       this.pulseTimer = 2.0;
       for (const j of this.junctions) j.loadTarget = 1;

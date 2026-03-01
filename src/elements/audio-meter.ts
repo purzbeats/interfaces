@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Dual VU meter with peak hold indicators.
@@ -18,10 +17,8 @@ export class AudioMeterElement extends BaseElement {
   private segmentCount: number = 0;
   private updateTimer: number = 0;
   private updateInterval: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
-
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     this.segmentCount = this.rng.int(12, 24);
     this.updateInterval = this.rng.float(0.1, 0.4);
@@ -79,17 +76,8 @@ export class AudioMeterElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { y, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Update targets periodically
     this.updateTimer += dt;
@@ -144,17 +132,14 @@ export class AudioMeterElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       this.velocities[0] += 3;
       this.velocities[1] += 3;
     }
     if (action === 'glitch') {
-      this.glitchTimer = 0.4;
       this.levels[0] = this.rng.float(0, 1);
       this.levels[1] = this.rng.float(0, 1);
     }
     if (action === 'alert') {
-      this.pulseTimer = 1.5;
       this.targets[0] = 1;
       this.targets[1] = 1;
     }

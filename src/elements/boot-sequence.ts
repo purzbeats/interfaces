@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 const BOOT_LINES = [
@@ -37,12 +36,11 @@ export class BootSequenceElement extends BaseElement {
   private lineDelay: number = 0;
   private lineDelayTimer: number = 0;
   private completedLines: Array<{ text: string; status: string }> = [];
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private loopCount: number = 0;
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     this.charSpeed = this.rng.float(30, 60);
 
@@ -65,16 +63,7 @@ export class BootSequenceElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Advance typewriter
     if (this.currentLine < BOOT_LINES.length) {
@@ -174,8 +163,6 @@ export class BootSequenceElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
-    if (action === 'glitch') this.glitchTimer = 0.5;
     if (action === 'alert') {
       this.pulseTimer = 2.0;
       // Force restart

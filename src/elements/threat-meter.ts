@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Segmented vertical bar with severity zones (LOW/MED/HIGH/CRIT).
@@ -18,12 +17,11 @@ export class ThreatMeterElement extends BaseElement {
   private velocity: number = 0;
   private segCount: number = 0;
   private cycleTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private alertTimer: number = 0;
   private renderAccum: number = 0;
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     this.segCount = this.rng.int(12, 24);
     this.targetValue = this.rng.float(0.2, 0.7);
@@ -83,17 +81,8 @@ export class ThreatMeterElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
+    const opacity = this.applyEffects(dt);
     if (this.alertTimer > 0) this.alertTimer -= dt;
-    this.group.position.x = gx;
 
     // Cycle target
     this.cycleTimer += dt;
@@ -166,11 +155,9 @@ export class ThreatMeterElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       this.velocity += 3;
     }
     if (action === 'glitch') {
-      this.glitchTimer = 0.4;
       this.targetValue = this.rng.float(0, 1);
     }
     if (action === 'alert') {

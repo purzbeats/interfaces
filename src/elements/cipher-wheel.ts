@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -19,8 +18,6 @@ export class CipherWheelElement extends BaseElement {
   private ringAngles: number[] = [];
   private ringSpeeds: number[] = [];
   private ringChars: string[][] = [];
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
 
   build(): void {
@@ -57,16 +54,7 @@ export class CipherWheelElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Rotate rings
     for (let r = 0; r < this.ringCount; r++) {
@@ -165,9 +153,7 @@ export class CipherWheelElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       for (let r = 0; r < this.ringCount; r++) {
         this.ringSpeeds[r] = this.rng.float(2, 5) * (this.rng.chance(0.5) ? 1 : -1);
       }

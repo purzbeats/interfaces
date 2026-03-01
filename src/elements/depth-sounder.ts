@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Scrolling bathymetric depth profile chart.
@@ -15,9 +14,6 @@ export class DepthSounderElement extends BaseElement {
   private scrollAccum: number = 0;
   private scrollRate: number = 0;
   private noisePhase: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
-
   build(): void {
     const { x, y, w, h } = this.px;
     this.numPoints = Math.max(64, Math.floor(w * 0.5));
@@ -80,17 +76,8 @@ export class DepthSounderElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Scroll terrain
     this.scrollAccum += dt * this.scrollRate;
@@ -124,13 +111,10 @@ export class DepthSounderElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.scrollRate = this.rng.float(40, 80);
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       (this.terrainLine.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
     }
   }

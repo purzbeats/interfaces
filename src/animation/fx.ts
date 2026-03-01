@@ -15,12 +15,6 @@ export function glitchOffset(timer: number, maxPx: number = 6): number {
   return (hash - Math.floor(hash) - 0.5) * 2 * maxPx * Math.min(timer * 4, 1);
 }
 
-/** Glitch vertical slice effect — returns a y-offset for scanline displacement */
-export function glitchSlice(timer: number, y: number, maxPx: number = 3): number {
-  if (timer <= 0) return 0;
-  const band = Math.sin(y * 0.05 + timer * 50);
-  return band > 0.7 ? glitchOffset(timer + y * 0.01, maxPx) : 0;
-}
 
 /** Compute element opacity from state machine state + progress */
 export function stateOpacity(state: string, progress: number): number {

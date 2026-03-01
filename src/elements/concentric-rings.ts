@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Concentric expanding rings that ripple outward from center.
@@ -12,8 +11,6 @@ export class ConcentricRingsElement extends BaseElement {
   private maxRings: number = 0;
   private rippleSpeed: number = 0;
   private segments: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -50,19 +47,12 @@ export class ConcentricRingsElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const maxR = Math.min(w, h) / 2 * 0.9;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
+    const gx = this.group.position.x;
 
     for (let i = 0; i < this.maxRings; i++) {
       this.ringPhases[i] = (this.ringPhases[i] + dt * this.rippleSpeed) % 1;
@@ -92,16 +82,13 @@ export class ConcentricRingsElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       // Reset all rings to center for a burst effect
       for (let i = 0; i < this.maxRings; i++) {
         this.ringPhases[i] = i * 0.05;
       }
     }
-    if (action === 'glitch') this.glitchTimer = 0.4;
     if (action === 'alert') {
       this.rippleSpeed *= 2.5;
-      this.pulseTimer = 1.5;
     }
   }
 }

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Heat-map grid of color-interpolated cells with wandering hotspot and heat diffusion.
@@ -16,8 +15,6 @@ export class ThermalMapElement extends BaseElement {
   private gridH: number = 0;
   private heatGrid: number[] = [];
   private hotspots: { x: number; y: number; vx: number; vy: number }[] = [];
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private readonly RENDER_INTERVAL = 1 / 12;
 
@@ -80,16 +77,7 @@ export class ThermalMapElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Move hotspots
     for (const hs of this.hotspots) {
@@ -200,16 +188,13 @@ export class ThermalMapElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       // Scramble heat values
       for (let i = 0; i < this.heatGrid.length; i++) {
         this.heatGrid[i] = this.rng.float(0, 1);
       }
     }
     if (action === 'alert') {
-      this.pulseTimer = 1.5;
       // Max heat everywhere
       for (let i = 0; i < this.heatGrid.length; i++) {
         this.heatGrid[i] = 1;

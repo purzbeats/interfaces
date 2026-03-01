@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Seven-segment LED-style 3-4 digit counter.
@@ -15,8 +14,6 @@ export class SegmentDisplayElement extends BaseElement {
   private velocity: number = 0;
   private cycleTimer: number = 0;
   private maxValue: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private label: string = '';
   private labelLines!: THREE.LineSegments;
 
@@ -38,6 +35,7 @@ export class SegmentDisplayElement extends BaseElement {
   ];
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     this.digitCount = w > 100 ? 4 : 3;
     this.maxValue = Math.pow(10, this.digitCount) - 1;
@@ -122,16 +120,7 @@ export class SegmentDisplayElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Cycle target
     this.cycleTimer += dt;
@@ -237,10 +226,8 @@ export class SegmentDisplayElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       this.velocity += this.maxValue * 0.3;
     }
-    if (action === 'glitch') this.glitchTimer = 0.5;
     if (action === 'alert') {
       this.targetValue = this.maxValue;
       this.pulseTimer = 2.0;

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Lissajous figure with phosphor persistence trails.
@@ -15,10 +14,8 @@ export class OscilloscopeElement extends BaseElement {
   private freqY: number = 0;
   private phaseShift: number = 0;
   private freqDrift: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
-
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.numPoints = 256;
     this.traceCount = this.rng.int(3, 6);
@@ -58,20 +55,12 @@ export class OscilloscopeElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const rx = w * 0.4;
     const ry = h * 0.4;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
 
     // Slowly drift frequency ratio
     const driftX = this.freqX + Math.sin(time * this.freqDrift) * 0.3;
@@ -85,7 +74,7 @@ export class OscilloscopeElement extends BaseElement {
 
       for (let i = 0; i < this.numPoints; i++) {
         const s = (i / this.numPoints) * Math.PI * 2;
-        const px = cx + Math.sin(s * driftX + traceTime * 1.5) * rx + gx;
+        const px = cx + Math.sin(s * driftX + traceTime * 1.5) * rx;
         const py = cy + Math.sin(s * driftY + traceTime * 1.5 + this.phaseShift) * ry;
         pos.setXYZ(i, px, py, 1);
       }
@@ -98,14 +87,11 @@ export class OscilloscopeElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.freqX = this.rng.float(1, 6);
       this.freqY = this.rng.float(1, 6);
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       (this.traces[0].material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
     }
   }

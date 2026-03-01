@@ -78,6 +78,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'oscilloscope': 2, 'audio-meter': 2, 'cpu-cores': 2,
       'heart-monitor': 2, 'power-grid': 1, 'data-table': 1,
       'boot-sequence': 1, 'voltage-arc': 1, 'uptime-counter': 1,
+      'thermal-map': 1, 'memory-map': 1,
     },
   },
 

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Waterfall spectrogram display — frequency bands scroll vertically over time.
@@ -21,8 +20,6 @@ export class SpectrogramElement extends BaseElement {
   private readonly UPDATE_INTERVAL = 1 / 4; // slower target changes for visible peak drift
   private renderAccum: number = 0;
   private readonly RENDER_INTERVAL = 1 / 12;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -107,11 +104,7 @@ export class SpectrogramElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-    if (this.pulseTimer > 0) { this.pulseTimer -= dt; opacity *= pulse(this.pulseTimer); }
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Spring animate band values
     for (let i = 0; i < this.freqBands; i++) {
@@ -189,15 +182,12 @@ export class SpectrogramElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.4;
       // Scramble bands
       for (let i = 0; i < this.freqBands; i++) {
         this.bandTargets[i] = Math.random();
       }
     }
-    if (action === 'alert') this.pulseTimer = 2.0;
   }
 
   dispose(): void {

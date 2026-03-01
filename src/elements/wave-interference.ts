@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 
 /**
  * Two circular wave sources creating animated moire patterns.
@@ -15,10 +14,9 @@ export class WaveInterferenceElement extends BaseElement {
   private spawnTimer: number = 0;
   private spawnInterval: number = 0;
   private nextRing: number[] = [0, 0];
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.maxRadius = Math.max(w, h) * 0.6;
     this.expandSpeed = this.rng.float(40, 100);
@@ -52,17 +50,8 @@ export class WaveInterferenceElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Drift sources
     for (const src of this.sourcePos) {
@@ -113,9 +102,7 @@ export class WaveInterferenceElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.expandSpeed = this.rng.float(100, 250);
     }
     if (action === 'alert') {

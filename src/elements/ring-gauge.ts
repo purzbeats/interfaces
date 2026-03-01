@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 import { drawGlowText } from '../animation/retro-text';
 
 /**
@@ -21,8 +20,6 @@ export class RingGaugeElement extends BaseElement {
   private label: string = '';
   private segments: number = 64;
   private cycleTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
 
   build(): void {
@@ -103,22 +100,13 @@ export class RingGaugeElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const outerR = Math.min(w, h) / 2 * 0.85;
     const innerR = outerR * 0.7;
     const midR = (outerR + innerR) / 2;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Cycle target
     this.cycleTimer += dt;
@@ -188,10 +176,8 @@ export class RingGaugeElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       this.velocity += 3;
     }
-    if (action === 'glitch') this.glitchTimer = 0.5;
     if (action === 'alert') {
       this.targetValue = 1.0;
       this.pulseTimer = 2.0;

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Expanding ping rings from center that illuminate static blips.
@@ -17,8 +16,6 @@ export class RadialScannerElement extends BaseElement {
   private pingTimer: number = 0;
   private pingInterval: number = 0;
   private segments: number = 48;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -112,20 +109,11 @@ export class RadialScannerElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const maxR = Math.min(w, h) / 2 * 0.9;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Spawn new ping rings
     this.pingTimer += dt;
@@ -199,7 +187,6 @@ export class RadialScannerElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       // Fire a ping immediately
       for (const pr of this.pingRings) {
         if (pr.radius < 0 || pr.radius > pr.maxRadius) {
@@ -209,14 +196,12 @@ export class RadialScannerElement extends BaseElement {
       }
     }
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       // Brighten all blips
       for (let i = 0; i < this.blipCount; i++) {
         this.blipBrightness[i] = 1;
       }
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       // Rapid pings
       for (const pr of this.pingRings) {
         pr.radius = 0;

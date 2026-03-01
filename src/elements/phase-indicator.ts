@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Radial tick ring with animated needle (vertex-based, not rotation).
@@ -18,8 +17,6 @@ export class PhaseIndicatorElement extends BaseElement {
   private targetValue: number = 0;
   private velocity: number = 0;
   private cycleTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private tickCount: number = 36;
   private label: string = '';
@@ -96,20 +93,11 @@ export class PhaseIndicatorElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const radius = Math.min(w, h) / 2 * 0.85;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Cycle target
     this.cycleTimer += dt;
@@ -171,11 +159,9 @@ export class PhaseIndicatorElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       this.velocity += 2;
     }
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       this.targetValue = this.rng.float(0, 1);
       this.velocity += this.rng.float(-5, 5);
     }

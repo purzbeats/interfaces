@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Multi-metric concentric arcs (3-5 rings), each with independent fill level.
@@ -20,8 +19,6 @@ export class LevelRingsElement extends BaseElement {
   private labels: string[] = [];
   private segments: number = 48;
   private cycleTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
 
   build(): void {
@@ -91,21 +88,12 @@ export class LevelRingsElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const maxR = Math.min(w, h) / 2 * 0.9;
     const ringGap = maxR / (this.ringCount + 1);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Cycle targets
     this.cycleTimer += dt;
@@ -177,20 +165,17 @@ export class LevelRingsElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'pulse') {
-      this.pulseTimer = 0.5;
       for (let r = 0; r < this.ringCount; r++) {
         this.velocities[r] += 3;
       }
     }
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       for (let r = 0; r < this.ringCount; r++) {
         this.targets[r] = this.rng.float(0, 1);
         this.velocities[r] = this.rng.float(-4, 4);
       }
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       for (let r = 0; r < this.ringCount; r++) {
         this.targets[r] = 1.0;
       }

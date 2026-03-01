@@ -5,6 +5,7 @@ import type { Palette } from '../color/palettes';
 import type { SeededRandom } from '../random';
 import { StateMachine } from '../animation/state-machine';
 import { randomEasing } from '../animation/easing';
+import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /** Callback for elements to emit audio events */
 export type AudioEmitter = (event: string, param?: number) => void;
@@ -21,6 +22,10 @@ export abstract class BaseElement {
   protected px: { x: number; y: number; w: number; h: number };
   protected screenWidth: number;
   protected screenHeight: number;
+
+  protected pulseTimer: number = 0;
+  protected glitchTimer: number = 0;
+  protected glitchAmount: number = 4;
 
   constructor(
     region: Region,
@@ -50,6 +55,22 @@ export abstract class BaseElement {
   abstract build(): void;
   abstract update(dt: number, time: number): void;
 
+  /** Compute opacity with pulse, apply glitch offset. Call at top of update(). */
+  protected applyEffects(dt: number): number {
+    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    if (this.pulseTimer > 0) {
+      this.pulseTimer -= dt;
+      opacity *= pulse(this.pulseTimer);
+    }
+    if (this.glitchTimer > 0) {
+      this.group.position.x = glitchOffset(this.glitchTimer, this.glitchAmount);
+      this.glitchTimer -= dt;
+    } else {
+      this.group.position.x = 0;
+    }
+    return opacity;
+  }
+
   onAction(action: string): void {
     switch (action) {
       case 'activate':
@@ -58,6 +79,12 @@ export abstract class BaseElement {
         break;
       case 'deactivate':
         this.stateMachine.transition('deactivating');
+        break;
+      case 'pulse':
+        this.pulseTimer = 0.5;
+        break;
+      case 'glitch':
+        this.glitchTimer = 0.5;
         break;
     }
   }

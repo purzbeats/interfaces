@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { pulse, stateOpacity, glitchOffset } from '../animation/fx';
 import { applyScanlines, drawJitteredText, drawGlowText } from '../animation/retro-text';
 
 const LABELS = [
@@ -23,12 +22,11 @@ export class TextLabelElement extends BaseElement {
   private revealSpeed: number = 0;
   private cursorBlink: number = 0;
   private isRevealed: boolean = false;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private dirty: boolean = true;
 
   build(): void {
+    this.glitchAmount = 6;
     const { x, y, w, h } = this.px;
     this.text = this.rng.pick(LABELS);
     this.revealSpeed = this.rng.float(15, 40);
@@ -55,7 +53,7 @@ export class TextLabelElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const prevIndex = Math.floor(this.revealIndex);
 
     if (this.stateMachine.state === 'activating' || this.stateMachine.state === 'active') {
@@ -64,15 +62,6 @@ export class TextLabelElement extends BaseElement {
         if (this.revealIndex >= this.text.length) this.isRevealed = true;
       }
     }
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 6) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     // Dirty flag: only re-render when text changes or cursor blinks
     this.cursorBlink += dt;
@@ -146,15 +135,10 @@ export class TextLabelElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.3;
-    if (action === 'glitch') {
-      this.glitchTimer = 0.5;
-    }
     if (action === 'alert') {
       this.revealIndex = 0;
       this.isRevealed = false;
       this.text = '!! ALERT: ' + this.rng.pick(LABELS) + ' !!';
-      this.pulseTimer = 1.5;
     }
   }
 

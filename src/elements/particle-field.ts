@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Field of drifting particles with connection lines between nearby ones.
@@ -13,8 +12,6 @@ export class ParticleFieldElement extends BaseElement {
   private particles: { x: number; y: number; vx: number; vy: number }[] = [];
   private connectionThreshold: number = 0;
   private maxConnections: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -77,11 +74,7 @@ export class ParticleFieldElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-    if (this.pulseTimer > 0) { this.pulseTimer -= dt; opacity *= pulse(this.pulseTimer); }
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     const { x, y, w, h } = this.px;
 
@@ -139,16 +132,13 @@ export class ParticleFieldElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.4;
       for (const p of this.particles) {
         p.vx += (Math.random() - 0.5) * 60;
         p.vy += (Math.random() - 0.5) * 60;
       }
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       (this.pointsMesh.material as THREE.PointsMaterial).color.copy(this.palette.alert);
     }
   }

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Animated topographic contour map with shifting elevation.
@@ -14,10 +13,9 @@ export class TopologyMapElement extends BaseElement {
   private contourLevels: number = 0;
   private driftSpeed: number = 0;
   private borderLines!: THREE.LineSegments;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.fieldW = 24;
     this.fieldH = Math.max(12, Math.round(24 * (h / w)));
@@ -74,11 +72,7 @@ export class TopologyMapElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-    if (this.pulseTimer > 0) { this.pulseTimer -= dt; opacity *= pulse(this.pulseTimer); }
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     const { x: rx, y: ry, w, h } = this.px;
     const t = time * this.driftSpeed;
@@ -149,14 +143,11 @@ export class TopologyMapElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.4;
       this.driftSpeed *= 3;
       setTimeout(() => { this.driftSpeed /= 3; }, 400);
     }
     if (action === 'alert') {
-      this.pulseTimer = 2.0;
       for (const line of this.contourLines) {
         (line.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
       }

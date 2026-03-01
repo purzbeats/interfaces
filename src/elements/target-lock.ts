@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Animated targeting reticle that tracks a wandering point —
@@ -26,11 +25,10 @@ export class TargetLockElement extends BaseElement {
   private reticleAngle: number = 0;
   private locked: boolean = false;
   private lockTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
 
   build(): void {
+    this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
     this.cy = y + h / 2;
@@ -135,11 +133,7 @@ export class TargetLockElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-    if (this.pulseTimer > 0) { this.pulseTimer -= dt; opacity *= pulse(this.pulseTimer); }
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 5) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Wander target
     this.targetVx += (Math.random() - 0.5) * 80 * dt;
@@ -232,13 +226,10 @@ export class TargetLockElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
-      this.glitchTimer = 0.4;
       this.targetVx += (Math.random() - 0.5) * 200;
       this.targetVy += (Math.random() - 0.5) * 200;
     }
-    if (action === 'alert') this.pulseTimer = 2.0;
   }
 
   dispose(): void {

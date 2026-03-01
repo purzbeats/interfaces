@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 
 /**
  * Matrix-style cascading data columns with horizontal scan bands.
@@ -17,8 +16,6 @@ export class DataCascadeElement extends BaseElement {
   private drops: number[] = [];
   private speeds: number[] = [];
   private chars: string = 'アイウエオカキクケコサシスセソタチツテト0123456789ABCDEF';
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
 
   build(): void {
@@ -67,16 +64,7 @@ export class DataCascadeElement extends BaseElement {
   }
 
   update(dt: number, time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Advance drops
     for (let c = 0; c < this.columns; c++) {
@@ -144,15 +132,12 @@ export class DataCascadeElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.4;
     if (action === 'glitch') {
-      this.glitchTimer = 0.5;
       for (let c = 0; c < this.columns; c++) {
         this.speeds[c] = this.rng.float(15, 40);
       }
       this.emitAudio('seekSound', 120);
     }
-    if (action === 'alert') this.pulseTimer = 1.5;
   }
 
   dispose(): void {

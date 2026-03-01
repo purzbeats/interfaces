@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
@@ -17,13 +16,12 @@ export class ClockDisplayElement extends BaseElement {
   private missionTime: number = 0;
   private colonVisible: boolean = true;
   private colonTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
   private timeScale: number = 1;
   private label: string = '';
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     this.missionTime = this.rng.float(0, 86400); // random start within 24h
     this.timeScale = this.rng.pick([1, 1, 1, 10, 60]);
@@ -75,17 +73,8 @@ export class ClockDisplayElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
 
     this.missionTime += dt * this.timeScale;
 
@@ -164,8 +153,6 @@ export class ClockDisplayElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
-    if (action === 'glitch') this.glitchTimer = 0.5;
     if (action === 'alert') {
       this.pulseTimer = 2.0;
       this.missionTime = 0; // Reset timer on alert

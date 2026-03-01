@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseElement } from './base-element';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
@@ -20,11 +19,10 @@ export class FlightLadderElement extends BaseElement {
   private speedTarget: number = 0;
   private speedVel: number = 0;
   private driftTimer: number = 0;
-  private pulseTimer: number = 0;
-  private glitchTimer: number = 0;
   private renderAccum: number = 0;
 
   build(): void {
+    this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     this.altitude = this.rng.float(5000, 40000);
     this.altitudeTarget = this.altitude;
@@ -64,16 +62,7 @@ export class FlightLadderElement extends BaseElement {
   }
 
   update(dt: number, _time: number): void {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
-
-    if (this.pulseTimer > 0) {
-      this.pulseTimer -= dt;
-      opacity *= pulse(this.pulseTimer);
-    }
-
-    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 3) : 0;
-    if (this.glitchTimer > 0) this.glitchTimer -= dt;
-    this.group.position.x = gx;
+    const opacity = this.applyEffects(dt);
 
     // Drift targets
     this.driftTimer += dt;
@@ -168,8 +157,6 @@ export class FlightLadderElement extends BaseElement {
 
   onAction(action: string): void {
     super.onAction(action);
-    if (action === 'pulse') this.pulseTimer = 0.5;
-    if (action === 'glitch') this.glitchTimer = 0.5;
     if (action === 'alert') {
       this.pulseTimer = 2.0;
       this.altitudeTarget = 0;
