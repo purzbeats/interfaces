@@ -1,3 +1,5 @@
+export type RegionTier = 'hero' | 'panel' | 'widget';
+
 /**
  * A rectangular region in normalized coordinates [0,1].
  */
@@ -8,6 +10,7 @@ export interface Region {
   width: number;   // [0,1]
   height: number;  // [0,1]
   padding: number; // inner padding as fraction of region size
+  tier?: RegionTier;
   isDivider?: boolean;
   elementType?: string;
   children?: Region[];
@@ -22,6 +25,18 @@ export function createRegion(
   padding: number = 0.01
 ): Region {
   return { id, x, y, width, height, padding };
+}
+
+export function createTieredRegion(
+  id: string,
+  tier: RegionTier,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  padding: number = 0.005
+): Region {
+  return { id, x, y, width, height, padding, tier };
 }
 
 /** Convert normalized region coords to pixel coords */

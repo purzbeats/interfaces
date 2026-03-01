@@ -25,7 +25,7 @@ export class MemoryMapElement extends BaseElement {
 
   build(): void {
     const { x, y, w, h } = this.px;
-    const blockSize = this.rng.pick([4, 5, 6]);
+    const blockSize = this.rng.pick([6, 8, 10]);
     this.gridW = Math.max(8, Math.floor(w / blockSize));
     this.gridH = Math.max(8, Math.floor(h / blockSize));
     this.waveSpeed = this.rng.float(1, 3);
@@ -142,7 +142,7 @@ export class MemoryMapElement extends BaseElement {
         color = dim;
       }
 
-      const brightness = v > 0.5 ? 1 : 0.3;
+      const brightness = v > 0.5 ? 0.8 : 0.15;
       data[i * 4] = Math.floor(color.r * 255 * brightness);
       data[i * 4 + 1] = Math.floor(color.g * 255 * brightness);
       data[i * 4 + 2] = Math.floor(color.b * 255 * brightness);

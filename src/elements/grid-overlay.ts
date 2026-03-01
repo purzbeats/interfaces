@@ -34,7 +34,7 @@ export class GridOverlayElement extends BaseElement {
 
     // Center crosshair
     const cx = x + w / 2, cy = y + h / 2;
-    const cs = Math.min(w, h) * 0.08;
+    const cs = Math.min(w, h) * 0.15;
     const crossVerts = new Float32Array([
       cx - cs, cy, 1, cx + cs, cy, 1,
       cx, cy - cs, 1, cx, cy + cs, 1,
@@ -61,8 +61,8 @@ export class GridOverlayElement extends BaseElement {
     if (this.glitchTimer > 0) this.glitchTimer -= dt;
     this.group.position.x = gx;
 
-    (this.lines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
-    (this.crosshair.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
+    (this.lines.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
+    (this.crosshair.material as THREE.LineBasicMaterial).opacity = opacity * 1.0;
   }
 
   onAction(action: string): void {

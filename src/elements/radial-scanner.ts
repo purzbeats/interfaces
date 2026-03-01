@@ -13,6 +13,7 @@ export class RadialScannerElement extends BaseElement {
   private blipCount: number = 0;
   private borderRing!: THREE.Line;
   private pingRings: { ring: THREE.Line; radius: number; maxRadius: number }[] = [];
+  private centerDot!: THREE.Points;
   private pingTimer: number = 0;
   private pingInterval: number = 0;
   private segments: number = 48;
@@ -35,25 +36,37 @@ export class RadialScannerElement extends BaseElement {
     const borderGeo = new THREE.BufferGeometry();
     borderGeo.setAttribute('position', new THREE.Float32BufferAttribute(borderVerts, 3));
     this.borderRing = new THREE.Line(borderGeo, new THREE.LineBasicMaterial({
-      color: this.palette.dim,
+      color: this.palette.primary,
       transparent: true,
       opacity: 0,
     }));
     this.group.add(this.borderRing);
 
-    // Crosshairs
+    // Crosshairs — full diameter
     const crossVerts = new Float32Array([
-      cx - maxR * 0.15, cy, 0, cx + maxR * 0.15, cy, 0,
-      cx, cy - maxR * 0.15, 0, cx, cy + maxR * 0.15, 0,
+      cx - maxR, cy, 0, cx + maxR, cy, 0,
+      cx, cy - maxR, 0, cx, cy + maxR, 0,
     ]);
     const crossGeo = new THREE.BufferGeometry();
     crossGeo.setAttribute('position', new THREE.BufferAttribute(crossVerts, 3));
     this.crosshairs = new THREE.LineSegments(crossGeo, new THREE.LineBasicMaterial({
-      color: this.palette.dim,
+      color: this.palette.primary,
       transparent: true,
       opacity: 0,
     }));
     this.group.add(this.crosshairs);
+
+    // Center dot
+    const centerDotGeo = new THREE.BufferGeometry();
+    centerDotGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([cx, cy, 2]), 3));
+    this.centerDot = new THREE.Points(centerDotGeo, new THREE.PointsMaterial({
+      color: this.palette.primary,
+      transparent: true,
+      opacity: 0,
+      size: 6,
+      sizeAttenuation: false,
+    }));
+    this.group.add(this.centerDot);
 
     // Static blips at random positions within the circle
     this.blipCount = this.rng.int(8, 20);
@@ -75,7 +88,7 @@ export class RadialScannerElement extends BaseElement {
     blipGeo.setAttribute('position', new THREE.BufferAttribute(blipPositions, 3));
     blipGeo.setAttribute('color', new THREE.BufferAttribute(blipColors, 3));
     this.blipPoints = new THREE.Points(blipGeo, new THREE.PointsMaterial({
-      size: 4,
+      size: Math.max(4, Math.min(w, h) * 0.01),
       vertexColors: true,
       transparent: true,
       opacity: 0,
@@ -83,7 +96,7 @@ export class RadialScannerElement extends BaseElement {
     }));
     this.group.add(this.blipPoints);
 
-    // Pre-create ping ring pool (reuse)
+    // Pre-create ping ring pool (reuse) — first one starts immediately
     for (let p = 0; p < 4; p++) {
       const pingPos = new Float32Array((this.segments + 1) * 3);
       const pingGeo = new THREE.BufferGeometry();
@@ -93,7 +106,7 @@ export class RadialScannerElement extends BaseElement {
         transparent: true,
         opacity: 0,
       }));
-      this.pingRings.push({ ring, radius: -1, maxRadius: maxR });
+      this.pingRings.push({ ring, radius: p === 0 ? 0 : -1, maxRadius: maxR });
       this.group.add(ring);
     }
   }
@@ -156,7 +169,7 @@ export class RadialScannerElement extends BaseElement {
         const by = blipPositions.getY(i) - cy;
         const blipDist = Math.sqrt(bx * bx + by * by);
         const ringDist = Math.abs(blipDist - pr.radius);
-        if (ringDist < 10) {
+        if (ringDist < maxR * 0.06) {
           this.blipBrightness[i] = 1;
         }
       }
@@ -177,9 +190,10 @@ export class RadialScannerElement extends BaseElement {
     }
     colors.needsUpdate = true;
 
-    (this.blipPoints.material as THREE.PointsMaterial).opacity = opacity * 0.9;
-    (this.borderRing.material as THREE.LineBasicMaterial).opacity = opacity * 0.2;
+    (this.blipPoints.material as THREE.PointsMaterial).opacity = opacity;
+    (this.borderRing.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
     (this.crosshairs.material as THREE.LineBasicMaterial).opacity = opacity * 0.25;
+    (this.centerDot.material as THREE.PointsMaterial).opacity = opacity;
   }
 
   onAction(action: string): void {

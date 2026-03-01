@@ -23,7 +23,7 @@ export class DataCascadeElement extends BaseElement {
 
   build(): void {
     const { x, y, w, h } = this.px;
-    const charSize = this.rng.int(8, 14);
+    const charSize = Math.max(10, Math.floor(Math.min(w, h) / 50));
     this.columns = Math.max(3, Math.floor(w / charSize));
     this.rows = Math.max(3, Math.floor(h / charSize));
 
@@ -107,7 +107,7 @@ export class DataCascadeElement extends BaseElement {
     const charH = canvas.height / this.rows;
 
     // Fade existing content (trail effect)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.font = `${Math.floor(charH * 0.85)}px monospace`;
@@ -128,12 +128,12 @@ export class DataCascadeElement extends BaseElement {
       ctx.fillText(ch, c * charW + charW / 2, headRow * charH + charH / 2);
 
       // Trail — dimmer characters behind the head
-      for (let t = 1; t < 4; t++) {
+      for (let t = 1; t < 6; t++) {
         const trailRow = headRow - t;
         if (trailRow < 0 || trailRow >= this.rows) continue;
         const trailCh = this.chars[Math.floor(Math.random() * this.chars.length)];
         ctx.fillStyle = dimHex;
-        ctx.globalAlpha = 0.5 - t * 0.12;
+        ctx.globalAlpha = 0.6 - t * 0.08;
         ctx.fillText(trailCh, c * charW + charW / 2, trailRow * charH + charH / 2);
         ctx.globalAlpha = 1;
       }

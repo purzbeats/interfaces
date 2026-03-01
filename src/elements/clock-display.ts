@@ -130,8 +130,10 @@ export class ClockDisplayElement extends BaseElement {
     const primaryHex = '#' + this.palette.primary.getHexString();
     const dimHex = '#' + this.palette.dim.getHexString();
 
-    // Time display with phosphor glow
-    const bigSize = Math.floor(canvas.height * 0.45);
+    // Time display with phosphor glow — constrain to both height and width
+    const heightSize = Math.floor(canvas.height * 0.45);
+    const widthSize = Math.floor(canvas.width / (timeStr.length * 0.65));
+    const bigSize = Math.max(8, Math.min(heightSize, widthSize));
     ctx.font = `bold ${bigSize}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -147,8 +149,10 @@ export class ClockDisplayElement extends BaseElement {
       drawGlowText(ctx, timeStr, canvas.width / 2, canvas.height * 0.45, primaryHex, 8);
     }
 
-    // Label with subtle glow
-    const smallSize = Math.floor(canvas.height * 0.15);
+    // Label with subtle glow — scale to fit width
+    const smallHeight = Math.floor(canvas.height * 0.15);
+    const smallWidth = Math.floor(canvas.width / (this.label.length * 0.65));
+    const smallSize = Math.max(6, Math.min(smallHeight, smallWidth));
     ctx.font = `${smallSize}px monospace`;
     drawGlowText(ctx, this.label, canvas.width / 2, canvas.height * 0.8, dimHex, 2);
 

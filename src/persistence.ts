@@ -13,6 +13,7 @@ export function loadConfig(): Partial<Config> {
     if (typeof data.seed === 'number') result.seed = data.seed;
     if (typeof data.palette === 'string') result.palette = data.palette;
     if (typeof data.template === 'string') result.template = data.template;
+    if (typeof data.aspectRatio === 'string') result.aspectRatio = data.aspectRatio as Config['aspectRatio'];
     if (data.postfx && typeof data.postfx === 'object') {
       result.postfx = data.postfx;
     }
@@ -32,6 +33,7 @@ export function saveConfig(config: Config): void {
       seed: config.seed,
       palette: config.palette,
       template: config.template,
+      aspectRatio: config.aspectRatio,
       postfx: config.postfx,
       timeline: config.timeline,
     };

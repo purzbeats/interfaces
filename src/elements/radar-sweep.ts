@@ -22,7 +22,7 @@ export class RadarSweepElement extends BaseElement {
 
     // Concentric rings + crosshairs
     const ringVerts: number[] = [];
-    const ringCount = this.rng.int(3, 6);
+    const ringCount = this.rng.int(4, 8);
     const segments = 64;
     for (let r = 1; r <= ringCount; r++) {
       const rr = (radius / ringCount) * r;
@@ -60,7 +60,7 @@ export class RadarSweepElement extends BaseElement {
     this.group.add(this.sweepLine);
 
     // Blips
-    const blipCount = this.rng.int(3, 10);
+    const blipCount = this.rng.int(8, 20);
     for (let i = 0; i < blipCount; i++) {
       this.blipData.push({
         angle: this.rng.float(0, Math.PI * 2),
@@ -79,7 +79,7 @@ export class RadarSweepElement extends BaseElement {
     blipGeo.setAttribute('position', new THREE.BufferAttribute(blipPos, 3));
     this.blips = new THREE.Points(blipGeo, new THREE.PointsMaterial({
       color: this.palette.primary,
-      size: 4,
+      size: Math.max(4, Math.min(w, h) * 0.008),
       transparent: true,
       opacity: 0,
       sizeAttenuation: false,
@@ -113,7 +113,7 @@ export class RadarSweepElement extends BaseElement {
     const sweepColor = this.alertMode ? this.palette.alert : this.palette.primary;
     (this.sweepLine.material as THREE.LineBasicMaterial).color.copy(sweepColor);
     (this.sweepLine.material as THREE.LineBasicMaterial).opacity = opacity;
-    (this.ringLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.25;
+    (this.ringLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.4;
 
     // Update blip brightness based on sweep proximity
     if (this.blips) {

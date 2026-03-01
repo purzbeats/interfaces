@@ -1,0 +1,207 @@
+import * as THREE from 'three';
+import { BaseElement } from './base-element';
+import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
+
+/**
+ * Waterfall spectrogram display — frequency bands scroll vertically over time.
+ * Canvas-based rendering with color-mapped intensity.
+ */
+export class SpectrogramElement extends BaseElement {
+  private canvas!: HTMLCanvasElement;
+  private canvasCtx!: CanvasRenderingContext2D;
+  private texture!: THREE.CanvasTexture;
+  private mesh!: THREE.Mesh;
+  private borderLines!: THREE.LineSegments;
+  private freqBands: number = 0;
+  private scrollRows: number = 0;
+  private bandValues: number[] = [];
+  private bandTargets: number[] = [];
+  private bandVelocities: number[] = [];
+  private updateAccum: number = 0;
+  private readonly UPDATE_INTERVAL = 1 / 4; // slower target changes for visible peak drift
+  private renderAccum: number = 0;
+  private readonly RENDER_INTERVAL = 1 / 12;
+  private pulseTimer: number = 0;
+  private glitchTimer: number = 0;
+
+  build(): void {
+    const { x, y, w, h } = this.px;
+    this.freqBands = Math.max(16, Math.min(128, Math.floor(w / 8)));
+    this.scrollRows = Math.max(32, Math.min(200, Math.floor(h / 4)));
+
+    this.bandValues = new Array(this.freqBands).fill(0);
+    this.bandTargets = new Array(this.freqBands).fill(0);
+    this.bandVelocities = new Array(this.freqBands).fill(0);
+    this.generateTargets();
+    // Initialize band values to targets so first frame has data
+    for (let i = 0; i < this.freqBands; i++) {
+      this.bandValues[i] = this.bandTargets[i];
+    }
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.freqBands;
+    this.canvas.height = this.scrollRows;
+    this.canvasCtx = this.canvas.getContext('2d')!;
+    this.canvasCtx.fillStyle = '#000';
+    this.canvasCtx.fillRect(0, 0, this.freqBands, this.scrollRows);
+
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.LinearFilter;
+
+    // Pre-fill waterfall with historical data so it's not empty on first view
+    for (let row = 0; row < this.scrollRows; row++) {
+      if (row % 3 === 0) this.generateTargets();
+      for (let i = 0; i < this.freqBands; i++) {
+        this.bandValues[i] += (this.bandTargets[i] - this.bandValues[i]) * 0.3;
+      }
+      this.renderWaterfall();
+    }
+
+    const geo = new THREE.PlaneGeometry(w, h);
+    this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      map: this.texture,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.mesh.position.set(x + w / 2, y + h / 2, 1);
+    this.group.add(this.mesh);
+
+    // Border
+    const bv = new Float32Array([
+      x, y, 0, x + w, y, 0,
+      x + w, y, 0, x + w, y + h, 0,
+      x + w, y + h, 0, x, y + h, 0,
+      x, y + h, 0, x, y, 0,
+    ]);
+    const borderGeo = new THREE.BufferGeometry();
+    borderGeo.setAttribute('position', new THREE.BufferAttribute(bv, 3));
+    this.borderLines = new THREE.LineSegments(borderGeo, new THREE.LineBasicMaterial({
+      color: this.palette.primary,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.group.add(this.borderLines);
+  }
+
+  private generateTargets(): void {
+    // Simulate a frequency spectrum with narrow peaks and lots of silence
+    const peakCount = 2 + Math.floor(Math.random() * 3);
+    const peaks: { center: number; width: number; height: number }[] = [];
+    for (let p = 0; p < peakCount; p++) {
+      peaks.push({
+        center: Math.random() * this.freqBands,
+        width: 2 + Math.random() * 5,
+        height: 0.2 + Math.random() * 0.6,
+      });
+    }
+
+    for (let i = 0; i < this.freqBands; i++) {
+      let val = Math.random() * 0.05; // low noise floor
+      for (const peak of peaks) {
+        const dist = Math.abs(i - peak.center);
+        val += peak.height * Math.exp(-(dist * dist) / (2 * peak.width * peak.width));
+      }
+      this.bandTargets[i] = Math.min(1, val);
+    }
+  }
+
+  update(dt: number, time: number): void {
+    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    if (this.pulseTimer > 0) { this.pulseTimer -= dt; opacity *= pulse(this.pulseTimer); }
+    const gx = this.glitchTimer > 0 ? glitchOffset(this.glitchTimer, 4) : 0;
+    if (this.glitchTimer > 0) this.glitchTimer -= dt;
+    this.group.position.x = gx;
+
+    // Spring animate band values
+    for (let i = 0; i < this.freqBands; i++) {
+      const force = (this.bandTargets[i] - this.bandValues[i]) * 8;
+      this.bandVelocities[i] += force * dt;
+      this.bandVelocities[i] *= Math.exp(-4 * dt);
+      this.bandValues[i] += this.bandVelocities[i] * dt;
+    }
+
+    // Periodically generate new targets
+    this.updateAccum += dt;
+    if (this.updateAccum >= this.UPDATE_INTERVAL) {
+      this.updateAccum = 0;
+      this.generateTargets();
+    }
+
+    // Render to canvas
+    this.renderAccum += dt;
+    if (this.renderAccum >= this.RENDER_INTERVAL) {
+      this.renderAccum = 0;
+      this.renderWaterfall();
+    }
+
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
+    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.6;
+  }
+
+  private renderWaterfall(): void {
+    const ctx = this.canvasCtx;
+    // Scroll down by 1 pixel using ImageData (avoids alpha compositing)
+    const imageData = ctx.getImageData(0, 0, this.freqBands, this.scrollRows);
+    ctx.putImageData(imageData, 0, 1);
+
+    // Write new top row directly as pixel data — no alpha compositing
+    const topRow = ctx.createImageData(this.freqBands, 1);
+    const data = topRow.data;
+
+    const pr = this.palette.primary.r;
+    const pg = this.palette.primary.g;
+    const pb = this.palette.primary.b;
+    const sr = this.palette.secondary.r;
+    const sg = this.palette.secondary.g;
+    const sb = this.palette.secondary.b;
+    const bgr = this.palette.bg.r;
+    const bgg = this.palette.bg.g;
+    const bgb = this.palette.bg.b;
+
+    for (let i = 0; i < this.freqBands; i++) {
+      const v = Math.max(0, Math.min(1, this.bandValues[i]));
+      const bright = v * v; // squared gamma — keeps contrast but stays visible
+
+      let r: number, g: number, b: number;
+      if (v > 0.6) {
+        // Hot: primary → secondary
+        const t = (v - 0.6) / 0.4;
+        r = pr + (sr - pr) * t;
+        g = pg + (sg - pg) * t;
+        b = pb + (sb - pb) * t;
+      } else {
+        // Cool: background → primary, scaled by brightness
+        r = bgr + (pr - bgr) * bright;
+        g = bgg + (pg - bgg) * bright;
+        b = bgb + (pb - bgb) * bright;
+      }
+
+      data[i * 4] = Math.floor(r * 255);
+      data[i * 4 + 1] = Math.floor(g * 255);
+      data[i * 4 + 2] = Math.floor(b * 255);
+      data[i * 4 + 3] = 255; // fully opaque
+    }
+
+    ctx.putImageData(topRow, 0, 0);
+    this.texture.needsUpdate = true;
+  }
+
+  onAction(action: string): void {
+    super.onAction(action);
+    if (action === 'pulse') this.pulseTimer = 0.5;
+    if (action === 'glitch') {
+      this.glitchTimer = 0.4;
+      // Scramble bands
+      for (let i = 0; i < this.freqBands; i++) {
+        this.bandTargets[i] = Math.random();
+      }
+    }
+    if (action === 'alert') this.pulseTimer = 2.0;
+  }
+
+  dispose(): void {
+    this.texture.dispose();
+    super.dispose();
+  }
+}

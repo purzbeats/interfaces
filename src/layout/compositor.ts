@@ -1,7 +1,7 @@
 import type { SeededRandom } from '../random';
-import type { Region } from './region';
-import { subdivide, resetRegionCounter } from './grid';
+import type { Region, RegionTier } from './region';
 import { getTemplate, type TemplateConfig } from './templates';
+import { getPattern, randomPattern } from './patterns';
 import { getMeta, allElementNames } from '../elements/tags';
 import { injectDividers, resetDividerCounter } from './dividers';
 
@@ -15,7 +15,6 @@ export interface CompositorResult {
 function resolveWeights(template: TemplateConfig): Record<string, number> {
   const weights: Record<string, number> = {};
 
-  // Start from tagWeights: sum across all matching elements
   if (template.tagWeights) {
     for (const [tag, tagWeight] of Object.entries(template.tagWeights)) {
       for (const name of allElementNames()) {
@@ -33,7 +32,6 @@ function resolveWeights(template: TemplateConfig): Record<string, number> {
     }
   }
 
-  // elementWeights override (not add to) per-element
   if (template.elementWeights) {
     for (const [name, w] of Object.entries(template.elementWeights)) {
       weights[name] = w;
@@ -66,11 +64,11 @@ function shapeFitness(elementName: string, regionShape: RegionShape): number {
     case 'radial':
       if (regionShape === 'square') return 1.5;
       if (regionShape === 'thin-strip') return 0.05;
-      return 0.4; // wide or tall
+      return 0.4;
     case 'linear':
       if (regionShape === 'thin-strip') return 2.0;
       if (regionShape === 'wide' || regionShape === 'tall') return 1.2;
-      return 0.6; // square
+      return 0.6;
     case 'rectangular':
       return 1.0;
     default:
@@ -83,24 +81,19 @@ function shapeFitness(elementName: string, regionShape: RegionShape): number {
 const EDGE_TOLERANCE = 0.02;
 
 function areAdjacent(a: Region, b: Region): boolean {
-  // Check if regions share an edge (within tolerance) in normalized coords
   const aRight = a.x + a.width;
   const bRight = b.x + b.width;
   const aBottom = a.y + a.height;
   const bBottom = b.y + b.height;
 
-  // Vertical overlap check
   const vertOverlap = a.y < bBottom - EDGE_TOLERANCE && b.y < aBottom - EDGE_TOLERANCE;
-  // Horizontal overlap check
   const horizOverlap = a.x < bRight - EDGE_TOLERANCE && b.x < aRight - EDGE_TOLERANCE;
 
-  // Share a vertical edge (left/right neighbors)
   if (vertOverlap && (
     Math.abs(aRight - b.x) < EDGE_TOLERANCE ||
     Math.abs(bRight - a.x) < EDGE_TOLERANCE
   )) return true;
 
-  // Share a horizontal edge (top/bottom neighbors)
   if (horizOverlap && (
     Math.abs(aBottom - b.y) < EDGE_TOLERANCE ||
     Math.abs(bBottom - a.y) < EDGE_TOLERANCE
@@ -122,25 +115,29 @@ function diversityMultiplier(
   region: Region,
   ctx: PlacementContext
 ): number {
+  const useCount = ctx.typeCounts[elementName] ?? 0;
+
+  if (useCount >= 1 && elementName !== 'separator') {
+    return 0;
+  }
+
   let mult = 1.0;
 
-  // Reuse penalty: 0.5x per prior use
-  const useCount = ctx.typeCounts[elementName] ?? 0;
-  mult *= Math.pow(0.5, useCount);
-
-  // Adjacent same-type penalty
-  for (const placed of ctx.placements) {
-    if (placed.elementType === elementName && areAdjacent(region, placed.region)) {
-      mult *= 0.15;
+  const meta = getMeta(elementName);
+  if (meta) {
+    for (const placed of ctx.placements) {
+      if (!areAdjacent(region, placed.region)) continue;
+      const placedMeta = getMeta(placed.elementType);
+      if (placedMeta && meta.roles.some(r => placedMeta.roles.includes(r))) {
+        mult *= 0.4;
+      }
     }
   }
 
-  // Role saturation: 0.6x per role used 3+ times
-  const meta = getMeta(elementName);
   if (meta) {
     for (const role of meta.roles) {
-      if ((ctx.roleCounts[role] ?? 0) >= 3) {
-        mult *= 0.6;
+      if ((ctx.roleCounts[role] ?? 0) >= 2) {
+        mult *= 0.5;
       }
     }
   }
@@ -148,119 +145,186 @@ function diversityMultiplier(
   return mult;
 }
 
-// --- Segment lines (uniform widget bands) ---
+// --- Mood coherence ---
 
-interface AlignedGroup {
-  axis: 'row' | 'column';
-  regions: Region[];
+type Mood = 'tactical' | 'diagnostic' | 'ambient';
+const ALL_MOODS: Mood[] = ['tactical', 'diagnostic', 'ambient'];
+
+function pickDominantMood(rng: SeededRandom): Mood {
+  return rng.pick(ALL_MOODS);
 }
 
-function findAlignedGroups(regions: Region[]): AlignedGroup[] {
-  const groups: AlignedGroup[] = [];
-  const tol = EDGE_TOLERANCE;
+function moodBoost(elementName: string, dominantMood: Mood): number {
+  const meta = getMeta(elementName);
+  if (!meta) return 1.0;
+  if (meta.moods.includes(dominantMood)) return 2.0;
+  return 0.5;
+}
 
-  // Find rows: regions sharing same y and y+height
-  const rowBuckets = new Map<string, Region[]>();
-  for (const r of regions) {
-    // Quantize y and bottom to tolerance
-    const key = `${Math.round(r.y / tol)}|${Math.round((r.y + r.height) / tol)}`;
-    let bucket = rowBuckets.get(key);
-    if (!bucket) { bucket = []; rowBuckets.set(key, bucket); }
-    bucket.push(r);
+// --- Size fitness ---
+
+type RegionSizeBucket = 'small' | 'medium' | 'large';
+
+function classifyRegionSize(region: Region): RegionSizeBucket {
+  const area = region.width * region.height;
+  if (area < 0.03) return 'small';
+  if (area < 0.10) return 'medium';
+  return 'large';
+}
+
+function sizeFitness(elementName: string, regionSize: RegionSizeBucket): number {
+  const meta = getMeta(elementName);
+  if (!meta) return 1.0;
+  const sizes = meta.sizes;
+
+  switch (regionSize) {
+    case 'small':
+      if (sizes.includes('works-small')) return 1.2;
+      if (sizes.includes('needs-medium')) return 0.3;
+      return 0.1;
+    case 'medium':
+      if (sizes.includes('needs-medium')) return 1.3;
+      if (sizes.includes('works-small')) return 0.8;
+      if (sizes.includes('needs-large')) return 0.5;
+      return 1.0;
+    case 'large':
+      if (sizes.includes('needs-large')) return 1.5;
+      if (sizes.includes('needs-medium')) return 1.0;
+      return 0.4;
   }
-  for (const bucket of rowBuckets.values()) {
-    if (bucket.length < 2) continue;
-    // Sort by x, check contiguity
-    bucket.sort((a, b) => a.x - b.x);
-    if (isContiguous(bucket, 'x', 'width')) {
-      groups.push({ axis: 'row', regions: [...bucket] });
+}
+
+// --- Tier affinity multiplier ---
+
+function tierAffinityMultiplier(elementName: string, tier: RegionTier): number {
+  const meta = getMeta(elementName);
+  if (!meta) return 1.0;
+  const sizes = meta.sizes;
+
+  switch (tier) {
+    case 'hero':
+      if (sizes.includes('needs-large')) return 3.0;
+      if (sizes.includes('needs-medium')) return 0.5;
+      if (sizes.includes('works-small')) return 0.1;
+      return 1.0;
+    case 'panel':
+      if (sizes.includes('needs-medium')) return 2.5;
+      if (sizes.includes('needs-large')) return 0.4;
+      if (sizes.includes('works-small')) return 0.3;
+      return 1.0;
+    case 'widget':
+      if (sizes.includes('works-small')) return 3.0;
+      if (sizes.includes('needs-medium')) return 0.3;
+      if (sizes.includes('needs-large')) return 0.05;
+      return 1.0;
+  }
+}
+
+// --- Tier demotion after divider slicing ---
+
+const HERO_MIN_AREA = 0.06;
+
+function demoteSlicedHeroes(regions: Region[]): void {
+  for (const r of regions) {
+    if (r.tier === 'hero' && r.width * r.height < HERO_MIN_AREA) {
+      r.tier = 'panel';
     }
   }
+}
 
-  // Find columns: regions sharing same x and x+width
-  const colBuckets = new Map<string, Region[]>();
-  for (const r of regions) {
-    const key = `${Math.round(r.x / tol)}|${Math.round((r.x + r.width) / tol)}`;
-    let bucket = colBuckets.get(key);
-    if (!bucket) { bucket = []; colBuckets.set(key, bucket); }
-    bucket.push(r);
+// --- Compose ---
+
+/**
+ * Layout engine: selects template, generates tiered pattern regions,
+ * assigns element types with tier affinity, shape fitness, and diversity.
+ */
+export function compose(
+  templateName: string,
+  rng: SeededRandom
+): CompositorResult {
+  resetDividerCounter();
+  const template = getTemplate(templateName, rng);
+
+  // 1. Generate regions from pattern
+  const patternName = template.layoutPattern;
+  const pattern = patternName ? getPattern(patternName) : undefined;
+  const patternRegions = pattern
+    ? pattern.generate(rng)
+    : randomPattern(rng).generate(rng);
+
+  // 2. Inject dividers (slice regions; dividers are pre-assigned)
+  const { contentRegions, dividerRegions } = injectDividers(patternRegions, rng);
+
+  // Demote heroes that got sliced too small
+  demoteSlicedHeroes(contentRegions);
+
+  const allRegions = [...contentRegions, ...dividerRegions];
+
+  // 3. Resolve base weights
+  const baseWeights = resolveWeights(template);
+  const candidates = Object.keys(baseWeights);
+
+  if (candidates.length === 0) {
+    return { template, regions: allRegions };
   }
-  for (const bucket of colBuckets.values()) {
-    if (bucket.length < 2) continue;
-    bucket.sort((a, b) => a.y - b.y);
-    if (isContiguous(bucket, 'y', 'height')) {
-      groups.push({ axis: 'column', regions: [...bucket] });
+
+  // Cap content regions to available candidate count
+  let assignable = contentRegions.filter(r => !r.isDivider);
+  if (assignable.length > candidates.length) {
+    assignable.sort((a, b) => (b.width * b.height) - (a.width * a.height));
+    const toDrop = new Set(assignable.slice(candidates.length));
+    for (let i = allRegions.length - 1; i >= 0; i--) {
+      if (toDrop.has(allRegions[i])) {
+        allRegions.splice(i, 1);
+      }
     }
+    assignable = assignable.slice(0, candidates.length);
   }
 
-  return groups;
-}
+  // 4. Pick dominant mood
+  const dominantMood = pickDominantMood(rng);
 
-function isContiguous(
-  sorted: Region[],
-  posKey: 'x' | 'y',
-  sizeKey: 'width' | 'height'
-): boolean {
-  for (let i = 1; i < sorted.length; i++) {
-    const prevEnd = sorted[i - 1][posKey] + sorted[i - 1][sizeKey];
-    if (Math.abs(prevEnd - sorted[i][posKey]) > EDGE_TOLERANCE) return false;
-  }
-  return true;
-}
+  // Placement context
+  const ctx: PlacementContext = {
+    typeCounts: {},
+    roleCounts: {},
+    placements: [],
+  };
 
-function selectSegmentLines(
-  groups: AlignedGroup[],
-  rng: SeededRandom
-): AlignedGroup[] {
-  // 0 (20%), 1 (40%), 2 (30%), 3 (10%)
-  const countIdx = rng.weighted([20, 40, 30, 10]);
-  const segmentCount = countIdx; // 0,1,2,3
+  // 5. Assign tier-by-tier: heroes first, then panels, then widgets
+  const tierOrder: RegionTier[] = ['hero', 'panel', 'widget'];
+  const regionsByTier: Record<RegionTier, Region[]> = { hero: [], panel: [], widget: [] };
 
-  if (segmentCount === 0 || groups.length === 0) return [];
-
-  const shuffled = rng.shuffle([...groups]);
-  const selected: AlignedGroup[] = [];
-  const usedRegions = new Set<Region>();
-
-  for (const group of shuffled) {
-    if (selected.length >= segmentCount) break;
-    // Check no region overlap with already-selected segments
-    if (group.regions.some(r => usedRegions.has(r))) continue;
-    selected.push(group);
-    for (const r of group.regions) usedRegions.add(r);
+  for (const r of assignable) {
+    const tier = r.tier ?? 'widget';
+    regionsByTier[tier].push(r);
   }
 
-  return selected;
-}
+  // Within each tier, assign larger regions first
+  for (const tier of tierOrder) {
+    const tierRegions = regionsByTier[tier];
+    tierRegions.sort((a, b) => (b.width * b.height) - (a.width * a.height));
 
-function assignSegmentLines(
-  segments: AlignedGroup[],
-  baseWeights: Record<string, number>,
-  candidates: string[],
-  ctx: PlacementContext,
-  rng: SeededRandom
-): Set<Region> {
-  const preAssigned = new Set<Region>();
+    for (const region of tierRegions) {
+      const regionShape = classifyRegion(region);
+      const regionSize = classifyRegionSize(region);
+      const regionTier = region.tier ?? 'widget';
 
-  for (const seg of segments) {
-    // Use first region's shape as representative
-    const regionShape = classifyRegion(seg.regions[0]);
+      const adjustedWeights: number[] = candidates.map(name => {
+        const base = baseWeights[name];
+        const fit = shapeFitness(name, regionShape);
+        const size = sizeFitness(name, regionSize);
+        const mood = moodBoost(name, dominantMood);
+        const div = diversityMultiplier(name, region, ctx);
+        const tierAff = tierAffinityMultiplier(name, regionTier);
+        return base * fit * size * mood * div * tierAff;
+      });
 
-    // Pick element via weighted random with shape fitness
-    const adjustedWeights: number[] = candidates.map(name => {
-      const base = baseWeights[name];
-      const fit = shapeFitness(name, regionShape);
-      const div = diversityMultiplier(name, seg.regions[0], ctx);
-      return base * fit * div;
-    });
-
-    const idx = rng.weighted(adjustedWeights);
-    const chosen = candidates[idx];
-
-    // Assign to all regions in segment
-    for (const region of seg.regions) {
+      const total = adjustedWeights.reduce((a, b) => a + b, 0);
+      const chosen = total > 0
+        ? candidates[rng.weighted(adjustedWeights)]
+        : 'panel';
       region.elementType = chosen;
-      preAssigned.add(region);
 
       ctx.typeCounts[chosen] = (ctx.typeCounts[chosen] ?? 0) + 1;
       const meta = getMeta(chosen);
@@ -273,87 +337,5 @@ function assignSegmentLines(
     }
   }
 
-  return preAssigned;
-}
-
-// --- Compose ---
-
-/**
- * Layout engine: selects template, subdivides regions, assigns element types
- * with shape-aware fitness and diversity penalties.
- */
-export function compose(
-  templateName: string,
-  rng: SeededRandom
-): CompositorResult {
-  resetRegionCounter();
-  resetDividerCounter();
-  const template = getTemplate(templateName, rng);
-  const topRegions = template.createRegions(rng);
-
-  // Inject dividers: carve through template regions before BSP
-  const { contentRegions, dividerRegions } = injectDividers(topRegions, rng);
-
-  // Subdivide each content region (not dividers)
-  const leafRegions: Region[] = [];
-  for (const region of contentRegions) {
-    const leaves = subdivide(region, rng, template.bspOptions);
-    leafRegions.push(...leaves);
-  }
-  // Add divider regions as leaf regions (no subdivision)
-  leafRegions.push(...dividerRegions);
-
-  // Resolve base weights from tagWeights + elementWeights
-  const baseWeights = resolveWeights(template);
-  const candidates = Object.keys(baseWeights);
-
-  // If no candidates (shouldn't happen with valid templates), fall back
-  if (candidates.length === 0) {
-    return { template, regions: leafRegions };
-  }
-
-  // Placement context for diversity tracking
-  const ctx: PlacementContext = {
-    typeCounts: {},
-    roleCounts: {},
-    placements: [],
-  };
-
-  // Segment lines: find aligned groups, select 0-3, pre-assign
-  const alignedGroups = findAlignedGroups(leafRegions);
-  const segments = selectSegmentLines(alignedGroups, rng);
-  const preAssigned = assignSegmentLines(segments, baseWeights, candidates, ctx, rng);
-
-  // Process remaining regions sequentially, building context
-  for (const region of leafRegions) {
-    if (preAssigned.has(region)) continue;
-    if (region.isDivider) continue;
-
-    const regionShape = classifyRegion(region);
-
-    // Compute adjusted weights for each candidate
-    const adjustedWeights: number[] = candidates.map(name => {
-      const base = baseWeights[name];
-      const fit = shapeFitness(name, regionShape);
-      const div = diversityMultiplier(name, region, ctx);
-      return base * fit * div;
-    });
-
-    // Weighted random select
-    const idx = rng.weighted(adjustedWeights);
-    const chosen = candidates[idx];
-    region.elementType = chosen;
-
-    // Update context
-    ctx.typeCounts[chosen] = (ctx.typeCounts[chosen] ?? 0) + 1;
-    const meta = getMeta(chosen);
-    if (meta) {
-      for (const role of meta.roles) {
-        ctx.roleCounts[role] = (ctx.roleCounts[role] ?? 0) + 1;
-      }
-    }
-    ctx.placements.push({ region, elementType: chosen });
-  }
-
-  return { template, regions: leafRegions };
+  return { template, regions: allRegions };
 }

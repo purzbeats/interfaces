@@ -1,5 +1,6 @@
 import GUI from 'lil-gui';
 import type { Config } from '../config';
+import { ASPECT_RATIOS } from '../config';
 import type { AudioSynth } from '../audio/synth';
 import { paletteNames } from '../color/palettes';
 import { templateNames } from '../layout/templates';
@@ -17,7 +18,8 @@ export function createGUI(
   onScreenshot: () => void,
   onRecord: () => void,
   audio: AudioSynth,
-  playback?: { onPause: () => void; onRestart: () => void; onLoopToggle: (v: boolean) => void }
+  playback?: { onPause: () => void; onRestart: () => void; onLoopToggle: (v: boolean) => void },
+  onAspectChange?: () => void,
 ): GUIControls {
   const gui = new GUI({ title: 'INTERFACES' });
   gui.domElement.style.zIndex = '1000';
@@ -27,6 +29,9 @@ export function createGUI(
   genFolder.add(config, 'seed', 0, 99999, 1).name('Seed').onFinishChange(onRegenerate);
   genFolder.add(config, 'palette', paletteNames()).name('Palette').onChange(onRegenerate);
   genFolder.add(config, 'template', templateNames()).name('Template').onChange(onRegenerate);
+  genFolder.add(config, 'aspectRatio', ASPECT_RATIOS).name('Aspect Ratio').onChange(() => {
+    if (onAspectChange) onAspectChange();
+  });
   genFolder.add({ regenerate: onRegenerate }, 'regenerate').name('Regenerate (R)');
   genFolder.add({
     copyURL: () => {
@@ -39,7 +44,7 @@ export function createGUI(
     const pbFolder = gui.addFolder('Playback');
     pbFolder.add({ pausePlay: playback.onPause }, 'pausePlay').name('Pause / Play (Space)');
     pbFolder.add({ restart: playback.onRestart }, 'restart').name('Restart (Backspace)');
-    pbFolder.add({ loop: false }, 'loop').name('Continuous (L)').onChange(playback.onLoopToggle);
+    pbFolder.add({ loop: true }, 'loop').name('Continuous (L)').onChange(playback.onLoopToggle);
   }
 
   // Audio
@@ -82,16 +87,64 @@ export function createGUI(
   exportFolder.add(config.export, 'duration', 5, 120, 1).name('Video Duration');
   exportFolder.close();
 
-  let visible = true;
+  // Close button — insert into the title bar
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '\u00d7';
+  Object.assign(closeBtn.style, {
+    position: 'absolute',
+    top: '0',
+    left: '4px',
+    background: 'none',
+    border: 'none',
+    color: '#888',
+    fontSize: '16px',
+    cursor: 'pointer',
+    lineHeight: '26px',
+    padding: '0 4px',
+    zIndex: '1',
+  });
+  // lil-gui title bar is the first .title element
+  const titleBar = gui.domElement.querySelector('.title');
+  if (titleBar) {
+    (titleBar as HTMLElement).style.position = 'relative';
+    titleBar.appendChild(closeBtn);
+  } else {
+    gui.domElement.appendChild(closeBtn);
+  }
+
+  // Start hidden until first click
+  let visible = false;
+  gui.domElement.style.display = 'none';
+
+  const hide = () => {
+    visible = false;
+    gui.domElement.style.display = 'none';
+  };
+
+  const show = () => {
+    visible = true;
+    gui.domElement.style.display = '';
+  };
+
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hide();
+  });
+
+  const showOnClick = () => {
+    show();
+    window.removeEventListener('click', showOnClick);
+  };
+  window.addEventListener('click', showOnClick);
 
   return {
     gui,
     get visible() { return visible; },
     toggle() {
-      visible = !visible;
-      gui.domElement.style.display = visible ? '' : 'none';
+      if (visible) hide(); else show();
     },
     destroy() {
+      window.removeEventListener('click', showOnClick);
       gui.destroy();
     },
   };

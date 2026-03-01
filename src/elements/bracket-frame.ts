@@ -48,7 +48,7 @@ export class BracketFrameElement extends BaseElement {
         cp.ox, cp.oy + cp.dy * bracketLen, 1,
         // Small inner tick
         cp.ox + cp.dx * bracketLen * 0.3, cp.oy, 1,
-        cp.ox + cp.dx * bracketLen * 0.3, cp.oy + cp.dy * 6, 1,
+        cp.ox + cp.dx * bracketLen * 0.3, cp.oy + cp.dy * bracketLen * 0.15, 1,
       ]);
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
@@ -64,11 +64,12 @@ export class BracketFrameElement extends BaseElement {
     // Edge tick marks along top and right
     const edgeVerts: number[] = [];
     const tickCount = this.rng.int(8, 16);
+    const tickBase = Math.max(4, Math.min(w, h) * 0.015);
     for (let i = 0; i <= tickCount; i++) {
       const t = i / tickCount;
       // Top edge ticks
       const tx = x + w * t;
-      const tickH = (i % 4 === 0) ? 8 : 4;
+      const tickH = (i % 4 === 0) ? tickBase * 2 : tickBase;
       edgeVerts.push(tx, y, 0.5, tx, y + tickH, 0.5);
       // Bottom edge ticks
       edgeVerts.push(tx, y + h, 0.5, tx, y + h - tickH, 0.5);
@@ -82,22 +83,24 @@ export class BracketFrameElement extends BaseElement {
     }));
     this.group.add(this.edgeLines);
 
-    // Small label canvas in corner
+    // Label canvas in corner — scale to region
     const scale = Math.min(2, window.devicePixelRatio);
+    const labelW = w * 0.5;
+    const labelH = Math.max(16, h * 0.06);
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.ceil(w * 0.4 * scale);
-    this.canvas.height = Math.ceil(24 * scale);
+    this.canvas.width = Math.ceil(labelW * scale);
+    this.canvas.height = Math.ceil(labelH * scale);
     this.ctx = this.canvas.getContext('2d')!;
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
     this.texture.magFilter = THREE.LinearFilter;
-    const labelGeo = new THREE.PlaneGeometry(w * 0.4, 24);
+    const labelGeo = new THREE.PlaneGeometry(labelW, labelH);
     this.labelMesh = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
       map: this.texture,
       transparent: true,
       opacity: 0,
     }));
-    this.labelMesh.position.set(x + w * 0.2 + 10, y + h - 14, 2);
+    this.labelMesh.position.set(x + labelW / 2 + 10, y + h - labelH / 2 - 4, 2);
     this.group.add(this.labelMesh);
   }
 
@@ -124,7 +127,7 @@ export class BracketFrameElement extends BaseElement {
       (this.corners[i].material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
     }
 
-    (this.edgeLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.25;
+    (this.edgeLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.4;
 
     // Render label
     this.renderAccum += dt;
@@ -132,11 +135,16 @@ export class BracketFrameElement extends BaseElement {
       this.renderAccum = 0;
       const { ctx, canvas } = this;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const fontSize = Math.floor(canvas.height * 0.6);
+      const timeText = `T+${time.toFixed(1)}`;
+      const fullText = this.coordText + '  ' + timeText;
+      const heightSize = Math.floor(canvas.height * 0.6);
+      const widthSize = Math.floor(canvas.width / (fullText.length * 0.62));
+      const fontSize = Math.max(6, Math.min(heightSize, widthSize));
       ctx.font = `${fontSize}px monospace`;
       ctx.fillStyle = '#' + this.palette.dim.getHexString();
-      ctx.fillText(this.coordText, 4, canvas.height * 0.65);
-      ctx.fillText(`T+${time.toFixed(1)}`, canvas.width * 0.55, canvas.height * 0.65);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.coordText, 4, canvas.height / 2);
+      ctx.fillText(timeText, canvas.width * 0.55, canvas.height / 2);
       this.texture.needsUpdate = true;
     }
     (this.labelMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.6;

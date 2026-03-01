@@ -31,6 +31,14 @@ import { MemoryMapElement } from './memory-map';
 import { CoordGridElement } from './coord-grid';
 import { LevelRingsElement } from './level-rings';
 import { RadialScannerElement } from './radial-scanner';
+import { HexTunnelElement } from './hex-tunnel';
+import { DotMatrixElement } from './dot-matrix';
+import { OrbitalDisplayElement } from './orbital-display';
+import { PulseWaveElement } from './pulse-wave';
+import { SpectrogramElement } from './spectrogram';
+import { ParticleFieldElement } from './particle-field';
+import { TopologyMapElement } from './topology-map';
+import { TargetLockElement } from './target-lock';
 
 type ElementFactory = (
   region: Region,
@@ -74,6 +82,14 @@ const REGISTRY: Record<string, ElementFactory> = {
  'coord-grid':         f(CoordGridElement),
  'level-rings':        f(LevelRingsElement),
  'radial-scanner':     f(RadialScannerElement),
+ 'hex-tunnel':         f(HexTunnelElement),
+ 'dot-matrix':         f(DotMatrixElement),
+ 'orbital-display':    f(OrbitalDisplayElement),
+ 'pulse-wave':         f(PulseWaveElement),
+ 'spectrogram':        f(SpectrogramElement),
+ 'particle-field':     f(ParticleFieldElement),
+ 'topology-map':       f(TopologyMapElement),
+ 'target-lock':        f(TargetLockElement),
 };
 
 export function createElement(
@@ -89,6 +105,20 @@ export function createElement(
   const element = factory(region, palette, rng, screenWidth, screenHeight, emitAudio);
   element.build();
   return element;
+}
+
+/** Construct an element without calling build() — for deferred/staged loading. */
+export function createElementDeferred(
+  type: string,
+  region: Region,
+  palette: Palette,
+  rng: SeededRandom,
+  screenWidth: number,
+  screenHeight: number,
+  emitAudio?: AudioEmitter
+): BaseElement {
+  const factory = REGISTRY[type] ?? REGISTRY['panel'];
+  return factory(region, palette, rng, screenWidth, screenHeight, emitAudio);
 }
 
 export function elementTypes(): string[] {

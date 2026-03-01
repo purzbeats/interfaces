@@ -98,7 +98,10 @@ export class TextLabelElement extends BaseElement {
     const { ctx, canvas } = this;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const fontSize = Math.min(Math.floor(canvas.height * 0.5), 28);
+    // Size to fit: use height-based size but constrain to width for long strings
+    const heightSize = Math.floor(canvas.height * 0.5);
+    const widthSize = Math.floor(canvas.width / (this.text.length * 0.62));
+    const fontSize = Math.max(8, Math.min(heightSize, widthSize));
     ctx.font = `${fontSize}px monospace`;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';

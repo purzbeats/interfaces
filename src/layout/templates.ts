@@ -4,6 +4,7 @@ import { type BSPOptions } from './grid';
 
 export interface TemplateConfig {
   name: string;
+  layoutPattern?: string;
   createRegions: (rng: SeededRandom) => Region[];
   bspOptions: Partial<BSPOptions>;
   elementWeights?: Record<string, number>;
@@ -13,23 +14,27 @@ export interface TemplateConfig {
 export const TEMPLATES: Record<string, TemplateConfig> = {
   'command-center': {
     name: 'command-center',
+    layoutPattern: 'main-sidebar',
     createRegions: () => [
       createRegion('main', 0.0, 0.0, 0.65, 0.8, 0.005),
       createRegion('sidebar', 0.65, 0.0, 0.35, 1.0, 0.005),
       createRegion('status', 0.0, 0.8, 0.65, 0.2, 0.005),
     ],
-    bspOptions: { maxDepth: 3, splitVariance: 0.2, minWidth: 0.1, minHeight: 0.1 },
+    bspOptions: { maxDepth: 2, splitVariance: 0.2, minWidth: 0.14, minHeight: 0.12 },
     elementWeights: {
-      panel: 2, graph: 2, waveform: 1, 'scrolling-numbers': 1,
+      graph: 2, waveform: 2, 'scrolling-numbers': 1,
       'text-label': 2, 'progress-bar': 1, 'status-readout': 1,
       'signal-bars': 1, 'ring-gauge': 1, 'bracket-frame': 1,
       'threat-meter': 1, 'clock-display': 1, 'segment-display': 1,
-      'freq-analyzer': 1, 'binary-stream': 1,
+      'freq-analyzer': 1, 'binary-stream': 1, 'scan-line': 1,
+      'radar-sweep': 1, 'cross-scope': 1,
+      'pulse-wave': 2, 'spectrogram': 1, 'target-lock': 1,
     },
   },
 
   'surveillance': {
     name: 'surveillance',
+    layoutPattern: 'dual-monitor',
     createRegions: () => {
       const regions: Region[] = [];
       const cols = 3, rows = 3;
@@ -40,32 +45,37 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       }
       return regions;
     },
-    bspOptions: { maxDepth: 1, splitVariance: 0.15, minWidth: 0.15, minHeight: 0.15 },
+    bspOptions: { maxDepth: 0, splitVariance: 0.15, minWidth: 0.15, minHeight: 0.15 },
     elementWeights: {
-      'radar-sweep': 2, 'bracket-frame': 2,
-      waveform: 1, 'grid-overlay': 1, 'cross-scope': 1, 'concentric-rings': 1,
-      'radial-scanner': 2, 'scan-line': 1, 'coord-grid': 1, 'thermal-map': 1,
+      'radar-sweep': 2, 'bracket-frame': 2, 'cross-scope': 2,
+      waveform: 1, 'grid-overlay': 1, 'concentric-rings': 1,
+      'radial-scanner': 2, 'scan-line': 1, 'coord-grid': 1,
+      'ring-gauge': 1, 'level-rings': 1,
+      'target-lock': 2, 'hex-tunnel': 1, 'orbital-display': 1,
     },
   },
 
   'diagnostic': {
     name: 'diagnostic',
+    layoutPattern: 'grid-dashboard',
     createRegions: () => [
       createRegion('left', 0.0, 0.0, 0.4, 1.0, 0.005),
       createRegion('top-right', 0.4, 0.0, 0.6, 0.5, 0.005),
       createRegion('bottom-right', 0.4, 0.5, 0.6, 0.5, 0.005),
     ],
-    bspOptions: { maxDepth: 3, splitVariance: 0.25, minWidth: 0.12, minHeight: 0.1 },
+    bspOptions: { maxDepth: 2, splitVariance: 0.25, minWidth: 0.14, minHeight: 0.12 },
     elementWeights: {
       graph: 3, waveform: 2, 'progress-bar': 2, 'ring-gauge': 2,
       'signal-bars': 2, 'status-readout': 1, 'text-label': 1,
       'freq-analyzer': 2, 'level-rings': 2, 'phase-indicator': 1, 'threat-meter': 1,
-      'thermal-map': 1, 'memory-map': 1,
+      'cross-scope': 1, 'clock-display': 1, 'scan-line': 1, 'segment-display': 1,
+      'pulse-wave': 2, 'spectrogram': 2, 'dot-matrix': 1,
     },
   },
 
   'tactical': {
     name: 'tactical',
+    layoutPattern: 'hud-frame',
     createRegions: () => [
       createRegion('center', 0.2, 0.15, 0.6, 0.7, 0.005),
       createRegion('top', 0.0, 0.0, 1.0, 0.15, 0.005),
@@ -73,17 +83,20 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       createRegion('left', 0.0, 0.15, 0.2, 0.7, 0.005),
       createRegion('right', 0.8, 0.15, 0.2, 0.7, 0.005),
     ],
-    bspOptions: { maxDepth: 2, splitVariance: 0.2, minWidth: 0.08, minHeight: 0.06 },
+    bspOptions: { maxDepth: 1, splitVariance: 0.2, minWidth: 0.1, minHeight: 0.08 },
     elementWeights: {
       'radar-sweep': 2, 'scrolling-numbers': 2, 'text-label': 2, 'status-readout': 1,
       'hex-grid': 1, 'bracket-frame': 1,
       'radial-scanner': 2, 'coord-grid': 2, 'scan-line': 1, 'threat-meter': 1,
       'segment-display': 1, 'clock-display': 1, 'phase-indicator': 1,
+      'cross-scope': 1, 'waveform': 1,
+      'target-lock': 2, 'topology-map': 1, 'hex-tunnel': 1,
     },
   },
 
   'nerv': {
     name: 'nerv',
+    layoutPattern: 'center-focus',
     createRegions: () => [
       createRegion('center', 0.25, 0.15, 0.5, 0.7, 0.005),
       createRegion('top-bar', 0.0, 0.0, 1.0, 0.15, 0.005),
@@ -91,36 +104,42 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       createRegion('left-col', 0.0, 0.15, 0.25, 0.7, 0.005),
       createRegion('right-col', 0.75, 0.15, 0.25, 0.7, 0.005),
     ],
-    bspOptions: { maxDepth: 3, splitVariance: 0.25, minWidth: 0.08, minHeight: 0.06 },
+    bspOptions: { maxDepth: 2, splitVariance: 0.25, minWidth: 0.1, minHeight: 0.08 },
     elementWeights: {
       'hex-grid': 3, 'concentric-rings': 2, 'ring-gauge': 2,
       'data-cascade': 1, 'cross-scope': 1,
       'text-label': 1, 'status-readout': 1,
       'level-rings': 2, 'phase-indicator': 1, 'radial-scanner': 1,
-      'segment-display': 1, 'memory-map': 1,
+      'segment-display': 1, 'bracket-frame': 1,
+      'scan-line': 1, 'waveform': 1,
+      'hex-tunnel': 3, 'orbital-display': 2, 'dot-matrix': 1, 'target-lock': 1,
     },
   },
 
   'datastream': {
     name: 'datastream',
+    layoutPattern: 'asymmetric-split',
     createRegions: () => [
       createRegion('main', 0.0, 0.0, 0.7, 0.7, 0.005),
       createRegion('right', 0.7, 0.0, 0.3, 1.0, 0.005),
       createRegion('bottom', 0.0, 0.7, 0.7, 0.3, 0.005),
     ],
-    bspOptions: { maxDepth: 3, splitVariance: 0.3, minWidth: 0.08, minHeight: 0.08 },
+    bspOptions: { maxDepth: 2, splitVariance: 0.3, minWidth: 0.12, minHeight: 0.1 },
     elementWeights: {
       'data-cascade': 3, 'scrolling-numbers': 3, 'signal-bars': 2,
       waveform: 2, graph: 2, 'cross-scope': 1, 'text-label': 1, 'status-readout': 1,
-      'binary-stream': 2, 'freq-analyzer': 1, 'memory-map': 1, 'clock-display': 1,
+      'binary-stream': 2, 'freq-analyzer': 1, 'clock-display': 1,
+      'scan-line': 1, 'progress-bar': 1, 'threat-meter': 1,
+      'spectrogram': 2, 'pulse-wave': 1, 'dot-matrix': 1, 'particle-field': 1,
     },
   },
 
   'geometry': {
     name: 'geometry',
+    layoutPattern: 'cockpit',
     createRegions: (rng) => {
       const regions: Region[] = [];
-      const cols = rng.pick([2, 3, 4]);
+      const cols = rng.pick([2, 3]);
       const rows = rng.pick([2, 3]);
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -129,11 +148,14 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       }
       return regions;
     },
-    bspOptions: { maxDepth: 1, splitVariance: 0.1, minWidth: 0.12, minHeight: 0.12 },
+    bspOptions: { maxDepth: 0, splitVariance: 0.1, minWidth: 0.15, minHeight: 0.15 },
     elementWeights: {
       'concentric-rings': 3, 'hex-grid': 2,
       'level-rings': 2, 'radial-scanner': 2, 'phase-indicator': 1,
-      'thermal-map': 1, 'coord-grid': 1,
+      'coord-grid': 1, 'cross-scope': 2, 'ring-gauge': 1,
+      'radar-sweep': 2,
+      'hex-tunnel': 3, 'orbital-display': 2, 'topology-map': 1, 'target-lock': 1,
+      'particle-field': 1, 'dot-matrix': 1,
     },
   },
 };

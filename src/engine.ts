@@ -1,9 +1,10 @@
-import { type Config, DEFAULT_CONFIG } from './config';
+import { type Config, DEFAULT_CONFIG, computeAspectSize } from './config';
+import { ShowcaseMode } from './showcase';
 import { SeededRandom } from './random';
 import { createRenderer, resizeRenderer, type RendererContext } from './renderer/setup';
 import { getPalette, type Palette } from './color/palettes';
 import { compose } from './layout/compositor';
-import { createElement } from './elements/registry';
+import { createElement, createElementDeferred } from './elements/registry';
 import { type BaseElement } from './elements/base-element';
 import { generateTimeline, type Timeline } from './animation/timeline';
 import { createPostFXPipeline, type PostFXPipeline } from './postfx/pipeline';
@@ -32,6 +33,9 @@ export class Engine {
   private disposed: boolean = false;
   private loopDwell: number = 0;
   private readonly LOOP_DWELL_TIME = 1.5; // seconds of darkness between compositions
+  private pendingBuild: { element: BaseElement; wrapper: THREE.Group }[] = [];
+  private readonly BUILD_BATCH_SIZE = 3;
+  private showcase!: ShowcaseMode;
 
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
@@ -45,15 +49,44 @@ export class Engine {
     if (params.has('template')) this.config.template = params.get('template')!;
   }
 
+  /** Compute and apply canvas size from aspect ratio + window dimensions. */
+  private applyAspect(): void {
+    const { width, height, offsetX, offsetY } = computeAspectSize(
+      this.config.aspectRatio,
+      window.innerWidth,
+      window.innerHeight
+    );
+    this.config.width = width;
+    this.config.height = height;
+
+    if (this.ctx) {
+      const canvas = this.ctx.renderer.domElement;
+      canvas.style.position = 'absolute';
+      canvas.style.left = `${offsetX}px`;
+      canvas.style.top = `${offsetY}px`;
+      // Set background to black for letterbox/pillarbox bars
+      document.body.style.background = '#000';
+    }
+  }
+
   init(): void {
     this.config.width = window.innerWidth;
     this.config.height = window.innerHeight;
 
     this.ctx = createRenderer(this.config.width, this.config.height);
+    this.applyAspect();
+    resizeRenderer(this.ctx, this.config.width, this.config.height);
     this.pipeline = createPostFXPipeline(
       this.ctx.renderer, this.ctx.scene, this.ctx.camera, this.config
     );
     this.recorder = createVideoRecorder(this.ctx.renderer.domElement, this.config.export.fps);
+    this.showcase = new ShowcaseMode(this.ctx, this.pipeline, this.config, () => {
+      // On exit: restore aspect, regenerate the normal composition
+      this.applyAspect();
+      resizeRenderer(this.ctx, this.config.width, this.config.height);
+      this.pipeline.resize(this.config.width, this.config.height);
+      this.generate(this.config.seed);
+    });
 
     this.gui = createGUI(
       this.config,
@@ -68,7 +101,8 @@ export class Engine {
         onPause: () => this.togglePause(),
         onRestart: () => this.restart(),
         onLoopToggle: (v: boolean) => { this.timeline.loop = v; },
-      }
+      },
+      () => this.applyAspectAndRegenerate(),
     );
 
     this.generate(this.config.seed);
@@ -139,7 +173,85 @@ export class Engine {
     }
 
     // Generate timeline (preserve loop state across regenerations)
-    const wasLooping = this.timeline?.loop ?? false;
+    const wasLooping = this.timeline?.loop ?? true;
+    const timelineRng = rng.fork();
+    const elementIds = this.elements.map((e) => e.id);
+    this.timeline = generateTimeline(elementIds, this.config.timeline, timelineRng);
+    this.timeline.loop = wasLooping;
+
+    // Persist state
+    saveConfig(this.config);
+    updateURL(this.config);
+  }
+
+  /** Phase 1 of staged loading: teardown + layout + construct (no build). */
+  private prepareNext(): void {
+    this.config.seed = Math.floor(Math.random() * 100000);
+    const seed = this.config.seed;
+    this.elapsed = 0;
+
+    // Tear down existing elements
+    for (const el of this.elements) {
+      const wrapper = this.wrapperMap.get(el.id);
+      if (wrapper) {
+        this.ctx.scene.remove(wrapper);
+      } else {
+        this.ctx.scene.remove(el.group);
+      }
+      el.dispose();
+    }
+    this.elements = [];
+    this.elementMap.clear();
+    this.regionMap.clear();
+    this.elementTypeMap.clear();
+    this.wrapperMap.clear();
+    this.pendingBuild = [];
+
+    const rng = new SeededRandom(seed);
+    this.palette = getPalette(this.config.palette);
+    this.ctx.scene.background = this.palette.bg;
+
+    // Layout
+    const layoutRng = rng.fork();
+    const { regions } = compose(this.config.template, layoutRng);
+
+    // Audio emitter
+    const emitAudio = (event: string, param?: number) => {
+      switch (event) {
+        case 'keystroke': this.audio.keystroke(param); break;
+        case 'dataChirp': this.audio.dataChirp(); break;
+        case 'seekSound': this.audio.blip(param ?? 200); break;
+      }
+    };
+
+    // Create elements WITHOUT calling build()
+    const elementRng = rng.fork();
+    for (const region of regions) {
+      const elRng = elementRng.fork();
+      const elementType = region.elementType ?? 'panel';
+      const element = createElementDeferred(
+        elementType,
+        region,
+        this.palette,
+        elRng,
+        this.config.width,
+        this.config.height,
+        emitAudio
+      );
+      this.elements.push(element);
+      this.elementMap.set(element.id, element);
+      this.regionMap.set(region.id, region);
+      this.elementTypeMap.set(element.id, elementType);
+
+      const wrapper = new THREE.Group();
+      this.wrapperMap.set(element.id, wrapper);
+
+      // Queue for staggered build
+      this.pendingBuild.push({ element, wrapper });
+    }
+
+    // Generate timeline (preserve loop state)
+    const wasLooping = this.timeline?.loop ?? true;
     const timelineRng = rng.fork();
     const elementIds = this.elements.map((e) => e.id);
     this.timeline = generateTimeline(elementIds, this.config.timeline, timelineRng);
@@ -152,15 +264,35 @@ export class Engine {
 
   update(dt: number): void {
     if (this.disposed) return;
+
+    // Showcase mode takes over update/render
+    if (this.showcase.isActive) {
+      this.showcase.update(dt);
+      return;
+    }
+
     this.elapsed += dt;
+
+    // Phase 2: staggered build — pop a batch each frame
+    if (this.pendingBuild.length > 0) {
+      const count = Math.min(this.BUILD_BATCH_SIZE, this.pendingBuild.length);
+      for (let i = 0; i < count; i++) {
+        const item = this.pendingBuild.shift()!;
+        item.element.build();
+        item.wrapper.add(item.element.group);
+        this.ctx.scene.add(item.wrapper);
+      }
+      // Still building — render scene (elements stay invisible until timeline activates them)
+      this.pipeline.update(this.elapsed, this.config);
+      return;
+    }
 
     // Loop dwell: waiting in darkness before next composition
     if (this.loopDwell > 0) {
       this.loopDwell -= dt;
       if (this.loopDwell <= 0) {
-        // Dwell finished — generate new seed and start fresh
-        this.config.seed = Math.floor(Math.random() * 100000);
-        this.generate(this.config.seed);
+        // Dwell finished — kick off staged build (Phase 1)
+        this.prepareNext();
       }
       // Still in dwell period — just render the empty scene
       this.pipeline.update(this.elapsed, this.config);
@@ -209,6 +341,10 @@ export class Engine {
 
   render(): void {
     if (this.disposed) return;
+    if (this.showcase.isActive) {
+      this.showcase.render();
+      return;
+    }
     this.pipeline.composer.render();
   }
 
@@ -234,10 +370,17 @@ export class Engine {
     return this.timeline.normalizedTime;
   }
 
+  /** Called when aspect ratio setting changes. */
+  applyAspectAndRegenerate(): void {
+    this.applyAspect();
+    resizeRenderer(this.ctx, this.config.width, this.config.height);
+    this.pipeline.resize(this.config.width, this.config.height);
+    this.generate(this.config.seed);
+  }
+
   private setupEvents(): void {
     window.addEventListener('resize', () => {
-      this.config.width = window.innerWidth;
-      this.config.height = window.innerHeight;
+      this.applyAspect();
       resizeRenderer(this.ctx, this.config.width, this.config.height);
       this.pipeline.resize(this.config.width, this.config.height);
       // Regenerate to fix stale pixel coordinates
@@ -286,6 +429,11 @@ export class Engine {
         case 'l':
           this.timeline.loop = !this.timeline.loop;
           break;
+        case 'g':
+          if (!this.showcase.isActive) {
+            this.showcase.enter();
+          }
+          break;
       }
     });
 
@@ -304,6 +452,7 @@ export class Engine {
     for (const el of this.elements) {
       el.dispose();
     }
+    this.showcase.dispose();
     this.gui.destroy();
     this.audio.dispose();
     this.ctx.renderer.dispose();

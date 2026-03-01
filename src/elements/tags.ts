@@ -35,11 +35,19 @@ const ELEMENT_META: Record<string, ElementMeta> = {
   'freq-analyzer':      { shape: 'rectangular', roles: ['data-display', 'gauge'],    moods: ['diagnostic'],             sizes: ['works-small', 'needs-medium'] },
   'phase-indicator':    { shape: 'radial',      roles: ['gauge'],                    moods: ['tactical', 'diagnostic'], sizes: ['works-small', 'needs-medium'] },
   'segment-display':    { shape: 'rectangular', roles: ['text', 'gauge'],            moods: ['tactical'],               sizes: ['works-small', 'needs-medium'] },
-  'thermal-map':        { shape: 'rectangular', roles: ['data-display', 'scanner'],  moods: ['tactical', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
-  'memory-map':         { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  'thermal-map':        { shape: 'rectangular', roles: ['data-display', 'scanner'],  moods: ['tactical', 'diagnostic'], sizes: ['needs-medium'] },
+  'memory-map':         { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium'] },
   'coord-grid':         { shape: 'rectangular', roles: ['scanner', 'data-display'],  moods: ['tactical'],               sizes: ['needs-medium', 'needs-large'] },
   'level-rings':        { shape: 'radial',      roles: ['gauge', 'data-display'],    moods: ['diagnostic'],             sizes: ['needs-medium'] },
   'radial-scanner':     { shape: 'radial',      roles: ['scanner'],                  moods: ['tactical'],               sizes: ['needs-medium', 'needs-large'] },
+  'hex-tunnel':         { shape: 'radial',      roles: ['decorative'],               moods: ['ambient', 'tactical'],    sizes: ['needs-medium', 'needs-large'] },
+  'dot-matrix':         { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium'] },
+  'orbital-display':    { shape: 'radial',      roles: ['data-display', 'decorative'], moods: ['ambient'],              sizes: ['needs-medium', 'needs-large'] },
+  'pulse-wave':         { shape: 'linear',      roles: ['data-display', 'gauge'],    moods: ['diagnostic'],             sizes: ['works-small', 'needs-medium'] },
+  'spectrogram':        { shape: 'rectangular', roles: ['data-display'],             moods: ['diagnostic'],             sizes: ['needs-medium'] },
+  'particle-field':     { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient'],              sizes: ['needs-medium', 'needs-large'] },
+  'topology-map':       { shape: 'rectangular', roles: ['scanner', 'decorative'],    moods: ['tactical', 'ambient'],    sizes: ['needs-medium', 'needs-large'] },
+  'target-lock':        { shape: 'radial',      roles: ['scanner', 'gauge'],         moods: ['tactical'],               sizes: ['needs-medium', 'needs-large'] },
 };
 
 export function getMeta(name: string): ElementMeta | undefined {

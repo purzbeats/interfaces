@@ -14,7 +14,7 @@ export class Timeline {
   private elapsed: number = 0;
   public totalDuration: number = 30;
   public paused: boolean = false;
-  public loop: boolean = false;
+  public loop: boolean = true;
 
   get currentTime(): number {
     return this.elapsed;

@@ -27,13 +27,15 @@ export class CoordGridElement extends BaseElement {
 
   build(): void {
     const { x, y, w, h } = this.px;
+    const minDim = Math.min(w, h);
     this.pointX = x + w / 2;
     this.pointY = y + h / 2;
     this.pointVx = this.rng.float(-30, 30);
     this.pointVy = this.rng.float(-30, 30);
 
-    // Grid lines
-    const gridSpacing = this.rng.pick([20, 30, 40]);
+    // Grid lines — scale spacing to region size (aim for 8-15 divisions on shortest axis)
+    const divisions = this.rng.pick([8, 10, 12, 15]);
+    const gridSpacing = Math.max(10, Math.floor(minDim / divisions));
     const gridVerts: number[] = [];
     // Vertical lines
     for (let gx2 = x; gx2 <= x + w; gx2 += gridSpacing) {
@@ -46,7 +48,7 @@ export class CoordGridElement extends BaseElement {
     const gridGeo = new THREE.BufferGeometry();
     gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(gridVerts, 3));
     this.gridLines = new THREE.LineSegments(gridGeo, new THREE.LineBasicMaterial({
-      color: this.palette.dim,
+      color: this.palette.primary,
       transparent: true,
       opacity: 0,
     }));
@@ -64,8 +66,9 @@ export class CoordGridElement extends BaseElement {
     }));
     this.group.add(this.pathLine);
 
-    // Point indicator
-    const ptGeo = new THREE.PlaneGeometry(6, 6);
+    // Point indicator — scale to region
+    const ptSize = Math.max(8, minDim * 0.025);
+    const ptGeo = new THREE.PlaneGeometry(ptSize, ptSize);
     this.pointMesh = new THREE.Mesh(ptGeo, new THREE.MeshBasicMaterial({
       color: this.palette.primary,
       transparent: true,
@@ -74,10 +77,10 @@ export class CoordGridElement extends BaseElement {
     this.pointMesh.position.set(this.pointX, this.pointY, 2);
     this.group.add(this.pointMesh);
 
-    // Coordinate label canvas
+    // Coordinate label canvas — scale to region
     const scale = Math.min(2, window.devicePixelRatio);
-    const labelW = Math.min(w, 160);
-    const labelH = 24;
+    const labelW = Math.max(100, Math.min(w * 0.3, 300));
+    const labelH = Math.max(20, Math.min(h * 0.04, 40));
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.ceil(labelW * scale);
     this.canvas.height = Math.ceil(labelH * scale);
@@ -90,7 +93,7 @@ export class CoordGridElement extends BaseElement {
       transparent: true,
       opacity: 0,
     }));
-    this.labelMesh.position.set(x + labelW / 2 + 4, y + h - 14, 3);
+    this.labelMesh.position.set(x + labelW / 2 + 4, y + h - labelH / 2 - 8, 3);
     this.group.add(this.labelMesh);
 
     // Border
@@ -103,7 +106,7 @@ export class CoordGridElement extends BaseElement {
     const bg = new THREE.BufferGeometry();
     bg.setAttribute('position', new THREE.BufferAttribute(bv, 3));
     this.borderLines = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({
-      color: this.palette.dim,
+      color: this.palette.primary,
       transparent: true,
       opacity: 0,
     }));
@@ -123,13 +126,15 @@ export class CoordGridElement extends BaseElement {
     if (this.glitchTimer > 0) this.glitchTimer -= dt;
     this.group.position.x = gx;
 
-    // Move point with random acceleration
-    this.pointVx += this.rng.float(-60, 60) * dt;
-    this.pointVy += this.rng.float(-60, 60) * dt;
+    // Move point with random acceleration — scale to region size
+    const speed = Math.min(w, h) * 0.15;
+    const maxSpeed = speed * 1.5;
+    this.pointVx += this.rng.float(-speed * 2, speed * 2) * dt;
+    this.pointVy += this.rng.float(-speed * 2, speed * 2) * dt;
     this.pointVx *= Math.exp(-1 * dt); // drag
     this.pointVy *= Math.exp(-1 * dt);
-    this.pointVx = Math.max(-50, Math.min(50, this.pointVx));
-    this.pointVy = Math.max(-50, Math.min(50, this.pointVy));
+    this.pointVx = Math.max(-maxSpeed, Math.min(maxSpeed, this.pointVx));
+    this.pointVy = Math.max(-maxSpeed, Math.min(maxSpeed, this.pointVy));
 
     this.pointX += this.pointVx * dt;
     this.pointY += this.pointVy * dt;
@@ -160,10 +165,10 @@ export class CoordGridElement extends BaseElement {
     trailPos.needsUpdate = true;
     this.pathLine.geometry.setDrawRange(0, pointCount);
 
-    (this.gridLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.15;
-    (this.pathLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
-    (this.pointMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;
-    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+    (this.gridLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.35;
+    (this.pathLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
+    (this.pointMesh.material as THREE.MeshBasicMaterial).opacity = opacity;
+    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.6;
 
     // Render coordinate label
     this.renderAccum += dt;
@@ -183,12 +188,15 @@ export class CoordGridElement extends BaseElement {
     const nx = ((this.pointX - x) / w * 100).toFixed(1);
     const ny = ((this.pointY - y) / h * 100).toFixed(1);
 
-    const size = Math.floor(canvas.height * 0.65);
+    const text = `X:${nx} Y:${ny}`;
+    const heightSize = Math.floor(canvas.height * 0.65);
+    const widthSize = Math.floor(canvas.width / (text.length * 0.62));
+    const size = Math.max(6, Math.min(heightSize, widthSize));
     ctx.font = `${size}px monospace`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#' + this.palette.primary.getHexString();
-    ctx.fillText(`X:${nx} Y:${ny}`, 4, canvas.height / 2);
+    ctx.fillText(text, 4, canvas.height / 2);
 
     this.texture.needsUpdate = true;
   }
@@ -198,8 +206,10 @@ export class CoordGridElement extends BaseElement {
     if (action === 'pulse') this.pulseTimer = 0.5;
     if (action === 'glitch') {
       this.glitchTimer = 0.5;
-      this.pointVx = this.rng.float(-80, 80);
-      this.pointVy = this.rng.float(-80, 80);
+      const { w, h } = this.px;
+      const kick = Math.min(w, h) * 0.2;
+      this.pointVx = this.rng.float(-kick, kick);
+      this.pointVy = this.rng.float(-kick, kick);
     }
     if (action === 'alert') {
       this.pulseTimer = 1.5;

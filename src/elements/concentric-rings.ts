@@ -19,7 +19,7 @@ export class ConcentricRingsElement extends BaseElement {
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
-    this.maxRings = this.rng.int(4, 8);
+    this.maxRings = this.rng.int(5, 10);
     this.rippleSpeed = this.rng.float(0.3, 0.8);
     this.segments = 64;
 
@@ -38,7 +38,8 @@ export class ConcentricRingsElement extends BaseElement {
     }
 
     // Center dot
-    const dotGeo = new THREE.CircleGeometry(2, 8);
+    const maxR = Math.min(w, h) / 2 * 0.9;
+    const dotGeo = new THREE.CircleGeometry(Math.max(3, maxR * 0.02), 16);
     const dot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({
       color: this.palette.primary,
       transparent: true,
@@ -79,7 +80,7 @@ export class ConcentricRingsElement extends BaseElement {
       }
       positions.needsUpdate = true;
 
-      (this.ringMeshes[i].material as THREE.LineBasicMaterial).opacity = opacity * fadeOut * 0.7;
+      (this.ringMeshes[i].material as THREE.LineBasicMaterial).opacity = opacity * fadeOut * 0.85;
     }
 
     // Update center dot

@@ -12,12 +12,16 @@ export class ProgressBarElement extends BaseElement {
   private cycleTimer: number = 0;
   private pulseTimer: number = 0;
   private glitchTimer: number = 0;
+  private barH: number = 0;
+  private barY: number = 0;
 
   build(): void {
     const { x, y, w, h } = this.px;
     this.isVertical = h > w * 1.5;
     this.targetValue = this.rng.float(0.3, 0.9);
     this.speed = this.rng.float(0.5, 2.0);
+    this.barH = Math.min(h * 0.15, 40);
+    this.barY = y + (h - this.barH) / 2;
 
     // Unit-sized fill — we animate with scale, not geometry recreation
     const fillGeo = new THREE.PlaneGeometry(1, 1);
@@ -31,10 +35,10 @@ export class ProgressBarElement extends BaseElement {
 
     // Border
     const bv = new Float32Array([
-      x, y, 0, x + w, y, 0,
-      x + w, y, 0, x + w, y + h, 0,
-      x + w, y + h, 0, x, y + h, 0,
-      x, y + h, 0, x, y, 0,
+      x, this.barY, 0, x + w, this.barY, 0,
+      x + w, this.barY, 0, x + w, this.barY + this.barH, 0,
+      x + w, this.barY + this.barH, 0, x, this.barY + this.barH, 0,
+      x, this.barY + this.barH, 0, x, this.barY, 0,
     ]);
     const bg = new THREE.BufferGeometry();
     bg.setAttribute('position', new THREE.BufferAttribute(bv, 3));
@@ -67,8 +71,8 @@ export class ProgressBarElement extends BaseElement {
       this.fillMesh.position.set(x + w / 2 + gx, y + fh / 2, 1);
     } else {
       const fw = Math.max(1, w * this.currentValue);
-      this.fillMesh.scale.set(fw, h - 2, 1);
-      this.fillMesh.position.set(x + fw / 2 + gx, y + h / 2, 1);
+      this.fillMesh.scale.set(fw, this.barH - 2, 1);
+      this.fillMesh.position.set(x + fw / 2 + gx, this.barY + this.barH / 2, 1);
     }
 
     (this.fillMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.6;

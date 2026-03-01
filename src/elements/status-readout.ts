@@ -86,7 +86,11 @@ export class StatusReadoutElement extends BaseElement {
     const { ctx, canvas } = this;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const fontSize = Math.min(Math.floor(canvas.height * 0.35), 22);
+    // Longest message determines max width constraint
+    const longestMsg = this.messages.reduce((a, b) => a.length > b.length ? a : b, '');
+    const heightSize = Math.floor(canvas.height * 0.35);
+    const widthSize = Math.floor(canvas.width / ((longestMsg.length + 3) * 0.62));
+    const fontSize = Math.max(8, Math.min(heightSize, widthSize));
     ctx.font = `${fontSize}px monospace`;
     ctx.textBaseline = 'top';
 
@@ -94,22 +98,25 @@ export class StatusReadoutElement extends BaseElement {
     const dimHex = '#' + this.palette.dim.getHexString();
     const alertHex = '#' + this.palette.alert.getHexString();
 
-    // Status indicator dot (blinking) with glow
+    // Status indicator dot (blinking) with glow — scale to font
+    const dotR = Math.max(2, fontSize * 0.2);
+    const dotX = dotR + 2;
     const blink = Math.sin(this.blinkTimer * 4) > 0;
     const dotColor = this.isAlert ? alertHex : primaryHex;
     ctx.shadowColor = dotColor;
-    ctx.shadowBlur = blink ? 6 : 0;
+    ctx.shadowBlur = blink ? dotR * 1.5 : 0;
     ctx.fillStyle = blink ? dotColor : dimHex;
     ctx.beginPath();
-    ctx.arc(10, fontSize / 2 + 6, 4, 0, Math.PI * 2);
+    ctx.arc(dotX, fontSize / 2 + 6, dotR, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
 
     // Message with phosphor glow
+    const textX = dotX * 2 + dotR;
     const msg = this.messages[this.currentMsg];
     const msgIsAlert = msg.includes('WARNING') || msg.includes('ALERT') || this.isAlert;
     const msgColor = msgIsAlert ? alertHex : primaryHex;
-    drawGlowText(ctx, msg, 22, 6, msgColor, msgIsAlert ? 8 : 5);
+    drawGlowText(ctx, msg, textX, 6, msgColor, msgIsAlert ? 8 : 5);
 
     // Timestamp with dim glow
     const minutes = Math.floor(time / 60);

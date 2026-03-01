@@ -25,12 +25,12 @@ export class ThreatMeterElement extends BaseElement {
 
   build(): void {
     const { x, y, w, h } = this.px;
-    this.segCount = Math.max(8, Math.min(20, Math.floor(h / 6)));
+    this.segCount = this.rng.int(12, 24);
     this.targetValue = this.rng.float(0.2, 0.7);
 
-    const gap = 2;
+    const gap = Math.max(2, Math.floor(Math.min(w, h) * 0.005));
     const segH = (h - gap * (this.segCount + 1)) / this.segCount;
-    const segW = w * 0.6;
+    const segW = Math.min(w * 0.6, Math.max(40, w * 0.15));
     const segX = x + (w - segW) / 2;
 
     for (let i = 0; i < this.segCount; i++) {
@@ -63,21 +63,22 @@ export class ThreatMeterElement extends BaseElement {
     }));
     this.group.add(this.borderLines);
 
-    // Label canvas
+    // Label canvas — scale to region
     const scale = Math.min(2, window.devicePixelRatio);
+    const labelH = Math.max(16, h * 0.08);
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.ceil(w * scale);
-    this.canvas.height = Math.ceil(24 * scale);
+    this.canvas.height = Math.ceil(labelH * scale);
     this.ctx = this.canvas.getContext('2d')!;
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
-    const labelGeo = new THREE.PlaneGeometry(w, 24);
+    const labelGeo = new THREE.PlaneGeometry(w, labelH);
     this.labelMesh = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
       map: this.texture,
       transparent: true,
       opacity: 0,
     }));
-    this.labelMesh.position.set(x + w / 2, y + h + 14, 2);
+    this.labelMesh.position.set(x + w / 2, y + h + labelH / 2 + 2, 2);
     this.group.add(this.labelMesh);
   }
 
@@ -146,7 +147,9 @@ export class ThreatMeterElement extends BaseElement {
     const zoneIndex = Math.min(3, Math.floor(this.value * 4));
     const label = zones[zoneIndex];
 
-    const size = Math.floor(canvas.height * 0.6);
+    const heightSize = Math.floor(canvas.height * 0.6);
+    const widthSize = Math.floor(canvas.width / (label.length * 0.65));
+    const size = Math.max(6, Math.min(heightSize, widthSize));
     ctx.font = `bold ${size}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

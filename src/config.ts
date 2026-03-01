@@ -1,7 +1,52 @@
+export type AspectRatio = 'fill' | '1:1' | '4:3' | '3:2' | '16:9' | '16:10' | '21:9' | '9:16' | '2:3' | '3:4';
+
+export const ASPECT_RATIOS: AspectRatio[] = [
+  'fill', '1:1', '4:3', '3:2', '16:9', '16:10', '21:9', '9:16', '2:3', '3:4',
+];
+
+/** Parse aspect ratio string to numeric value (w/h). Returns 0 for 'fill'. */
+export function aspectToNumber(aspect: AspectRatio): number {
+  if (aspect === 'fill') return 0;
+  const [w, h] = aspect.split(':').map(Number);
+  return w / h;
+}
+
+/**
+ * Compute canvas width/height that fits the given aspect ratio
+ * within the available window dimensions, centered.
+ */
+export function computeAspectSize(
+  aspect: AspectRatio,
+  windowW: number,
+  windowH: number
+): { width: number; height: number; offsetX: number; offsetY: number } {
+  if (aspect === 'fill') {
+    return { width: windowW, height: windowH, offsetX: 0, offsetY: 0 };
+  }
+  const ratio = aspectToNumber(aspect);
+  let w: number, h: number;
+  if (windowW / windowH > ratio) {
+    // Window is wider than target — pillarbox
+    h = windowH;
+    w = Math.round(h * ratio);
+  } else {
+    // Window is taller than target — letterbox
+    w = windowW;
+    h = Math.round(w / ratio);
+  }
+  return {
+    width: w,
+    height: h,
+    offsetX: Math.round((windowW - w) / 2),
+    offsetY: Math.round((windowH - h) / 2),
+  };
+}
+
 export interface Config {
   seed: number;
   width: number;
   height: number;
+  aspectRatio: AspectRatio;
   palette: string;
   template: string;
   timeline: {
@@ -36,6 +81,7 @@ export const DEFAULT_CONFIG: Config = {
   seed: 42,
   width: window.innerWidth,
   height: window.innerHeight,
+  aspectRatio: 'fill' as AspectRatio,
   palette: 'phosphor-green',
   template: 'auto',
   timeline: {

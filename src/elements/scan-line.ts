@@ -21,7 +21,7 @@ export class ScanLineElement extends BaseElement {
 
   build(): void {
     const { x, y, w, h } = this.px;
-    this.scanSpeed = this.rng.float(40, 100);
+    this.scanSpeed = this.rng.float(0.15, 0.4) * h;
 
     // Scan line (horizontal)
     const lineGeo = new THREE.BufferGeometry();
@@ -46,7 +46,7 @@ export class ScanLineElement extends BaseElement {
     this.group.add(this.trailMesh);
 
     // Scatter points
-    this.pointCount = this.rng.int(15, 40);
+    this.pointCount = this.rng.int(30, 80);
     const pointPositions = new Float32Array(this.pointCount * 3);
     const pointColors = new Float32Array(this.pointCount * 3);
     for (let i = 0; i < this.pointCount; i++) {
@@ -63,7 +63,7 @@ export class ScanLineElement extends BaseElement {
     ptGeo.setAttribute('position', new THREE.BufferAttribute(pointPositions, 3));
     ptGeo.setAttribute('color', new THREE.BufferAttribute(pointColors, 3));
     this.scatterPoints = new THREE.Points(ptGeo, new THREE.PointsMaterial({
-      size: 3,
+      size: Math.max(3, Math.min(w, h) * 0.006),
       vertexColors: true,
       transparent: true,
       opacity: 0,
@@ -134,7 +134,7 @@ export class ScanLineElement extends BaseElement {
       const dist = Math.abs(py - lineY);
 
       // Brighten when scan line passes
-      if (dist < 8) {
+      if (dist < h * 0.03) {
         this.scatterBrightness[i] = 1;
       } else {
         this.scatterBrightness[i] *= Math.exp(-2 * dt);
@@ -149,7 +149,7 @@ export class ScanLineElement extends BaseElement {
     }
     colors.needsUpdate = true;
     (this.scatterPoints.material as THREE.PointsMaterial).opacity = opacity * 0.8;
-    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
   }
 
   onAction(action: string): void {

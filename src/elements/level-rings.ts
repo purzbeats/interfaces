@@ -50,7 +50,7 @@ export class LevelRingsElement extends BaseElement {
       const bgGeo = new THREE.BufferGeometry();
       bgGeo.setAttribute('position', new THREE.Float32BufferAttribute(bgVerts, 3));
       const bgRing = new THREE.Line(bgGeo, new THREE.LineBasicMaterial({
-        color: this.palette.dim,
+        color: this.palette.primary,
         transparent: true,
         opacity: 0,
       }));
@@ -139,8 +139,8 @@ export class LevelRingsElement extends BaseElement {
       if (this.values[r] > 0.9) {
         mat.color.copy(this.palette.alert);
       }
-      mat.opacity = opacity * 0.7;
-      (this.bgRings[r].material as THREE.LineBasicMaterial).opacity = opacity * 0.15;
+      mat.opacity = opacity * 0.9;
+      (this.bgRings[r].material as THREE.LineBasicMaterial).opacity = opacity * 0.2;
     }
 
     // Render center label

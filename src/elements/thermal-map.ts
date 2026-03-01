@@ -15,10 +15,7 @@ export class ThermalMapElement extends BaseElement {
   private gridW: number = 0;
   private gridH: number = 0;
   private heatGrid: number[] = [];
-  private hotspotX: number = 0;
-  private hotspotY: number = 0;
-  private hotspotVx: number = 0;
-  private hotspotVy: number = 0;
+  private hotspots: { x: number; y: number; vx: number; vy: number }[] = [];
   private pulseTimer: number = 0;
   private glitchTimer: number = 0;
   private renderAccum: number = 0;
@@ -26,15 +23,27 @@ export class ThermalMapElement extends BaseElement {
 
   build(): void {
     const { x, y, w, h } = this.px;
-    const cellSize = this.rng.pick([8, 10, 12]);
-    this.gridW = Math.max(4, Math.floor(w / cellSize));
-    this.gridH = Math.max(4, Math.floor(h / cellSize));
+    this.gridW = Math.max(8, Math.min(80, Math.floor(w / 10)));
+    this.gridH = Math.max(8, Math.min(60, Math.floor(h / 10)));
     this.heatGrid = new Array(this.gridW * this.gridH).fill(0);
 
-    this.hotspotX = this.rng.float(0, this.gridW);
-    this.hotspotY = this.rng.float(0, this.gridH);
-    this.hotspotVx = this.rng.float(-2, 2);
-    this.hotspotVy = this.rng.float(-2, 2);
+    // Multiple hotspots for better coverage
+    const hotspotCount = this.rng.int(2, 4);
+    for (let i = 0; i < hotspotCount; i++) {
+      this.hotspots.push({
+        x: this.rng.float(0, this.gridW),
+        y: this.rng.float(0, this.gridH),
+        vx: this.rng.float(-5, 5),
+        vy: this.rng.float(-5, 5),
+      });
+    }
+
+    // Seed initial heat so it's visible immediately
+    for (const hs of this.hotspots) {
+      this.applyHeat(Math.floor(hs.x), Math.floor(hs.y));
+    }
+    // Run a few diffusion steps to spread initial heat
+    for (let i = 0; i < 8; i++) this.diffuse();
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.gridW;
@@ -82,48 +91,21 @@ export class ThermalMapElement extends BaseElement {
     if (this.glitchTimer > 0) this.glitchTimer -= dt;
     this.group.position.x = gx;
 
-    // Move hotspot
-    this.hotspotX += this.hotspotVx * dt;
-    this.hotspotY += this.hotspotVy * dt;
-
-    // Bounce off walls
-    if (this.hotspotX < 0 || this.hotspotX >= this.gridW) {
-      this.hotspotVx *= -1;
-      this.hotspotX = Math.max(0, Math.min(this.gridW - 1, this.hotspotX));
-    }
-    if (this.hotspotY < 0 || this.hotspotY >= this.gridH) {
-      this.hotspotVy *= -1;
-      this.hotspotY = Math.max(0, Math.min(this.gridH - 1, this.hotspotY));
-    }
-
-    // Random velocity changes
-    this.hotspotVx += (this.rng.float(-1, 1)) * dt * 2;
-    this.hotspotVy += (this.rng.float(-1, 1)) * dt * 2;
-    this.hotspotVx = Math.max(-3, Math.min(3, this.hotspotVx));
-    this.hotspotVy = Math.max(-3, Math.min(3, this.hotspotVy));
-
-    // Heat source at hotspot
-    const hx = Math.floor(this.hotspotX);
-    const hy = Math.floor(this.hotspotY);
-    if (hx >= 0 && hx < this.gridW && hy >= 0 && hy < this.gridH) {
-      this.heatGrid[hy * this.gridW + hx] = 1;
+    // Move hotspots
+    for (const hs of this.hotspots) {
+      hs.x += hs.vx * dt;
+      hs.y += hs.vy * dt;
+      if (hs.x < 0 || hs.x >= this.gridW) { hs.vx *= -1; hs.x = Math.max(0, Math.min(this.gridW - 1, hs.x)); }
+      if (hs.y < 0 || hs.y >= this.gridH) { hs.vy *= -1; hs.y = Math.max(0, Math.min(this.gridH - 1, hs.y)); }
+      hs.vx += this.rng.float(-1, 1) * dt * 3;
+      hs.vy += this.rng.float(-1, 1) * dt * 3;
+      hs.vx = Math.max(-6, Math.min(6, hs.vx));
+      hs.vy = Math.max(-6, Math.min(6, hs.vy));
+      this.applyHeat(Math.floor(hs.x), Math.floor(hs.y));
     }
 
     // Diffusion step
-    const newGrid = new Array(this.gridW * this.gridH);
-    for (let gy = 0; gy < this.gridH; gy++) {
-      for (let gx2 = 0; gx2 < this.gridW; gx2++) {
-        const idx = gy * this.gridW + gx2;
-        let sum = this.heatGrid[idx] * 4;
-        let count = 4;
-        if (gx2 > 0) { sum += this.heatGrid[idx - 1]; count++; }
-        if (gx2 < this.gridW - 1) { sum += this.heatGrid[idx + 1]; count++; }
-        if (gy > 0) { sum += this.heatGrid[idx - this.gridW]; count++; }
-        if (gy < this.gridH - 1) { sum += this.heatGrid[idx + this.gridW]; count++; }
-        newGrid[idx] = (sum / count) * 0.98; // slight decay
-      }
-    }
-    this.heatGrid = newGrid;
+    this.diffuse();
 
     // Render canvas at reduced rate
     this.renderAccum += dt;
@@ -134,6 +116,42 @@ export class ThermalMapElement extends BaseElement {
 
     (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+  }
+
+  /** Apply heat in a radius around a cell. */
+  private applyHeat(hx: number, hy: number): void {
+    const radius = Math.max(2, Math.floor(Math.min(this.gridW, this.gridH) * 0.08));
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const gx = hx + dx;
+        const gy = hy + dy;
+        if (gx < 0 || gx >= this.gridW || gy < 0 || gy >= this.gridH) continue;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= radius) {
+          const falloff = 1 - dist / radius;
+          const idx = gy * this.gridW + gx;
+          this.heatGrid[idx] = Math.min(1, this.heatGrid[idx] + falloff * 0.6);
+        }
+      }
+    }
+  }
+
+  /** One diffusion + decay step. */
+  private diffuse(): void {
+    const newGrid = new Array(this.gridW * this.gridH);
+    for (let gy = 0; gy < this.gridH; gy++) {
+      for (let gx = 0; gx < this.gridW; gx++) {
+        const idx = gy * this.gridW + gx;
+        let sum = this.heatGrid[idx] * 4;
+        let count = 4;
+        if (gx > 0) { sum += this.heatGrid[idx - 1]; count++; }
+        if (gx < this.gridW - 1) { sum += this.heatGrid[idx + 1]; count++; }
+        if (gy > 0) { sum += this.heatGrid[idx - this.gridW]; count++; }
+        if (gy < this.gridH - 1) { sum += this.heatGrid[idx + this.gridW]; count++; }
+        newGrid[idx] = (sum / count) * 0.995; // slower decay
+      }
+    }
+    this.heatGrid = newGrid;
   }
 
   private renderCanvas(): void {
