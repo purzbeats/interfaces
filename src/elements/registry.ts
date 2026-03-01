@@ -65,10 +65,10 @@ import { BootSequenceElement } from './boot-sequence';
 
 import { CipherWheelElement } from './cipher-wheel';
 import { BoidsSwarmElement } from './boids-swarm';
-import { LifeGridElement } from './life-grid';
+import { RuleGridElement } from './rule-grid';
 import { LorenzAttractorElement } from './lorenz-attractor';
 import { NeuralMeshElement } from './neural-mesh';
-import { MatrixRainElement } from './matrix-rain';
+import { ReactionDiffusionElement } from './reaction-diffusion';
 import { PlasmaFieldElement } from './plasma-field';
 import { DnaHelixElement } from './dna-helix';
 import { PendulumWaveElement } from './pendulum-wave';
@@ -151,10 +151,10 @@ const REGISTRY: Record<string, ElementFactory> = {
 
  'cipher-wheel':       f(CipherWheelElement),
  'boids-swarm':        f(BoidsSwarmElement),
- 'life-grid':          f(LifeGridElement),
+ 'rule-grid':          f(RuleGridElement),
  'lorenz-attractor':   f(LorenzAttractorElement),
  'neural-mesh':        f(NeuralMeshElement),
- 'matrix-rain':        f(MatrixRainElement),
+ 'reaction-diffusion': f(ReactionDiffusionElement),
  'plasma-field':       f(PlasmaFieldElement),
  'dna-helix':          f(DnaHelixElement),
  'pendulum-wave':      f(PendulumWaveElement),

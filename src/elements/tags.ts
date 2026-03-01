@@ -74,10 +74,10 @@ const ELEMENT_META: Record<string, ElementMeta> = {
 
   'cipher-wheel':       { shape: 'radial',      roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'],  sizes: ['needs-medium', 'needs-large'] },
   'boids-swarm':        { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'],  sizes: ['needs-medium', 'needs-large'] },
-  'life-grid':          { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  'rule-grid':          { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
   'lorenz-attractor':   { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
   'neural-mesh':        { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
-  'matrix-rain':        { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient', 'tactical'],   sizes: ['works-small', 'needs-medium', 'needs-large'] },
+  'reaction-diffusion': { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
   'plasma-field':       { shape: 'rectangular', roles: ['decorative'],               moods: ['ambient'],                sizes: ['needs-medium', 'needs-large'] },
   'dna-helix':          { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
   'pendulum-wave':      { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },

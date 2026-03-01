@@ -68,7 +68,7 @@ Seven built-in layout templates: `command-center`, `surveillance`, `diagnostic`,
 `graph`, `scrolling-numbers`, `data-cascade`, `signal-bars`, `waveform`, `cross-scope`, `freq-analyzer`, `spectrogram`, `dot-matrix`, `pulse-wave`, `binary-stream`, `cpu-cores`, `data-table`, `network-graph`, `oscilloscope`, `audio-meter`, `heart-monitor`, `voltage-arc`
 
 ### Simulations
-`boids-swarm`, `life-grid`, `lorenz-attractor`, `neural-mesh`, `flow-field`, `pendulum-wave`
+`boids-swarm`, `rule-grid`, `lorenz-attractor`, `neural-mesh`, `flow-field`, `pendulum-wave`, `reaction-diffusion`
 
 ### Scanners
 `radar-sweep`, `radial-scanner`, `coord-grid`, `grid-overlay`, `bracket-frame`, `scan-line`, `target-lock`, `depth-sounder`, `satellite-track`, `thermal-map`, `topology-map`
@@ -80,7 +80,7 @@ Seven built-in layout templates: `command-center`, `surveillance`, `diagnostic`,
 `text-label`, `status-readout`, `clock-display`, `uptime-counter`, `boot-sequence`
 
 ### Decorative
-`concentric-rings`, `hex-grid`, `hex-tunnel`, `orbital-display`, `particle-field`, `memory-map`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `matrix-rain`, `plasma-field`, `dna-helix`, `fractal-tree`
+`concentric-rings`, `hex-grid`, `hex-tunnel`, `orbital-display`, `particle-field`, `memory-map`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `plasma-field`, `dna-helix`, `fractal-tree`
 
 ### Structural
 `panel`, `separator`, `power-grid`

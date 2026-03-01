@@ -5,7 +5,7 @@
 10 new simulation and generative art elements, bringing the total to 64.
 
 ### Added
-- **10 new element types**: boids-swarm (flocking simulation), life-grid (Conway's Game of Life), lorenz-attractor (strange attractor traces), neural-mesh (firing neural network), matrix-rain (digital rain columns), plasma-field (demoscene plasma interference), dna-helix (rotating double helix), pendulum-wave (phase-shifting pendulums), fractal-tree (L-system branching with wind), flow-field (noise-driven particle flow)
+- **10 new element types**: boids-swarm (flocking simulation), rule-grid (Wolfram elementary cellular automata), lorenz-attractor (strange attractor traces), neural-mesh (firing neural network), reaction-diffusion (Gray-Scott Turing patterns), plasma-field (demoscene plasma interference), dna-helix (rotating double helix), pendulum-wave (phase-shifting pendulums), fractal-tree (L-system branching with wind), flow-field (noise-driven particle flow)
 - All new elements integrated into template weights across all 7 layout templates
 
 ---
