@@ -2,323 +2,242 @@ import * as THREE from 'three';
 import { BaseElement } from './base-element';
 
 /**
- * Gray-Scott reaction-diffusion system producing evolving Turing patterns —
- * organic spots, stripes, and labyrinthine structures that resemble a
- * containment field or biological culture analysis display.
- * Canvas-based rendering at half resolution with linear upscaling.
+ * Harmonograph — simulated pendulum drawing that traces damped Lissajous
+ * curves. Two perpendicular pendulums with different frequencies and
+ * phase offsets create intricate spirograph-like patterns that slowly
+ * decay. Resets with new parameters when the pattern fades out.
+ * Pure geometry (Line), loads instantly, always moving.
  */
 export class ReactionDiffusionElement extends BaseElement {
-  private canvas!: HTMLCanvasElement;
-  private ctx!: CanvasRenderingContext2D;
-  private texture!: THREE.CanvasTexture;
-  private mesh!: THREE.Mesh;
+  private line!: THREE.Line;
+  private lineMat!: THREE.LineBasicMaterial;
+  private fadeLine!: THREE.Line;
+  private fadeMat!: THREE.LineBasicMaterial;
+  private frameLine!: THREE.LineSegments;
+  private frameMat!: THREE.LineBasicMaterial;
 
-  private cols: number = 0;
-  private rows: number = 0;
-  private u!: Float32Array;
-  private v!: Float32Array;
+  private readonly MAX_POINTS = 4000;
+  private positions!: Float32Array;
+  private head: number = 0;
+  private traceTime: number = 0;
 
-  // Gray-Scott parameters
-  private readonly Du = 0.16;
-  private readonly Dv = 0.08;
-  private f: number = 0;
-  private k: number = 0;
+  // Pendulum parameters (randomized per cycle)
+  private freqX: number = 0;
+  private freqY: number = 0;
+  private phaseX: number = 0;
+  private phaseY: number = 0;
+  private dampX: number = 0;
+  private dampY: number = 0;
+  private ampX: number = 0;
+  private ampY: number = 0;
 
-  private renderAccum: number = 0;
-  private readonly RENDER_INTERVAL = 1 / 20;
+  // Third rotary pendulum for extra complexity
+  private freqR: number = 0;
+  private phaseR: number = 0;
+  private dampR: number = 0;
+  private ampR: number = 0;
 
-  // Action state
-  private feedBoostTimer: number = 0;
-  private baseFeedRate: number = 0;
+  private cx: number = 0;
+  private cy: number = 0;
 
-  // Looping: detect stagnation and reinitialize
-  private prevVSum: number = 0;
-  private stagnantFrames: number = 0;
-  private readonly STAGNANT_THRESHOLD = 40; // frames with no meaningful change before reset
+  // Cycle management
+  private cycleAge: number = 0;
+  private readonly CYCLE_DURATION = 18; // seconds before reset
+  private fadeOutStart: number = 0;
 
   build(): void {
-    this.glitchAmount = 5;
+    this.glitchAmount = 4;
     const { x, y, w, h } = this.px;
 
-    // Half-resolution canvas for performance
-    this.cols = Math.max(40, Math.floor(w / 2));
-    this.rows = Math.max(30, Math.floor(h / 2));
+    this.cx = x + w / 2;
+    this.cy = y + h / 2;
+    const radius = Math.min(w, h) * 0.42;
+    this.fadeOutStart = this.CYCLE_DURATION - 2;
 
-    // Initialize Gray-Scott parameters
-    this.f = this.rng.float(0.03, 0.06);
-    this.k = this.rng.float(0.06, 0.065);
-    this.baseFeedRate = this.f;
+    // Randomize pendulum params
+    this.randomizeParams(radius);
 
-    // Allocate chemical grids
-    const size = this.cols * this.rows;
-    this.u = new Float32Array(size);
-    this.v = new Float32Array(size);
+    // Main trace line
+    this.positions = new Float32Array(this.MAX_POINTS * 3);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+    geo.setDrawRange(0, 0);
 
-    // Initialize and seed
-    this.initializeGrid();
-
-    // Run some warmup steps so patterns are visible immediately
-    for (let i = 0; i < 200; i++) {
-      this.simulate(1);
-    }
-
-    // Canvas setup
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = this.cols;
-    this.canvas.height = this.rows;
-    this.ctx = this.canvas.getContext('2d')!;
-
-    this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
-
-    const geo = new THREE.PlaneGeometry(w, h);
-    this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-      map: this.texture,
+    this.lineMat = new THREE.LineBasicMaterial({
+      color: this.palette.primary,
       transparent: true,
       opacity: 0,
-    }));
-    this.mesh.position.set(x + w / 2, y + h / 2, 1);
-    this.group.add(this.mesh);
+    });
+    this.line = new THREE.Line(geo, this.lineMat);
+    this.group.add(this.line);
+
+    // Faded trail copy (older part of the trace rendered dimmer)
+    const fadeGeo = new THREE.BufferGeometry();
+    fadeGeo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+    fadeGeo.setDrawRange(0, 0);
+    this.fadeMat = new THREE.LineBasicMaterial({
+      color: this.palette.dim,
+      transparent: true,
+      opacity: 0,
+    });
+    this.fadeLine = new THREE.Line(fadeGeo, this.fadeMat);
+    this.group.add(this.fadeLine);
+
+    // Corner frame
+    const frameVerts = new Float32Array(48);
+    const cornerLen = Math.min(w, h) * 0.08;
+    const lx = x + 2, rx = x + w - 2, ty = y + 2, by = y + h - 2;
+
+    // Top-left
+    frameVerts[0] = lx; frameVerts[1] = ty + cornerLen; frameVerts[2] = 1;
+    frameVerts[3] = lx; frameVerts[4] = ty; frameVerts[5] = 1;
+    frameVerts[6] = lx; frameVerts[7] = ty; frameVerts[8] = 1;
+    frameVerts[9] = lx + cornerLen; frameVerts[10] = ty; frameVerts[11] = 1;
+    // Top-right
+    frameVerts[12] = rx - cornerLen; frameVerts[13] = ty; frameVerts[14] = 1;
+    frameVerts[15] = rx; frameVerts[16] = ty; frameVerts[17] = 1;
+    frameVerts[18] = rx; frameVerts[19] = ty; frameVerts[20] = 1;
+    frameVerts[21] = rx; frameVerts[22] = ty + cornerLen; frameVerts[23] = 1;
+    // Bottom-right
+    frameVerts[24] = rx; frameVerts[25] = by - cornerLen; frameVerts[26] = 1;
+    frameVerts[27] = rx; frameVerts[28] = by; frameVerts[29] = 1;
+    frameVerts[30] = rx; frameVerts[31] = by; frameVerts[32] = 1;
+    frameVerts[33] = rx - cornerLen; frameVerts[34] = by; frameVerts[35] = 1;
+    // Bottom-left
+    frameVerts[36] = lx + cornerLen; frameVerts[37] = by; frameVerts[38] = 1;
+    frameVerts[39] = lx; frameVerts[40] = by; frameVerts[41] = 1;
+    frameVerts[42] = lx; frameVerts[43] = by; frameVerts[44] = 1;
+    frameVerts[45] = lx; frameVerts[46] = by - cornerLen; frameVerts[47] = 1;
+
+    const fGeo = new THREE.BufferGeometry();
+    fGeo.setAttribute('position', new THREE.BufferAttribute(frameVerts, 3));
+    this.frameMat = new THREE.LineBasicMaterial({
+      color: this.palette.dim,
+      transparent: true,
+      opacity: 0,
+    });
+    this.frameLine = new THREE.LineSegments(fGeo, this.frameMat);
+    this.group.add(this.frameLine);
+  }
+
+  private randomizeParams(radius: number): void {
+    // Frequency ratios that produce interesting patterns
+    const ratios = [
+      [2, 3], [3, 4], [3, 5], [4, 5], [5, 6], [5, 7],
+      [7, 8], [2, 5], [3, 7], [4, 7], [5, 8], [6, 7],
+    ];
+    const [a, b] = this.rng.pick(ratios);
+    const baseFreq = this.rng.float(1.5, 3.0);
+
+    this.freqX = baseFreq * a;
+    this.freqY = baseFreq * b;
+    this.phaseX = this.rng.float(0, Math.PI * 2);
+    this.phaseY = this.rng.float(0, Math.PI * 2);
+    this.dampX = this.rng.float(0.02, 0.06);
+    this.dampY = this.rng.float(0.02, 0.06);
+    this.ampX = radius * this.rng.float(0.7, 1.0);
+    this.ampY = radius * this.rng.float(0.7, 1.0);
+
+    // Third rotary pendulum adds wobble
+    this.freqR = this.rng.float(0.3, 1.2);
+    this.phaseR = this.rng.float(0, Math.PI * 2);
+    this.dampR = this.rng.float(0.01, 0.03);
+    this.ampR = radius * this.rng.float(0.05, 0.2);
+
+    // Reset trace state
+    this.head = 0;
+    this.traceTime = 0;
+    this.cycleAge = 0;
+  }
+
+  private sample(t: number): [number, number] {
+    const ex = Math.exp(-this.dampX * t);
+    const ey = Math.exp(-this.dampY * t);
+    const er = Math.exp(-this.dampR * t);
+
+    const px = this.ampX * ex * Math.sin(this.freqX * t + this.phaseX)
+             + this.ampR * er * Math.sin(this.freqR * t + this.phaseR);
+    const py = this.ampY * ey * Math.sin(this.freqY * t + this.phaseY)
+             + this.ampR * er * Math.cos(this.freqR * t + this.phaseR);
+
+    return [this.cx + px, this.cy + py];
   }
 
   update(dt: number, _time: number): void {
     const opacity = this.applyEffects(dt);
+    this.cycleAge += dt;
 
-    // Handle feed rate boost from pulse action
-    if (this.feedBoostTimer > 0) {
-      this.feedBoostTimer -= dt;
-      this.f = this.baseFeedRate * 2.0;
-      if (this.feedBoostTimer <= 0) {
-        this.f = this.baseFeedRate;
+    // Reset cycle when done
+    if (this.cycleAge >= this.CYCLE_DURATION) {
+      const radius = Math.min(this.px.w, this.px.h) * 0.42;
+      this.randomizeParams(radius);
+      // Clear buffer
+      this.positions.fill(0);
+      const geo = this.line.geometry;
+      geo.setDrawRange(0, 0);
+      (geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    }
+
+    // Add new points (several per frame for smooth curves)
+    const pointsPerFrame = 12;
+    const timeStep = 0.04;
+
+    for (let i = 0; i < pointsPerFrame; i++) {
+      this.traceTime += timeStep;
+      const [px, py] = this.sample(this.traceTime);
+
+      const idx = this.head * 3;
+      this.positions[idx] = px;
+      this.positions[idx + 1] = py;
+      this.positions[idx + 2] = 1;
+
+      this.head++;
+      if (this.head >= this.MAX_POINTS) {
+        this.head = this.MAX_POINTS - 1;
+        break;
       }
     }
 
-    // Run simulation substeps every frame
-    const substeps = 3;
-    this.simulate(substeps);
-
-    // Detect stagnation: if v-sum barely changes, pattern has converged
-    let vSum = 0;
-    for (let i = 0, len = this.v.length; i < len; i++) vSum += this.v[i];
-    const delta = Math.abs(vSum - this.prevVSum);
-    this.prevVSum = vSum;
-
-    if (delta < 0.01) {
-      this.stagnantFrames++;
-      if (this.stagnantFrames >= this.STAGNANT_THRESHOLD) {
-        // Pattern has converged — reinitialize with new parameters
-        this.f = this.rng.float(0.03, 0.06);
-        this.k = this.rng.float(0.06, 0.065);
-        this.baseFeedRate = this.f;
-        this.initializeGrid();
-        for (let i = 0; i < 200; i++) this.simulate(1);
-        this.stagnantFrames = 0;
-      }
-    } else {
-      this.stagnantFrames = 0;
+    // Fade out near end of cycle
+    let cycleFade = 1;
+    if (this.cycleAge > this.fadeOutStart) {
+      cycleFade = 1 - (this.cycleAge - this.fadeOutStart) / (this.CYCLE_DURATION - this.fadeOutStart);
     }
 
-    // Render at ~20fps
-    this.renderAccum += dt;
-    if (this.renderAccum >= this.RENDER_INTERVAL) {
-      this.renderAccum = 0;
-      this.renderCanvas();
+    // Update draw range — recent portion is bright, older is dim
+    const drawCount = this.head;
+    const recentStart = Math.max(0, drawCount - 800);
+
+    const geo = this.line.geometry;
+    geo.setDrawRange(recentStart, drawCount - recentStart);
+    (geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    this.lineMat.opacity = opacity * 0.8 * cycleFade;
+
+    // Fade trail: older portion
+    if (recentStart > 0) {
+      const fadeGeo = this.fadeLine.geometry;
+      fadeGeo.setDrawRange(0, recentStart);
+      (fadeGeo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+      this.fadeMat.opacity = opacity * 0.25 * cycleFade;
     }
 
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
-  }
-
-  /** Initialize u=1 everywhere, v=0 everywhere, then seed v patches. */
-  private initializeGrid(): void {
-    const size = this.cols * this.rows;
-
-    // u=1, v=0 everywhere
-    for (let i = 0; i < size; i++) {
-      this.u[i] = 1.0;
-      this.v[i] = 0.0;
-    }
-
-    // Seed 3-5 rectangular patches of v=1
-    const patchCount = this.rng.int(3, 5);
-    for (let p = 0; p < patchCount; p++) {
-      const pw = this.rng.int(4, Math.max(5, Math.floor(this.cols * 0.12)));
-      const ph = this.rng.int(4, Math.max(5, Math.floor(this.rows * 0.12)));
-      const px = this.rng.int(0, this.cols - pw);
-      const py = this.rng.int(0, this.rows - ph);
-
-      for (let ry = py; ry < py + ph; ry++) {
-        for (let rx = px; rx < px + pw; rx++) {
-          const idx = ry * this.cols + rx;
-          this.u[idx] = 0.5;
-          this.v[idx] = 0.25;
-        }
-      }
-    }
-
-    // Seed a few small circular spots
-    const circleCount = this.rng.int(3, 6);
-    for (let c = 0; c < circleCount; c++) {
-      const cx = this.rng.int(5, this.cols - 5);
-      const cy = this.rng.int(5, this.rows - 5);
-      const radius = this.rng.int(2, 5);
-
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          if (dx * dx + dy * dy <= radius * radius) {
-            const gx = (cx + dx + this.cols) % this.cols;
-            const gy = (cy + dy + this.rows) % this.rows;
-            const idx = gy * this.cols + gx;
-            this.u[idx] = 0.5;
-            this.v[idx] = 0.25;
-          }
-        }
-      }
-    }
-  }
-
-  /** Run n substeps of the Gray-Scott equations. */
-  private simulate(substeps: number): void {
-    const { cols, rows, Du, Dv, f, k } = this;
-    const size = cols * rows;
-
-    for (let step = 0; step < substeps; step++) {
-      const newU = new Float32Array(size);
-      const newV = new Float32Array(size);
-
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const idx = y * cols + x;
-
-          // 5-point Laplacian with wrapping edges
-          const left  = y * cols + ((x - 1 + cols) % cols);
-          const right = y * cols + ((x + 1) % cols);
-          const up    = ((y - 1 + rows) % rows) * cols + x;
-          const down  = ((y + 1) % rows) * cols + x;
-
-          const lapU = this.u[left] + this.u[right] + this.u[up] + this.u[down] - 4.0 * this.u[idx];
-          const lapV = this.v[left] + this.v[right] + this.v[up] + this.v[down] - 4.0 * this.v[idx];
-
-          const uVal = this.u[idx];
-          const vVal = this.v[idx];
-          const uvv = uVal * vVal * vVal;
-
-          newU[idx] = uVal + (Du * lapU - uvv + f * (1.0 - uVal));
-          newV[idx] = vVal + (Dv * lapV + uvv - (f + k) * vVal);
-
-          // Clamp to [0, 1]
-          if (newU[idx] < 0) newU[idx] = 0;
-          if (newU[idx] > 1) newU[idx] = 1;
-          if (newV[idx] < 0) newV[idx] = 0;
-          if (newV[idx] > 1) newV[idx] = 1;
-        }
-      }
-
-      this.u = newU;
-      this.v = newV;
-    }
-  }
-
-  /** Render v-values to canvas using palette colors. */
-  private renderCanvas(): void {
-    const { ctx, canvas, cols, rows } = this;
-    const imgData = ctx.createImageData(canvas.width, canvas.height);
-    const data = imgData.data;
-
-    const bg = this.palette.bg;
-    const dim = this.palette.dim;
-    const primary = this.palette.primary;
-
-    const bgR = bg.r * 255, bgG = bg.g * 255, bgB = bg.b * 255;
-    const dimR = dim.r * 255, dimG = dim.g * 255, dimB = dim.b * 255;
-    const priR = primary.r * 255, priG = primary.g * 255, priB = primary.b * 255;
-
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const idx = y * cols + x;
-        const val = Math.min(1, Math.max(0, this.v[idx]));
-        const px = (y * cols + x) * 4;
-
-        let r: number, g: number, b: number, a: number;
-
-        if (val < 0.2) {
-          // Mostly transparent background
-          const t = val / 0.2;
-          r = bgR;
-          g = bgG;
-          b = bgB;
-          a = t * 40;
-        } else if (val < 0.5) {
-          // Dim traces
-          const t = (val - 0.2) / 0.3;
-          r = dimR * 0.6;
-          g = dimG * 0.6;
-          b = dimB * 0.6;
-          a = 40 + t * 80;
-        } else {
-          // Subtle primary peaks
-          const t = Math.min(1, (val - 0.5) / 0.5);
-          r = dimR + (priR * 0.5 - dimR) * t;
-          g = dimG + (priG * 0.5 - dimG) * t;
-          b = dimB + (priB * 0.5 - dimB) * t;
-          a = 120 + t * 50;
-        }
-
-        data[px]     = Math.floor(r);
-        data[px + 1] = Math.floor(g);
-        data[px + 2] = Math.floor(b);
-        data[px + 3] = Math.floor(a);
-      }
-    }
-
-    ctx.putImageData(imgData, 0, 0);
-    this.texture.needsUpdate = true;
-  }
-
-  /** Seed random v-patches at random positions. */
-  private seedRandomPatches(): void {
-    const patchCount = this.rng.int(2, 4);
-    for (let p = 0; p < patchCount; p++) {
-      const pw = this.rng.int(3, Math.max(4, Math.floor(this.cols * 0.08)));
-      const ph = this.rng.int(3, Math.max(4, Math.floor(this.rows * 0.08)));
-      const px = this.rng.int(0, this.cols - pw);
-      const py = this.rng.int(0, this.rows - ph);
-
-      for (let ry = py; ry < py + ph; ry++) {
-        for (let rx = px; rx < px + pw; rx++) {
-          const idx = ry * this.cols + rx;
-          this.u[idx] = 0.5;
-          this.v[idx] = 0.25;
-        }
-      }
-    }
+    this.frameMat.opacity = opacity * 0.3;
   }
 
   onAction(action: string): void {
     super.onAction(action);
 
-    if (action === 'glitch') {
-      // Seed new random patches at random positions
-      this.seedRandomPatches();
-    }
-
     if (action === 'alert') {
-      // Reset entire grid and reseed with different f/k parameters
-      this.f = this.rng.float(0.03, 0.06);
-      this.k = this.rng.float(0.06, 0.065);
-      this.baseFeedRate = this.f;
-      this.initializeGrid();
-      this.pulseTimer = 2.0;
-    }
-
-    if (action === 'pulse') {
-      // Briefly boost feed rate for faster pattern emergence
-      this.feedBoostTimer = 1.5;
+      // Restart with new pattern immediately
+      const radius = Math.min(this.px.w, this.px.h) * 0.42;
+      this.randomizeParams(radius);
+      this.positions.fill(0);
+      this.line.geometry.setDrawRange(0, 0);
+      this.pulseTimer = 1.5;
     }
   }
 
   dispose(): void {
-    this.texture.dispose();
     super.dispose();
   }
 }

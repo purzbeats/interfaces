@@ -70,6 +70,8 @@ Seven built-in layout templates: `command-center`, `surveillance`, `diagnostic`,
 ### Simulations
 `boids-swarm`, `rule-grid`, `lorenz-attractor`, `neural-mesh`, `flow-field`, `pendulum-wave`, `reaction-diffusion`
 
+> *Note: `reaction-diffusion` is a harmonograph (damped pendulum spirograph).*
+
 ### Scanners
 `radar-sweep`, `radial-scanner`, `coord-grid`, `grid-overlay`, `bracket-frame`, `scan-line`, `target-lock`, `depth-sounder`, `satellite-track`, `thermal-map`, `topology-map`
 
