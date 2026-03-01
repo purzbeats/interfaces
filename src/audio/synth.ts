@@ -374,6 +374,58 @@ export class AudioSynth {
     osc.stop(t + 1.4);
   }
 
+  /**
+   * Reboot sequence — distressed variant of bootSequence.
+   * Lower frequencies, more noise, longer duration. Like a machine
+   * struggling to restart after a crash.
+   */
+  rebootSequence(count: number = 6, _baseFreq: number = 60): void {
+    const ctx = this.ensureCtx();
+    const t = ctx.currentTime;
+    const steps = Math.min(count, 10);
+
+    // Low distressed hum — unstable power supply
+    const hum = ctx.createOscillator();
+    const humGain = ctx.createGain();
+    hum.type = 'sawtooth';
+    hum.frequency.setValueAtTime(30, t);
+    hum.frequency.linearRampToValueAtTime(45, t + 0.8);
+    hum.frequency.linearRampToValueAtTime(25, t + steps * 0.2 + 0.5);
+    humGain.gain.setValueAtTime(0, t);
+    humGain.gain.linearRampToValueAtTime(0.06, t + 0.3);
+    humGain.gain.linearRampToValueAtTime(0.04, t + steps * 0.2 + 0.5);
+    humGain.gain.exponentialRampToValueAtTime(0.001, t + steps * 0.2 + 1.5);
+    hum.connect(humGain);
+    humGain.connect(this.bus);
+    hum.start(t);
+    hum.stop(t + steps * 0.2 + 1.6);
+
+    // Staggered seek clicks — more erratic timing
+    for (let i = 0; i < steps; i++) {
+      const offset = t + i * 0.2 + Math.random() * 0.08;
+      this.scheduleSeekSound(offset, 0.04 + Math.random() * 0.05);
+    }
+
+    // Glitch crackle midway — corrupt data sound
+    const crackleTime = t + steps * 0.1;
+    this.glitchNoise(0.25);
+
+    // Final lock — deeper, slower thunk
+    const lockTime = t + steps * 0.2 + 0.2;
+    const lockOsc = ctx.createOscillator();
+    const lockGain = ctx.createGain();
+    lockOsc.type = 'triangle';
+    lockOsc.frequency.setValueAtTime(100, lockTime);
+    lockOsc.frequency.exponentialRampToValueAtTime(35, lockTime + 0.25);
+    lockGain.gain.setValueAtTime(0, lockTime);
+    lockGain.gain.linearRampToValueAtTime(0.12, lockTime + 0.015);
+    lockGain.gain.exponentialRampToValueAtTime(0.001, lockTime + 0.35);
+    lockOsc.connect(lockGain);
+    lockGain.connect(this.bus);
+    lockOsc.start(lockTime);
+    lockOsc.stop(lockTime + 0.4);
+  }
+
   dispose(): void {
     this.ctx?.close();
     this.ctx = null;

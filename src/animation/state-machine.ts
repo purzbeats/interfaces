@@ -44,6 +44,13 @@ export class StateMachine {
     }
   }
 
+  /** Immediately jump to idle state, skipping deactivation animation. */
+  forceIdle(): void {
+    this.state = 'idle';
+    this.elapsed = 0;
+    this.progress = 0;
+  }
+
   private onComplete(): void {
     switch (this.state) {
       case 'activating':

@@ -11,6 +11,8 @@ import { createGUI, type GUIControls } from './gui/controls';
 import { takeScreenshot, createVideoRecorder, type VideoRecorder } from './export/exporter';
 import { AudioSynth } from './audio/synth';
 import { loadConfig, saveConfig, updateURL } from './persistence';
+import type { Region } from './layout/region';
+import * as THREE from 'three';
 
 export class Engine {
   config: Config;
@@ -21,6 +23,9 @@ export class Engine {
   private audio: AudioSynth = new AudioSynth();
   private elements: BaseElement[] = [];
   private elementMap: Map<string, BaseElement> = new Map();
+  private regionMap: Map<string, Region> = new Map();
+  private elementTypeMap: Map<string, string> = new Map();
+  private wrapperMap: Map<string, THREE.Group> = new Map();
   private timeline!: Timeline;
   private palette!: Palette;
   private elapsed: number = 0;
@@ -69,11 +74,19 @@ export class Engine {
 
     // Tear down existing elements
     for (const el of this.elements) {
-      this.ctx.scene.remove(el.group);
+      const wrapper = this.wrapperMap.get(el.id);
+      if (wrapper) {
+        this.ctx.scene.remove(wrapper);
+      } else {
+        this.ctx.scene.remove(el.group);
+      }
       el.dispose();
     }
     this.elements = [];
     this.elementMap.clear();
+    this.regionMap.clear();
+    this.elementTypeMap.clear();
+    this.wrapperMap.clear();
 
     const rng = new SeededRandom(seed);
     this.palette = getPalette(this.config.palette);
@@ -92,12 +105,13 @@ export class Engine {
       }
     };
 
-    // Create elements
+    // Create elements with wrapper groups
     const elementRng = rng.fork();
     for (const region of regions) {
       const elRng = elementRng.fork();
+      const elementType = region.elementType ?? 'panel';
       const element = createElement(
-        region.elementType ?? 'panel',
+        elementType,
         region,
         this.palette,
         elRng,
@@ -107,7 +121,14 @@ export class Engine {
       );
       this.elements.push(element);
       this.elementMap.set(element.id, element);
-      this.ctx.scene.add(element.group);
+      this.regionMap.set(region.id, region);
+      this.elementTypeMap.set(element.id, elementType);
+
+      // Wrapper group architecture: scene → wrapper → element.group
+      const wrapper = new THREE.Group();
+      wrapper.add(element.group);
+      this.wrapperMap.set(element.id, wrapper);
+      this.ctx.scene.add(wrapper);
     }
 
     // Generate timeline
@@ -124,7 +145,7 @@ export class Engine {
     if (this.disposed) return;
     this.elapsed += dt;
 
-    // Advance timeline — use Map for O(1) lookup instead of find()
+    // Advance timeline
     this.timeline.update(dt, (cue) => {
       const element = this.elementMap.get(cue.elementId);
       if (element) {

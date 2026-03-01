@@ -147,6 +147,134 @@ function diversityMultiplier(
   return mult;
 }
 
+// --- Segment lines (uniform widget bands) ---
+
+interface AlignedGroup {
+  axis: 'row' | 'column';
+  regions: Region[];
+}
+
+function findAlignedGroups(regions: Region[]): AlignedGroup[] {
+  const groups: AlignedGroup[] = [];
+  const tol = EDGE_TOLERANCE;
+
+  // Find rows: regions sharing same y and y+height
+  const rowBuckets = new Map<string, Region[]>();
+  for (const r of regions) {
+    // Quantize y and bottom to tolerance
+    const key = `${Math.round(r.y / tol)}|${Math.round((r.y + r.height) / tol)}`;
+    let bucket = rowBuckets.get(key);
+    if (!bucket) { bucket = []; rowBuckets.set(key, bucket); }
+    bucket.push(r);
+  }
+  for (const bucket of rowBuckets.values()) {
+    if (bucket.length < 2) continue;
+    // Sort by x, check contiguity
+    bucket.sort((a, b) => a.x - b.x);
+    if (isContiguous(bucket, 'x', 'width')) {
+      groups.push({ axis: 'row', regions: [...bucket] });
+    }
+  }
+
+  // Find columns: regions sharing same x and x+width
+  const colBuckets = new Map<string, Region[]>();
+  for (const r of regions) {
+    const key = `${Math.round(r.x / tol)}|${Math.round((r.x + r.width) / tol)}`;
+    let bucket = colBuckets.get(key);
+    if (!bucket) { bucket = []; colBuckets.set(key, bucket); }
+    bucket.push(r);
+  }
+  for (const bucket of colBuckets.values()) {
+    if (bucket.length < 2) continue;
+    bucket.sort((a, b) => a.y - b.y);
+    if (isContiguous(bucket, 'y', 'height')) {
+      groups.push({ axis: 'column', regions: [...bucket] });
+    }
+  }
+
+  return groups;
+}
+
+function isContiguous(
+  sorted: Region[],
+  posKey: 'x' | 'y',
+  sizeKey: 'width' | 'height'
+): boolean {
+  for (let i = 1; i < sorted.length; i++) {
+    const prevEnd = sorted[i - 1][posKey] + sorted[i - 1][sizeKey];
+    if (Math.abs(prevEnd - sorted[i][posKey]) > EDGE_TOLERANCE) return false;
+  }
+  return true;
+}
+
+function selectSegmentLines(
+  groups: AlignedGroup[],
+  rng: SeededRandom
+): AlignedGroup[] {
+  // 0 (20%), 1 (40%), 2 (30%), 3 (10%)
+  const countIdx = rng.weighted([20, 40, 30, 10]);
+  const segmentCount = countIdx; // 0,1,2,3
+
+  if (segmentCount === 0 || groups.length === 0) return [];
+
+  const shuffled = rng.shuffle([...groups]);
+  const selected: AlignedGroup[] = [];
+  const usedRegions = new Set<Region>();
+
+  for (const group of shuffled) {
+    if (selected.length >= segmentCount) break;
+    // Check no region overlap with already-selected segments
+    if (group.regions.some(r => usedRegions.has(r))) continue;
+    selected.push(group);
+    for (const r of group.regions) usedRegions.add(r);
+  }
+
+  return selected;
+}
+
+function assignSegmentLines(
+  segments: AlignedGroup[],
+  baseWeights: Record<string, number>,
+  candidates: string[],
+  ctx: PlacementContext,
+  rng: SeededRandom
+): Set<Region> {
+  const preAssigned = new Set<Region>();
+
+  for (const seg of segments) {
+    // Use first region's shape as representative
+    const regionShape = classifyRegion(seg.regions[0]);
+
+    // Pick element via weighted random with shape fitness
+    const adjustedWeights: number[] = candidates.map(name => {
+      const base = baseWeights[name];
+      const fit = shapeFitness(name, regionShape);
+      const div = diversityMultiplier(name, seg.regions[0], ctx);
+      return base * fit * div;
+    });
+
+    const idx = rng.weighted(adjustedWeights);
+    const chosen = candidates[idx];
+
+    // Assign to all regions in segment
+    for (const region of seg.regions) {
+      region.elementType = chosen;
+      preAssigned.add(region);
+
+      ctx.typeCounts[chosen] = (ctx.typeCounts[chosen] ?? 0) + 1;
+      const meta = getMeta(chosen);
+      if (meta) {
+        for (const role of meta.roles) {
+          ctx.roleCounts[role] = (ctx.roleCounts[role] ?? 0) + 1;
+        }
+      }
+      ctx.placements.push({ region, elementType: chosen });
+    }
+  }
+
+  return preAssigned;
+}
+
 // --- Compose ---
 
 /**
@@ -184,8 +312,15 @@ export function compose(
     placements: [],
   };
 
-  // Process regions sequentially, building context
+  // Segment lines: find aligned groups, select 0-3, pre-assign
+  const alignedGroups = findAlignedGroups(leafRegions);
+  const segments = selectSegmentLines(alignedGroups, rng);
+  const preAssigned = assignSegmentLines(segments, baseWeights, candidates, ctx, rng);
+
+  // Process remaining regions sequentially, building context
   for (const region of leafRegions) {
+    if (preAssigned.has(region)) continue;
+
     const regionShape = classifyRegion(region);
 
     // Compute adjusted weights for each candidate
