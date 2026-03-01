@@ -244,19 +244,17 @@ export class RuleGridElement extends BaseElement {
         const cx = c * cellW;
         const cy = r * cellH;
 
+        // Gradient: full brightness at bottom, faded at top
+        const rowFade = this.filledRows > 1 ? r / (this.filledRows - 1) : 1;
         if (pulseFlash) {
           ctx.fillStyle = primaryHex;
           ctx.shadowBlur = 2;
           ctx.shadowColor = primaryHex;
-          ctx.globalAlpha = 0.95;
-        } else if (r >= activeFrontStart) {
-          ctx.fillStyle = primaryHex;
-          ctx.shadowBlur = 0;
-          ctx.globalAlpha = 0.85;
+          ctx.globalAlpha = 0.3 + rowFade * 0.7;
         } else {
-          ctx.fillStyle = dimHex;
+          ctx.fillStyle = rowFade > 0.8 ? primaryHex : dimHex;
           ctx.shadowBlur = 0;
-          ctx.globalAlpha = 0.7;
+          ctx.globalAlpha = 0.15 + rowFade * 0.85;
         }
 
         ctx.fillRect(cx, cy, cellW, cellH);
