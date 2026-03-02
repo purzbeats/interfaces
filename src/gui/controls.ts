@@ -119,6 +119,8 @@ export function createGUI(
     });
 
     arFolder.add(audioReactive, 'sensitivity', 0.5, 3.0, 0.1).name('Sensitivity');
+    arFolder.add(config.audioReactive, 'flicker').name('Flicker');
+    arFolder.add(config.audioReactive, 'jiggle').name('Jiggle');
   }
 
   // Post-FX

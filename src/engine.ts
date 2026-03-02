@@ -6,7 +6,7 @@ import { createRenderer, resizeRenderer, type RendererContext } from './renderer
 import { getPalette, type Palette } from './color/palettes';
 import { compose } from './layout/compositor';
 import { createElement, createElementDeferred } from './elements/registry';
-import { type BaseElement } from './elements/base-element';
+import { BaseElement } from './elements/base-element';
 import { generateTimeline, type Timeline } from './animation/timeline';
 import { createPostFXPipeline, type PostFXPipeline } from './postfx/pipeline';
 import { createGUI, type GUIControls } from './gui/controls';
@@ -125,7 +125,11 @@ export class Engine {
     // Wire audio-reactive → intensity system (envelope-based, no hard cutoff)
     this.audioReactive.onKick = (level) => {
       this.intensityEnvelope = level;
+      BaseElement.audioFlickerEnabled = this.config.audioReactive.flicker;
+      BaseElement.audioJiggleEnabled = this.config.audioReactive.jiggle;
+      BaseElement.intensityFromAudio = true;
       this.broadcastIntensity(level);
+      BaseElement.intensityFromAudio = false;
     };
 
     this.gui = createGUI(
@@ -430,6 +434,10 @@ export class Engine {
       const frame = this.audioReactive.frame;
       const rmsBase = frame ? frame.rms * 2 : 0;
       const envLevel = Math.max(rmsBase, this.intensityEnvelope);
+      // Sync config flags so base-element gates pulse/glitch
+      BaseElement.audioFlickerEnabled = this.config.audioReactive.flicker;
+      BaseElement.audioJiggleEnabled = this.config.audioReactive.jiggle;
+      BaseElement.intensityFromAudio = true;
       if (envLevel < 0.1) {
         if (this.currentIntensity !== 0) this.broadcastIntensity(0);
         this.intensityEnvelope = 0;
@@ -439,6 +447,7 @@ export class Engine {
           this.broadcastIntensity(rounded);
         }
       }
+      BaseElement.intensityFromAudio = false;
     }
 
     // Phase 2: staggered build — pop a batch each frame

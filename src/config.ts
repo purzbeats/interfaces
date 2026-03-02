@@ -76,6 +76,10 @@ export interface Config {
   overscanPadding: number;
   overscanX: number;
   overscanY: number;
+  audioReactive: {
+    flicker: boolean;
+    jiggle: boolean;
+  };
   export: {
     fps: number;
     duration: number;
@@ -116,6 +120,10 @@ export const DEFAULT_CONFIG: Config = {
   overscanPadding: 0,
   overscanX: 0,
   overscanY: 0,
+  audioReactive: {
+    flicker: true,
+    jiggle: true,
+  },
   export: {
     fps: 60,
     duration: 30,

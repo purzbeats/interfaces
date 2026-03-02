@@ -20,6 +20,9 @@ export function loadConfig(): Partial<Config> {
     if (data.timeline && typeof data.timeline === 'object') {
       result.timeline = data.timeline;
     }
+    if (data.audioReactive && typeof data.audioReactive === 'object') {
+      result.audioReactive = data.audioReactive;
+    }
     return result;
   } catch {
     return {};
@@ -36,6 +39,7 @@ export function saveConfig(config: Config): void {
       aspectRatio: config.aspectRatio,
       postfx: config.postfx,
       timeline: config.timeline,
+      audioReactive: config.audioReactive,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {

@@ -19,6 +19,13 @@ export interface ElementRegistration {
 }
 
 export abstract class BaseElement {
+  /** When false, audio-reactive intensity won't trigger pulse (flicker). */
+  static audioFlickerEnabled: boolean = true;
+  /** When false, audio-reactive intensity won't trigger glitch (jiggle). */
+  static audioJiggleEnabled: boolean = true;
+  /** Set by engine before audio-reactive intensity broadcasts. */
+  static intensityFromAudio: boolean = false;
+
   readonly id: string;
   readonly region: Region;
   readonly palette: Palette;
@@ -109,29 +116,32 @@ export abstract class BaseElement {
    * Level 0 = return to baseline (clear timers). Override for custom behavior.
    */
   onIntensity(level: number): void {
+    const fromAudio = BaseElement.intensityFromAudio;
+    const canFlicker = !fromAudio || BaseElement.audioFlickerEnabled;
+    const canJiggle = !fromAudio || BaseElement.audioJiggleEnabled;
+
     switch (level) {
       case 0:
-        // Return to baseline — clear effect timers
-        this.pulseTimer = 0;
-        this.glitchTimer = 0;
+        if (canFlicker) this.pulseTimer = 0;
+        if (canJiggle) this.glitchTimer = 0;
         break;
       case 1:
-        this.pulseTimer = 0.15;
+        if (canFlicker) this.pulseTimer = 0.15;
         break;
       case 2:
-        this.pulseTimer = 0.3;
+        if (canFlicker) this.pulseTimer = 0.3;
         break;
       case 3:
-        this.pulseTimer = 0.4;
-        this.glitchTimer = 0.2;
+        if (canFlicker) this.pulseTimer = 0.4;
+        if (canJiggle) this.glitchTimer = 0.2;
         break;
       case 4:
-        this.pulseTimer = 0.6;
-        this.glitchTimer = 0.4;
+        if (canFlicker) this.pulseTimer = 0.6;
+        if (canJiggle) this.glitchTimer = 0.4;
         break;
       case 5:
-        this.pulseTimer = 1.0;
-        this.glitchTimer = 0.8;
+        if (canFlicker) this.pulseTimer = 1.0;
+        if (canJiggle) this.glitchTimer = 0.8;
         break;
     }
   }
