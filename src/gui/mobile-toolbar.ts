@@ -1,4 +1,4 @@
-/** Mobile-friendly bottom toolbar with 6 touch buttons. */
+/** Mobile-friendly two-row bottom toolbar with touch controls. */
 
 export interface MobileToolbarCallbacks {
   onRegenerate: () => void;
@@ -6,17 +6,24 @@ export interface MobileToolbarCallbacks {
   onToggleMute: () => void;
   onScreenshot: () => void;
   onShowcase: () => void;
+  onGallery: () => void;
+  onToggleLoop: () => void;
   onToggleSettings: () => void;
   onResumeAudio: () => void;
+  onIntensity: (level: number) => void;
 }
 
-export const TOOLBAR_HEIGHT = 56;
+const ROW_HEIGHT = 48;
+export const TOOLBAR_HEIGHT = ROW_HEIGHT * 2;
 
 export class MobileToolbar {
   private el: HTMLDivElement;
   private styleEl: HTMLStyleElement;
   private pauseBtn!: HTMLButtonElement;
   private muteBtn!: HTMLButtonElement;
+  private loopBtn!: HTMLButtonElement;
+  private intensityBtns: HTMLButtonElement[] = [];
+  private activeIntensity: number = 0;
   private audioResumed = false;
   private callbacks: MobileToolbarCallbacks;
 
@@ -50,18 +57,52 @@ export class MobileToolbar {
     return style;
   }
 
+  private makeBtn(icon: string, label: string): HTMLButtonElement {
+    const btn = document.createElement('button');
+    btn.innerHTML = `<span style="font-size:18px;line-height:1">${icon}</span><br><span style="font-size:7px;letter-spacing:1px">${label}</span>`;
+    Object.assign(btn.style, {
+      flex: '1',
+      background: 'none',
+      border: 'none',
+      borderRight: '1px solid rgba(51, 255, 102, 0.12)',
+      color: '#33ff66',
+      fontFamily: 'inherit',
+      cursor: 'pointer',
+      padding: '2px 0',
+      textAlign: 'center',
+      WebkitTapHighlightColor: 'transparent',
+      minWidth: '0',
+    });
+    return btn;
+  }
+
+  private wireTap(btn: HTMLButtonElement, action: () => void): void {
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      btn.style.background = 'rgba(51, 255, 102, 0.15)';
+    }, { passive: false });
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      btn.style.background = 'none';
+      action();
+    });
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      action();
+    });
+  }
+
   private createToolbar(): HTMLDivElement {
-    const bar = document.createElement('div');
-    bar.id = 'mobile-toolbar';
-    Object.assign(bar.style, {
+    const wrapper = document.createElement('div');
+    wrapper.id = 'mobile-toolbar';
+    Object.assign(wrapper.style, {
       position: 'fixed',
       bottom: '0',
       left: '0',
       right: '0',
       height: `${TOOLBAR_HEIGHT}px`,
       display: 'flex',
-      alignItems: 'stretch',
-      justifyContent: 'space-around',
+      flexDirection: 'column',
       background: 'rgba(0, 0, 0, 0.88)',
       borderTop: '1px solid rgba(51, 255, 102, 0.25)',
       zIndex: '950',
@@ -69,49 +110,139 @@ export class MobileToolbar {
       touchAction: 'manipulation',
     });
 
-    const buttons: { icon: string; label: string; action: () => void; ref?: 'pause' | 'mute' }[] = [
-      { icon: '\u27F3', label: 'REGEN', action: () => this.fire(this.callbacks.onRegenerate) },
-      { icon: '\u25B6', label: 'PLAY', action: () => this.fire(this.callbacks.onTogglePause), ref: 'pause' },
-      { icon: '\u266A', label: 'SOUND', action: () => this.fire(this.callbacks.onToggleMute), ref: 'mute' },
-      { icon: '\u25C9', label: 'SHOT', action: () => this.fire(this.callbacks.onScreenshot) },
-      { icon: '\u229E', label: 'VIEW', action: () => this.fire(this.callbacks.onShowcase) },
-      { icon: '\u2261', label: 'MENU', action: () => this.fire(this.callbacks.onToggleSettings) },
-    ];
+    // --- Top row: core controls ---
+    const topRow = document.createElement('div');
+    Object.assign(topRow.style, {
+      display: 'flex',
+      alignItems: 'stretch',
+      height: `${ROW_HEIGHT}px`,
+      borderBottom: '1px solid rgba(51, 255, 102, 0.12)',
+    });
 
-    for (const def of buttons) {
-      const btn = document.createElement('button');
-      btn.innerHTML = `<span style="font-size:20px;line-height:1">${def.icon}</span><br><span style="font-size:8px;letter-spacing:1px">${def.label}</span>`;
-      Object.assign(btn.style, {
+    const regen = this.makeBtn('\u27F3', 'REGEN');
+    this.wireTap(regen, () => this.fire(this.callbacks.onRegenerate));
+
+    this.pauseBtn = this.makeBtn('\u25B6', 'PLAY');
+    this.wireTap(this.pauseBtn, () => this.fire(this.callbacks.onTogglePause));
+
+    this.muteBtn = this.makeBtn('\u266A', 'SOUND');
+    this.wireTap(this.muteBtn, () => this.fire(this.callbacks.onToggleMute));
+
+    const shot = this.makeBtn('\u25C9', 'SHOT');
+    this.wireTap(shot, () => this.fire(this.callbacks.onScreenshot));
+
+    const menu = this.makeBtn('\u2261', 'MENU');
+    this.wireTap(menu, () => this.fire(this.callbacks.onToggleSettings));
+
+    topRow.append(regen, this.pauseBtn, this.muteBtn, shot, menu);
+
+    // --- Bottom row: modes + intensity ---
+    const botRow = document.createElement('div');
+    Object.assign(botRow.style, {
+      display: 'flex',
+      alignItems: 'stretch',
+      height: `${ROW_HEIGHT}px`,
+    });
+
+    const showcase = this.makeBtn('\u229E', 'SHOW');
+    this.wireTap(showcase, () => this.fire(this.callbacks.onShowcase));
+
+    const gallery = this.makeBtn('\u25A6', 'GRID');
+    this.wireTap(gallery, () => this.fire(this.callbacks.onGallery));
+
+    this.loopBtn = this.makeBtn('\u21BB', 'LOOP');
+    this.wireTap(this.loopBtn, () => this.fire(this.callbacks.onToggleLoop));
+
+    // Intensity strip: 5 segments
+    const strip = document.createElement('div');
+    Object.assign(strip.style, {
+      flex: '2.5',
+      display: 'flex',
+      alignItems: 'stretch',
+      borderRight: '1px solid rgba(51, 255, 102, 0.12)',
+    });
+
+    for (let i = 1; i <= 5; i++) {
+      const seg = document.createElement('button');
+      seg.textContent = String(i);
+      Object.assign(seg.style, {
         flex: '1',
         background: 'none',
         border: 'none',
-        borderRight: '1px solid rgba(51, 255, 102, 0.12)',
-        color: '#33ff66',
+        borderRight: i < 5 ? '1px solid rgba(51, 255, 102, 0.06)' : 'none',
+        color: 'rgba(51, 255, 102, 0.4)',
         fontFamily: 'inherit',
+        fontSize: '14px',
+        fontWeight: 'bold',
         cursor: 'pointer',
-        padding: '4px 0',
+        padding: '0',
         textAlign: 'center',
         WebkitTapHighlightColor: 'transparent',
       });
-      btn.addEventListener('touchstart', (e) => {
+
+      // Press-and-hold for intensity
+      seg.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        btn.style.background = 'rgba(51, 255, 102, 0.15)';
+        this.setIntensity(i);
+        this.fire(() => this.callbacks.onIntensity(i));
       }, { passive: false });
-      btn.addEventListener('touchend', (e) => {
+      seg.addEventListener('touchend', (e) => {
         e.preventDefault();
-        btn.style.background = 'none';
-        def.action();
+        this.setIntensity(0);
+        this.fire(() => this.callbacks.onIntensity(0));
       });
-      btn.addEventListener('click', (e) => {
+      seg.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        def.action();
+        this.setIntensity(i);
+        this.fire(() => this.callbacks.onIntensity(i));
       });
-      if (def.ref === 'pause') this.pauseBtn = btn;
-      if (def.ref === 'mute') this.muteBtn = btn;
-      bar.appendChild(btn);
+      seg.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        this.setIntensity(0);
+        this.fire(() => this.callbacks.onIntensity(0));
+      });
+
+      this.intensityBtns.push(seg);
+      strip.appendChild(seg);
     }
 
-    return bar;
+    // Label above the strip
+    const stripLabel = document.createElement('div');
+    stripLabel.textContent = 'INTENSITY';
+    Object.assign(stripLabel.style, {
+      position: 'absolute',
+      bottom: `${ROW_HEIGHT - 2}px`,
+      right: '0',
+      width: strip.style.flex, // doesn't work directly, use the strip's bounds
+      fontSize: '6px',
+      letterSpacing: '1px',
+      color: 'rgba(51, 255, 102, 0.3)',
+      textAlign: 'center',
+      pointerEvents: 'none',
+    });
+
+    botRow.append(showcase, gallery, this.loopBtn, strip);
+
+    wrapper.append(topRow, botRow);
+    return wrapper;
+  }
+
+  private setIntensity(level: number): void {
+    this.activeIntensity = level;
+    for (let i = 0; i < 5; i++) {
+      const seg = this.intensityBtns[i];
+      if (i < level) {
+        const heat = (i + 1) / 5;
+        const r = Math.round(51 + heat * 204);
+        const g = Math.round(255 - heat * 155);
+        const b = Math.round(102 - heat * 80);
+        seg.style.background = `rgba(${r}, ${g}, ${b}, 0.3)`;
+        seg.style.color = `rgb(${r}, ${g}, ${b})`;
+      } else {
+        seg.style.background = 'none';
+        seg.style.color = 'rgba(51, 255, 102, 0.4)';
+      }
+    }
   }
 
   private fire(fn: () => void): void {
@@ -125,13 +256,18 @@ export class MobileToolbar {
   setPaused(paused: boolean): void {
     const icon = paused ? '\u25B6' : '\u23F8';
     const label = paused ? 'PLAY' : 'PAUSE';
-    this.pauseBtn.innerHTML = `<span style="font-size:20px;line-height:1">${icon}</span><br><span style="font-size:8px;letter-spacing:1px">${label}</span>`;
+    this.pauseBtn.innerHTML = `<span style="font-size:18px;line-height:1">${icon}</span><br><span style="font-size:7px;letter-spacing:1px">${label}</span>`;
   }
 
   setMuted(muted: boolean): void {
     const icon = muted ? '\u266A' : '\u266B';
     const label = muted ? 'MUTED' : 'SOUND';
-    this.muteBtn.innerHTML = `<span style="font-size:20px;line-height:1">${icon}</span><br><span style="font-size:8px;letter-spacing:1px">${label}</span>`;
+    this.muteBtn.innerHTML = `<span style="font-size:18px;line-height:1">${icon}</span><br><span style="font-size:7px;letter-spacing:1px">${label}</span>`;
+  }
+
+  setLoop(loop: boolean): void {
+    this.loopBtn.style.color = loop ? '#33ff66' : 'rgba(51, 255, 102, 0.4)';
+    this.loopBtn.style.background = loop ? 'rgba(51, 255, 102, 0.12)' : 'none';
   }
 
   destroy(): void {

@@ -156,10 +156,18 @@ export class Engine {
           },
           onScreenshot: () => takeScreenshot(this.ctx.renderer.domElement),
           onShowcase: () => {
-            if (!this.showcase.isActive) this.showcase.enter();
+            if (!this.showcase.isActive && !this.gallery.isActive) this.showcase.enter();
+          },
+          onGallery: () => {
+            if (!this.gallery.isActive && !this.showcase.isActive) this.gallery.enter();
+          },
+          onToggleLoop: () => {
+            this.timeline.loop = !this.timeline.loop;
+            this.mobileToolbar?.setLoop(this.timeline.loop);
           },
           onToggleSettings: () => this.gui.toggle(),
           onResumeAudio: () => this.audio.blip(0, 0),
+          onIntensity: (level) => this.broadcastIntensity(level),
         });
         this.applyAspect();
         resizeRenderer(this.ctx, this.config.width, this.config.height);
