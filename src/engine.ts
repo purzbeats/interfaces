@@ -500,6 +500,29 @@ export class Engine {
       this.generate(this.config.seed);
     });
 
+    // Click/touch on an element → intensity 5 one-shot on that element
+    const canvas = this.ctx.renderer.domElement;
+    const handleTap = (clientX: number, clientY: number) => {
+      const rect = canvas.getBoundingClientRect();
+      const nx = (clientX - rect.left) / rect.width;
+      const ny = 1 - (clientY - rect.top) / rect.height; // flip Y: CSS top-down → GL bottom-up
+      for (const el of this.elements) {
+        if (!el.group.visible || el.stateMachine.state === 'idle') continue;
+        const r = el.region;
+        if (nx >= r.x && nx <= r.x + r.width && ny >= r.y && ny <= r.y + r.height) {
+          el.onIntensity(5);
+          this.audio.intensityBlip(5);
+          return;
+        }
+      }
+    };
+    canvas.addEventListener('click', (e) => handleTap(e.clientX, e.clientY));
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        handleTap(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
     window.addEventListener('keyup', (e) => {
       const intensityLevel = parseInt(e.key);
       if (intensityLevel >= 1 && intensityLevel <= 5) {
