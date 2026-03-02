@@ -111,7 +111,7 @@ export class Engine {
       resizeRenderer(this.ctx, this.config.width, this.config.height);
       this.pipeline.resize(this.config.width, this.config.height);
       this.generate(this.config.seed);
-    });
+    }, () => !!this.mobileToolbar);
 
     // Wire audio-reactive → intensity system
     this.audioReactive.onKick = (level) => {

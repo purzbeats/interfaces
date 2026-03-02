@@ -9,11 +9,14 @@ import { type PostFXPipeline } from './postfx/pipeline';
 import { type Config, computeAspectSize } from './config';
 import { type ShowcaseMode } from './showcase';
 import { getMeta } from './elements/tags';
+import { TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
 
-const PAGE_SIZE = 16;
-const COLS = 4;
-const ROWS = 4;
+const DESKTOP_COLS = 4;
+const DESKTOP_ROWS = 4;
+const MOBILE_COLS = 2;
+const MOBILE_ROWS = 2;
 const CELL_PAD = 0.01;
+const SWIPE_THRESHOLD = 50; // minimum px for a swipe
 
 // All available filter tags, grouped by category
 const SHAPE_TAGS = ['rectangular', 'linear', 'radial'] as const;
@@ -32,8 +35,8 @@ function matchesTag(type: string, tag: string): boolean {
 }
 
 /**
- * Gallery mode: 4×4 paginated grid of live element previews.
- * Click a tile to enter showcase mode focused on that element.
+ * Gallery mode: paginated grid of live element previews.
+ * 4×4 on desktop, 2×2 on mobile. Click/tap a tile to enter showcase.
  * Tag filters at the top narrow the displayed elements.
  */
 export class GalleryMode {
@@ -55,8 +58,18 @@ export class GalleryMode {
   private onExit: () => void;
   private keyHandler: (e: KeyboardEvent) => void;
   private clickHandler: (e: MouseEvent) => void;
+  private touchStartHandler: (e: TouchEvent) => void;
+  private touchEndHandler: (e: TouchEvent) => void;
   private resizeHandler: () => void;
   private stashedChildren: THREE.Object3D[] = [];
+  private isMobileCheck: () => boolean;
+  private swipeStartX: number = 0;
+  private swipeStartY: number = 0;
+
+  // Current grid dimensions (responsive)
+  private cols: number = DESKTOP_COLS;
+  private rows: number = DESKTOP_ROWS;
+  private pageSize: number = DESKTOP_COLS * DESKTOP_ROWS;
 
   constructor(
     ctx: RendererContext,
@@ -64,14 +77,17 @@ export class GalleryMode {
     config: Config,
     showcase: ShowcaseMode,
     onExit: () => void,
+    isMobile: () => boolean,
   ) {
     this.ctx = ctx;
     this.pipeline = pipeline;
     this.config = config;
     this.showcase = showcase;
     this.onExit = onExit;
+    this.isMobileCheck = isMobile;
     this.allTypes = elementTypes().filter(t => t !== 'panel' && t !== 'separator');
     this.filteredTypes = this.allTypes;
+    this.updateGridDimensions();
     this.recomputePages();
 
     this.overlay = this.createOverlay();
@@ -80,6 +96,8 @@ export class GalleryMode {
 
     this.keyHandler = (e: KeyboardEvent) => this.handleKey(e);
     this.clickHandler = (e: MouseEvent) => this.handleClick(e);
+    this.touchStartHandler = (e: TouchEvent) => this.handleTouchStart(e);
+    this.touchEndHandler = (e: TouchEvent) => this.handleTouchEnd(e);
     this.resizeHandler = () => this.handleResize();
   }
 
@@ -87,10 +105,26 @@ export class GalleryMode {
     return this.active;
   }
 
+  private get isMobile(): boolean {
+    return this.isMobileCheck();
+  }
+
+  private updateGridDimensions(): void {
+    if (this.isMobile) {
+      this.cols = MOBILE_COLS;
+      this.rows = MOBILE_ROWS;
+    } else {
+      this.cols = DESKTOP_COLS;
+      this.rows = DESKTOP_ROWS;
+    }
+    this.pageSize = this.cols * this.rows;
+  }
+
   enter(): void {
     this.active = true;
     this.activeFilter = null;
     this.filteredTypes = this.allTypes;
+    this.updateGridDimensions();
     this.recomputePages();
     this.page = 0;
     this.overlay.style.display = '';
@@ -107,6 +141,9 @@ export class GalleryMode {
 
     window.addEventListener('keydown', this.keyHandler);
     this.ctx.renderer.domElement.addEventListener('click', this.clickHandler);
+    const canvas = this.ctx.renderer.domElement;
+    canvas.addEventListener('touchstart', this.touchStartHandler, { passive: true });
+    canvas.addEventListener('touchend', this.touchEndHandler, { passive: false });
     window.addEventListener('resize', this.resizeHandler);
 
     this.spawnPage();
@@ -117,6 +154,8 @@ export class GalleryMode {
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
     this.ctx.renderer.domElement.removeEventListener('click', this.clickHandler);
+    this.ctx.renderer.domElement.removeEventListener('touchstart', this.touchStartHandler);
+    this.ctx.renderer.domElement.removeEventListener('touchend', this.touchEndHandler);
     window.removeEventListener('resize', this.resizeHandler);
     this.clearElements();
 
@@ -134,6 +173,8 @@ export class GalleryMode {
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
     this.ctx.renderer.domElement.removeEventListener('click', this.clickHandler);
+    this.ctx.renderer.domElement.removeEventListener('touchstart', this.touchStartHandler);
+    this.ctx.renderer.domElement.removeEventListener('touchend', this.touchEndHandler);
     window.removeEventListener('resize', this.resizeHandler);
     this.clearElements();
 
@@ -167,13 +208,15 @@ export class GalleryMode {
     this.overlay.remove();
     window.removeEventListener('keydown', this.keyHandler);
     this.ctx.renderer.domElement.removeEventListener('click', this.clickHandler);
+    this.ctx.renderer.domElement.removeEventListener('touchstart', this.touchStartHandler);
+    this.ctx.renderer.domElement.removeEventListener('touchend', this.touchEndHandler);
     window.removeEventListener('resize', this.resizeHandler);
   }
 
   // --- Private ---
 
   private recomputePages(): void {
-    this.totalPages = Math.max(1, Math.ceil(this.filteredTypes.length / PAGE_SIZE));
+    this.totalPages = Math.max(1, Math.ceil(this.filteredTypes.length / this.pageSize));
   }
 
   private setFilter(tag: string | null): void {
@@ -186,6 +229,20 @@ export class GalleryMode {
     this.recomputePages();
     this.page = 0;
     this.spawnPage();
+  }
+
+  private nextPage(): void {
+    if (this.page < this.totalPages - 1) {
+      this.page++;
+      this.spawnPage();
+    }
+  }
+
+  private prevPage(): void {
+    if (this.page > 0) {
+      this.page--;
+      this.spawnPage();
+    }
   }
 
   private createOverlay(): HTMLDivElement {
@@ -208,8 +265,10 @@ export class GalleryMode {
   private updateOverlay(): void {
     const canvas = this.ctx.renderer.domElement;
     const canvasRect = canvas.getBoundingClientRect();
-    const cellW = canvasRect.width / COLS;
-    const cellH = canvasRect.height / ROWS;
+    const cellW = canvasRect.width / this.cols;
+    const cellH = canvasRect.height / this.rows;
+    const mobile = this.isMobile;
+    const bottomOffset = mobile ? TOOLBAR_HEIGHT : 0;
 
     // Offset from viewport to canvas
     const ox = canvasRect.left;
@@ -218,20 +277,42 @@ export class GalleryMode {
     let html = '';
 
     // --- Filter bar at top ---
-    html += `<div style="
-      position:fixed;
-      top:${oy + 6}px;
-      left:${ox}px;
-      width:${canvasRect.width}px;
-      text-align:center;
-      pointer-events:auto;
-      display:flex;
-      flex-wrap:wrap;
-      justify-content:center;
-      gap:4px 6px;
-      padding:0 12px;
-      box-sizing:border-box;
-    ">`;
+    if (mobile) {
+      // Horizontally scrollable single-row strip on mobile
+      html += `<div style="
+        position:fixed;
+        top:${oy + 4}px;
+        left:${ox}px;
+        width:${canvasRect.width}px;
+        pointer-events:auto;
+        display:flex;
+        flex-wrap:nowrap;
+        gap:4px;
+        padding:4px 8px;
+        box-sizing:border-box;
+        overflow-x:auto;
+        overflow-y:hidden;
+        -webkit-overflow-scrolling:touch;
+        background:rgba(0,0,0,0.75);
+        backdrop-filter:blur(4px);
+        scrollbar-width:none;
+      ">`;
+    } else {
+      html += `<div style="
+        position:fixed;
+        top:${oy + 6}px;
+        left:${ox}px;
+        width:${canvasRect.width}px;
+        text-align:center;
+        pointer-events:auto;
+        display:flex;
+        flex-wrap:wrap;
+        justify-content:center;
+        gap:4px 6px;
+        padding:0 12px;
+        box-sizing:border-box;
+      ">`;
+    }
 
     // "ALL" chip
     const allActive = this.activeFilter === null;
@@ -239,7 +320,9 @@ export class GalleryMode {
 
     for (const tag of ALL_TAGS) {
       if (tag === '|') {
-        html += `<span style="width:1px;height:16px;background:rgba(255,255,255,0.15);margin:0 2px;align-self:center;"></span>`;
+        if (!mobile) {
+          html += `<span style="width:1px;height:16px;background:rgba(255,255,255,0.15);margin:0 2px;align-self:center;"></span>`;
+        }
         continue;
       }
       const isActive = this.activeFilter === tag;
@@ -250,11 +333,11 @@ export class GalleryMode {
     html += `</div>`;
 
     // --- Labels for each cell ---
-    const startIdx = this.page * PAGE_SIZE;
-    const count = Math.min(PAGE_SIZE, this.filteredTypes.length - startIdx);
+    const startIdx = this.page * this.pageSize;
+    const count = Math.min(this.pageSize, this.filteredTypes.length - startIdx);
     for (let i = 0; i < count; i++) {
-      const col = i % COLS;
-      const row = Math.floor(i / COLS);
+      const col = i % this.cols;
+      const row = Math.floor(i / this.cols);
       const name = this.filteredTypes[startIdx + i];
       const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
@@ -267,7 +350,7 @@ export class GalleryMode {
         top:${top}px;
         width:${cellW}px;
         text-align:center;
-        font-size:10px;
+        font-size:${mobile ? '11px' : '10px'};
         letter-spacing:1px;
         text-transform:uppercase;
         opacity:0.7;
@@ -280,10 +363,48 @@ export class GalleryMode {
       ">${displayName}</div>`;
     }
 
+    // --- Touch nav buttons (mobile only) ---
+    if (mobile && this.totalPages > 1) {
+      const btnStyle = `
+        display:inline-block;
+        padding:10px 20px;
+        font-size:13px;
+        font-family:inherit;
+        letter-spacing:2px;
+        text-transform:uppercase;
+        background:rgba(255,255,255,0.08);
+        border:1px solid rgba(255,255,255,0.25);
+        border-radius:4px;
+        color:#fff;
+        cursor:pointer;
+        user-select:none;
+        pointer-events:auto;
+        min-width:80px;
+        text-align:center;
+      `;
+      const prevOpacity = this.page > 0 ? '0.8' : '0.2';
+      const nextOpacity = this.page < this.totalPages - 1 ? '0.8' : '0.2';
+
+      html += `<div style="
+        position:fixed;
+        bottom:${bottomOffset + 52}px;
+        left:0;
+        right:0;
+        text-align:center;
+        display:flex;
+        justify-content:center;
+        gap:16px;
+        pointer-events:none;
+      ">`;
+      html += `<span id="gallery-prev-btn" style="${btnStyle}opacity:${prevOpacity};">\u2039 PREV</span>`;
+      html += `<span id="gallery-next-btn" style="${btnStyle}opacity:${nextOpacity};">NEXT \u203a</span>`;
+      html += `</div>`;
+    }
+
     // --- Page indicator ---
     html += `<div style="
       position:fixed;
-      bottom:12px;
+      bottom:${bottomOffset + 12}px;
       left:0;
       right:0;
       text-align:center;
@@ -296,14 +417,14 @@ export class GalleryMode {
     // --- Navigation hint ---
     html += `<div style="
       position:fixed;
-      bottom:32px;
+      bottom:${bottomOffset + 32}px;
       left:0;
       right:0;
       text-align:center;
       font-size:10px;
       letter-spacing:1px;
       opacity:0.35;
-    ">\u2190 \u2192 page \u00b7 Click to focus \u00b7 Esc exit</div>`;
+    ">${mobile ? 'Swipe or tap buttons to page \u00b7 Tap card to focus' : '\u2190 \u2192 page \u00b7 Click to focus \u00b7 Esc exit'}</div>`;
 
     this.overlay.innerHTML = html;
 
@@ -319,6 +440,16 @@ export class GalleryMode {
         this.setFilter(this.activeFilter === tag ? null : tag);
       });
     }
+
+    // --- Wire up touch nav buttons ---
+    this.overlay.querySelector('#gallery-prev-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.prevPage();
+    });
+    this.overlay.querySelector('#gallery-next-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.nextPage();
+    });
   }
 
   private renderChip(label: string, active: boolean, id: string): string {
@@ -338,6 +469,8 @@ export class GalleryMode {
       opacity:${opacity};
       transition:all 0.15s ease;
       user-select:none;
+      white-space:nowrap;
+      flex-shrink:0;
     ">${label}</span>`;
   }
 
@@ -346,17 +479,11 @@ export class GalleryMode {
     switch (e.key) {
       case 'ArrowRight':
         e.preventDefault();
-        if (this.page < this.totalPages - 1) {
-          this.page++;
-          this.spawnPage();
-        }
+        this.nextPage();
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        if (this.page > 0) {
-          this.page--;
-          this.spawnPage();
-        }
+        this.prevPage();
         break;
       case 'b':
       case 'B':
@@ -369,15 +496,51 @@ export class GalleryMode {
 
   private handleClick(e: MouseEvent): void {
     if (!this.active) return;
+    this.hitTestCell(e.clientX, e.clientY);
+  }
+
+  private handleTouchStart(e: TouchEvent): void {
+    if (!this.active || e.touches.length !== 1) return;
+    this.swipeStartX = e.touches[0].clientX;
+    this.swipeStartY = e.touches[0].clientY;
+  }
+
+  private handleTouchEnd(e: TouchEvent): void {
+    if (!this.active) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+
+    const dx = touch.clientX - this.swipeStartX;
+    const dy = touch.clientY - this.swipeStartY;
+
+    // If horizontal swipe is dominant and exceeds threshold, navigate pages
+    if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      e.preventDefault();
+      if (dx < 0) {
+        this.nextPage();
+      } else {
+        this.prevPage();
+      }
+      return;
+    }
+
+    // Otherwise treat as a cell tap
+    if (Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+      e.preventDefault();
+      this.hitTestCell(touch.clientX, touch.clientY);
+    }
+  }
+
+  private hitTestCell(clientX: number, clientY: number): void {
     const canvas = this.ctx.renderer.domElement;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
 
-    const col = Math.max(0, Math.min(COLS - 1, Math.floor(x / (rect.width / COLS))));
-    const row = Math.max(0, Math.min(ROWS - 1, Math.floor(y / (rect.height / ROWS))));
-    const cellIndex = row * COLS + col;
-    const filteredIndex = this.page * PAGE_SIZE + cellIndex;
+    const col = Math.max(0, Math.min(this.cols - 1, Math.floor(x / (rect.width / this.cols))));
+    const row = Math.max(0, Math.min(this.rows - 1, Math.floor(y / (rect.height / this.rows))));
+    const cellIndex = row * this.cols + col;
+    const filteredIndex = this.page * this.pageSize + cellIndex;
 
     if (filteredIndex < this.filteredTypes.length) {
       this.exitToShowcase(this.filteredTypes[filteredIndex]);
@@ -385,10 +548,12 @@ export class GalleryMode {
   }
 
   private applyAspect(): void {
+    const mobile = this.isMobile;
+    const viewportH = mobile ? window.innerHeight - TOOLBAR_HEIGHT : window.innerHeight;
     const { width, height, offsetX, offsetY } = computeAspectSize(
       this.config.aspectRatio,
       window.innerWidth,
-      window.innerHeight,
+      viewportH,
     );
     this.config.width = width;
     this.config.height = height;
@@ -400,6 +565,10 @@ export class GalleryMode {
 
   private handleResize(): void {
     if (!this.active) return;
+    this.updateGridDimensions();
+    this.recomputePages();
+    // Clamp page if grid size changed
+    if (this.page >= this.totalPages) this.page = Math.max(0, this.totalPages - 1);
     this.applyAspect();
     resizeRenderer(this.ctx, this.config.width, this.config.height);
     this.pipeline.resize(this.config.width, this.config.height);
@@ -424,23 +593,23 @@ export class GalleryMode {
 
     const w = this.config.width;
     const h = this.config.height;
-    const startIdx = this.page * PAGE_SIZE;
-    const count = Math.min(PAGE_SIZE, this.filteredTypes.length - startIdx);
+    const startIdx = this.page * this.pageSize;
+    const count = Math.min(this.pageSize, this.filteredTypes.length - startIdx);
 
     for (let i = 0; i < count; i++) {
-      const col = i % COLS;
-      const row = Math.floor(i / COLS);
+      const col = i % this.cols;
+      const row = Math.floor(i / this.cols);
       const type = this.filteredTypes[startIdx + i];
 
       // Camera is (left=0, right=w, top=h, bottom=0) so y=0 is screen-bottom.
       // Flip row so row 0 renders at top of screen to match DOM labels.
-      const flippedRow = (ROWS - 1 - row);
+      const flippedRow = (this.rows - 1 - row);
       const region: Region = createRegion(
         `gallery-${i}`,
-        col / COLS,
-        flippedRow / ROWS,
-        1 / COLS,
-        1 / ROWS,
+        col / this.cols,
+        flippedRow / this.rows,
+        1 / this.cols,
+        1 / this.rows,
         CELL_PAD,
       );
       region.elementType = type;
