@@ -15,6 +15,7 @@ const TETROMINOES: [number, number][][] = [
 
 interface ActiveTetromino {
   cells: [number, number][];  // grid cell coordinates
+  meshes: THREE.Mesh[];       // one quad per cell
   opacity: number;            // current opacity (fades in then out)
   age: number;                // seconds alive
   lifespan: number;           // total life before fade-out
@@ -32,8 +33,6 @@ export class GridDistortionElement extends BaseElement {
   };
   private gridLines!: THREE.LineSegments;
   private borderLines!: THREE.LineSegments;
-  private cellMesh!: THREE.Mesh;
-  private cellInstanceCount: number = 0;
   private divisionsX: number = 0;
   private divisionsY: number = 0;
   private waveFreqX: number = 0;
@@ -74,19 +73,6 @@ export class GridDistortionElement extends BaseElement {
     }));
     this.group.add(this.gridLines);
 
-    // Tetromino cell quads — use InstancedMesh for up to maxActive * 4 cells
-    this.cellInstanceCount = this.maxActive * 4;
-    const cellGeo = new THREE.PlaneGeometry(1, 1);
-    const cellMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 1,
-      depthWrite: false,
-    });
-    this.cellMesh = new THREE.InstancedMesh(cellGeo, cellMat, this.cellInstanceCount);
-    (this.cellMesh as THREE.InstancedMesh).count = 0;
-    this.group.add(this.cellMesh);
-
     // Border
     const bv = new Float32Array([
       x, y, 0, x + w, y, 0,
@@ -115,7 +101,6 @@ export class GridDistortionElement extends BaseElement {
 
   private spawnTetromino(): void {
     const shape = TETROMINOES[Math.floor(Math.random() * TETROMINOES.length)];
-    // Random position within grid bounds
     const maxCol = this.divisionsX - 4;
     const maxRow = this.divisionsY - 2;
     if (maxCol < 0 || maxRow < 0) return;
@@ -133,12 +118,39 @@ export class GridDistortionElement extends BaseElement {
       }
     }
 
+    // Create a real Mesh quad for each cell
+    const meshes: THREE.Mesh[] = [];
+    for (let i = 0; i < cells.length; i++) {
+      const cellGeo = new THREE.PlaneGeometry(1, 1);
+      const cellMat = new THREE.MeshBasicMaterial({
+        color: this.palette.secondary,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(cellGeo, cellMat);
+      mesh.position.set(0, 0, 1.5);
+      meshes.push(mesh);
+      this.group.add(mesh);
+    }
+
     this.activeTetros.push({
       cells,
+      meshes,
       opacity: 0,
       age: 0,
       lifespan: 1.5 + Math.random() * 2.0,
     });
+  }
+
+  private removeTetromino(idx: number): void {
+    const tetro = this.activeTetros[idx];
+    for (const mesh of tetro.meshes) {
+      this.group.remove(mesh);
+      mesh.geometry.dispose();
+      (mesh.material as THREE.MeshBasicMaterial).dispose();
+    }
+    this.activeTetros.splice(idx, 1);
   }
 
   update(dt: number, time: number): void {
@@ -198,7 +210,10 @@ export class GridDistortionElement extends BaseElement {
       this.spawnTetromino();
     }
 
-    // Update tetro lifetimes
+    // Update tetro lifetimes and positions
+    const cellW = iw / divX;
+    const cellH = ih / divY;
+
     for (let i = this.activeTetros.length - 1; i >= 0; i--) {
       const t = this.activeTetros[i];
       t.age += dt;
@@ -206,50 +221,27 @@ export class GridDistortionElement extends BaseElement {
       const fadeIn = Math.min(1, t.age / 0.3);
       const fadeOut = Math.max(0, 1 - Math.max(0, t.age - (t.lifespan - 0.4)) / 0.4);
       t.opacity = fadeIn * fadeOut;
+
       if (t.age >= t.lifespan) {
-        this.activeTetros.splice(i, 1);
+        this.removeTetromino(i);
+        continue;
       }
-    }
 
-    // Write instanced cell transforms
-    const cellW = iw / divX;
-    const cellH = ih / divY;
-    const dummy = new THREE.Object3D();
-    const instMesh = this.cellMesh as THREE.InstancedMesh;
-    let ci = 0;
-
-    for (const tetro of this.activeTetros) {
-      for (const [col, row] of tetro.cells) {
-        if (ci >= this.cellInstanceCount) break;
-        // Cell center in grid coords (normalized)
+      // Position and fade each cell mesh
+      for (let c = 0; c < t.cells.length; c++) {
+        const [col, row] = t.cells[c];
+        const mesh = t.meshes[c];
         const gx = (col + 0.5) / divX;
         const gy = (row + 0.5) / divY;
         const [dispX, dispY] = this.getDisplacement(gx, gy, time);
-        dummy.position.set(
+        mesh.position.set(
           ix + gx * iw + dispX,
           iy + gy * ih + dispY,
-          1.5
+          1.5,
         );
-        dummy.scale.set(cellW * 0.85, cellH * 0.85, 1);
-        dummy.updateMatrix();
-        instMesh.setMatrixAt(ci, dummy.matrix);
-
-        // Bake per-tetro opacity into instance color brightness
-        const a = tetro.opacity * opacity;
-        const color = new THREE.Color(
-          this.palette.secondary.r * a,
-          this.palette.secondary.g * a,
-          this.palette.secondary.b * a,
-        );
-        instMesh.setColorAt(ci, color);
-
-        ci++;
+        mesh.scale.set(cellW * 0.9, cellH * 0.9, 1);
+        (mesh.material as THREE.MeshBasicMaterial).opacity = t.opacity * opacity * 0.7;
       }
-    }
-    instMesh.count = ci;
-    if (ci > 0) {
-      instMesh.instanceMatrix.needsUpdate = true;
-      if (instMesh.instanceColor) instMesh.instanceColor.needsUpdate = true;
     }
   }
 
@@ -269,7 +261,6 @@ export class GridDistortionElement extends BaseElement {
       }, 3000);
     }
     if (action === 'pulse') {
-      // Spawn an extra tetromino on pulse
       this.spawnTetromino();
     }
   }
@@ -278,7 +269,13 @@ export class GridDistortionElement extends BaseElement {
     super.onIntensity(level);
     if (level === 0) { this.alertMode = false; return; }
     if (level >= 4) { this.alertMode = true; }
-    // Higher intensity = more tetros
     if (level >= 3) this.spawnTetromino();
+  }
+
+  dispose(): void {
+    for (let i = this.activeTetros.length - 1; i >= 0; i--) {
+      this.removeTetromino(i);
+    }
+    super.dispose();
   }
 }
