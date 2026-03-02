@@ -13,11 +13,11 @@ class TouchSwipeHandler {
   private startX = 0;
   private startY = 0;
   private el: HTMLElement;
-  private onSwipe: (dir: 'left' | 'right' | 'down' | 'tap') => void;
+  private onSwipe: (dir: 'left' | 'right' | 'down' | 'up' | 'tap') => void;
   private boundStart: (e: TouchEvent) => void;
   private boundEnd: (e: TouchEvent) => void;
 
-  constructor(el: HTMLElement, onSwipe: (dir: 'left' | 'right' | 'down' | 'tap') => void) {
+  constructor(el: HTMLElement, onSwipe: (dir: 'left' | 'right' | 'down' | 'up' | 'tap') => void) {
     this.el = el;
     this.onSwipe = onSwipe;
     this.boundStart = (e) => this.handleStart(e);
@@ -43,6 +43,8 @@ class TouchSwipeHandler {
       this.onSwipe('tap');
     } else if (dy > 60 && absDy > absDx) {
       this.onSwipe('down');
+    } else if (dy < -60 && absDy > absDx) {
+      this.onSwipe('up');
     } else if (dx < -40 && absDx > absDy) {
       this.onSwipe('left');
     } else if (dx > 40 && absDx > absDy) {
@@ -77,6 +79,7 @@ export class ShowcaseMode {
   private resizeHandler: () => void;
   private stashedChildren: THREE.Object3D[] = [];
   private swipeHandler: TouchSwipeHandler | null = null;
+  private fullscreen: boolean = false;
 
   constructor(ctx: RendererContext, pipeline: PostFXPipeline, config: Config, onExit: () => void) {
     this.ctx = ctx;
@@ -142,7 +145,7 @@ export class ShowcaseMode {
           </div>
         </div>
         <div style="font-size:11px; opacity:0.4; text-align:right; white-space:nowrap;">
-          ${this.isMobile() ? 'swipe to navigate' : '\u2190 \u2192 navigate \u00a0\u00b7\u00a0 G exit'}
+          ${this.isMobile() ? 'swipe \u2194 navigate \u00b7 \u2193 fullscreen' : '\u2190 \u2192 navigate \u00a0\u00b7\u00a0 G exit'}
         </div>
       </div>
     `;
@@ -171,16 +174,33 @@ export class ShowcaseMode {
       (dir) => {
         switch (dir) {
           case 'left':
-            this.currentIndex = (this.currentIndex + 1) % this.types.length;
-            this.spawnElement();
+            if (!this.fullscreen) {
+              this.currentIndex = (this.currentIndex + 1) % this.types.length;
+              this.spawnElement();
+            }
             break;
           case 'right':
-            this.currentIndex = (this.currentIndex - 1 + this.types.length) % this.types.length;
-            this.spawnElement();
+            if (!this.fullscreen) {
+              this.currentIndex = (this.currentIndex - 1 + this.types.length) % this.types.length;
+              this.spawnElement();
+            }
             break;
           case 'down':
+            if (!this.fullscreen) {
+              this.setFullscreen(true);
+            }
+            break;
+          case 'up':
+            if (this.fullscreen) {
+              this.setFullscreen(false);
+            }
+            break;
           case 'tap':
-            this.exit();
+            if (this.fullscreen) {
+              this.setFullscreen(false);
+            } else {
+              this.exit();
+            }
             break;
         }
       }
@@ -190,6 +210,9 @@ export class ShowcaseMode {
 
   exit(): void {
     this.active = false;
+    if (this.fullscreen) {
+      this.setFullscreen(false);
+    }
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('resize', this.resizeHandler);
@@ -307,6 +330,16 @@ export class ShowcaseMode {
 
   private isMobile(): boolean {
     return window.matchMedia('(max-width: 767px) and (pointer: coarse)').matches;
+  }
+
+  private setFullscreen(on: boolean): void {
+    this.fullscreen = on;
+    this.overlay.style.display = on ? 'none' : '';
+    // Hide/show the mobile toolbar
+    const toolbar = document.getElementById('mobile-toolbar');
+    if (toolbar) {
+      toolbar.style.display = on ? 'none' : '';
+    }
   }
 
   dispose(): void {
