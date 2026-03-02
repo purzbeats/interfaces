@@ -12,6 +12,7 @@ import { createGUI, type GUIControls } from './gui/controls';
 import { MobileToolbar, TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
 import { takeScreenshot, createVideoRecorder, type VideoRecorder } from './export/exporter';
 import { AudioSynth } from './audio/synth';
+import { AudioReactive } from './audio/audio-reactive';
 import { loadConfig, saveConfig, updateURL } from './persistence';
 import { setDividerBrightness, setDividerThickness } from './elements/separator';
 import type { Region } from './layout/region';
@@ -24,6 +25,7 @@ export class Engine {
   private gui!: GUIControls;
   private recorder!: VideoRecorder;
   private audio: AudioSynth = new AudioSynth();
+  audioReactive: AudioReactive = new AudioReactive();
   private elements: BaseElement[] = [];
   private elementMap: Map<string, BaseElement> = new Map();
   private regionMap: Map<string, Region> = new Map();
@@ -40,6 +42,10 @@ export class Engine {
   private showcase!: ShowcaseMode;
   private mobileToolbar: MobileToolbar | null = null;
   private mobileQuery!: MediaQueryList;
+
+  /** Current intensity level (0 = baseline, 1–5 = active). */
+  currentIntensity: number = 0;
+  private intensityKeyDownTime: number = 0;
 
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
@@ -98,6 +104,12 @@ export class Engine {
       this.generate(this.config.seed);
     });
 
+    // Wire audio-reactive → intensity system
+    this.audioReactive.onKick = (level) => {
+      this.broadcastIntensity(level);
+      setTimeout(() => this.broadcastIntensity(0), 150);
+    };
+
     this.gui = createGUI(
       this.config,
       () => this.generate(this.config.seed),
@@ -113,6 +125,7 @@ export class Engine {
         onLoopToggle: (v: boolean) => { this.timeline.loop = v; },
       },
       () => this.applyAspectAndRegenerate(),
+      this.audioReactive,
     );
 
     // Mobile toolbar: create/destroy based on viewport width
@@ -332,6 +345,9 @@ export class Engine {
 
     this.elapsed += dt;
 
+    // Audio-reactive runs regardless of build/dwell phase
+    this.audioReactive.update(dt);
+
     // Phase 2: staggered build — pop a batch each frame
     if (this.pendingBuild.length > 0) {
       const count = Math.min(this.BUILD_BATCH_SIZE, this.pendingBuild.length);
@@ -429,6 +445,19 @@ export class Engine {
     return this.timeline.normalizedTime;
   }
 
+  /** Broadcast intensity level to all visible, active elements. */
+  broadcastIntensity(level: number): void {
+    this.currentIntensity = level;
+    for (const el of this.elements) {
+      if (!el.group.visible) continue;
+      if (el.stateMachine.state === 'idle') continue;
+      el.onIntensity(level);
+    }
+    if (level > 0) {
+      this.audio.intensityBlip(level);
+    }
+  }
+
   /** Called when aspect ratio setting changes. */
   applyAspectAndRegenerate(): void {
     this.applyAspect();
@@ -446,7 +475,29 @@ export class Engine {
       this.generate(this.config.seed);
     });
 
+    window.addEventListener('keyup', (e) => {
+      const intensityLevel = parseInt(e.key);
+      if (intensityLevel >= 1 && intensityLevel <= 5) {
+        // Always reset on release — the effect timers provide subtle falloff
+        this.broadcastIntensity(0);
+      }
+    });
+
     window.addEventListener('keydown', (e) => {
+      // Intensity keys 1–5 (before the main switch, so they work regardless)
+      if (!e.repeat) {
+        const intensityLevel = parseInt(e.key);
+        if (intensityLevel >= 1 && intensityLevel <= 5) {
+          this.intensityKeyDownTime = performance.now();
+          this.broadcastIntensity(intensityLevel);
+          return;
+        }
+      } else {
+        // Ignore held repeats for intensity keys
+        const intensityLevel = parseInt(e.key);
+        if (intensityLevel >= 1 && intensityLevel <= 5) return;
+      }
+
       switch (e.key.toLowerCase()) {
         case 'h':
           this.gui.toggle();
@@ -555,6 +606,7 @@ export class Engine {
     this.mobileToolbar?.destroy();
     this.mobileToolbar = null;
     this.audio.dispose();
+    this.audioReactive.dispose();
     this.ctx.renderer.dispose();
   }
 }

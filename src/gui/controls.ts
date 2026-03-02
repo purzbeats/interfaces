@@ -2,6 +2,7 @@ import GUI from 'lil-gui';
 import type { Config } from '../config';
 import { ASPECT_RATIOS } from '../config';
 import type { AudioSynth } from '../audio/synth';
+import type { AudioReactive } from '../audio/audio-reactive';
 import { paletteNames } from '../color/palettes';
 import { templateNames } from '../layout/templates';
 import { setDividerBrightness, setDividerThickness } from '../elements/separator';
@@ -21,6 +22,7 @@ export function createGUI(
   audio: AudioSynth,
   playback?: { onPause: () => void; onRestart: () => void; onLoopToggle: (v: boolean) => void },
   onAspectChange?: () => void,
+  audioReactive?: AudioReactive,
 ): GUIControls {
   const gui = new GUI({ title: 'INTERFACES' });
   gui.domElement.style.zIndex = '1000';
@@ -68,6 +70,56 @@ export function createGUI(
   const audioState = { muted: audio.muted, volume: audio.volume };
   audioFolder.add(audioState, 'muted').name('Mute (M)').onChange((v: boolean) => { audio.muted = v; });
   audioFolder.add(audioState, 'volume', 0, 0.5, 0.01).name('Volume').onChange((v: number) => { audio.volume = v; });
+
+  // Audio Reactive
+  if (audioReactive) {
+    const arFolder = gui.addFolder('Audio Reactive');
+    const arState = { source: 'Off' as string };
+
+    // Hidden file input for audio file selection
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'audio/*';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        audioReactive.startFile(file).catch(() => {
+          arState.source = 'Off';
+          audioReactive.stop();
+          sourceCtrl.updateDisplay();
+        });
+      } else {
+        // No file selected — revert to Off
+        arState.source = 'Off';
+        audioReactive.stop();
+        sourceCtrl.updateDisplay();
+      }
+      fileInput.value = '';
+    });
+
+    const sourceCtrl = arFolder.add(arState, 'source', ['Off', 'Microphone', 'File']).name('Source').onChange((v: string) => {
+      switch (v) {
+        case 'Off':
+          audioReactive.stop();
+          break;
+        case 'Microphone':
+          audioReactive.startMic().catch(() => {
+            arState.source = 'Off';
+            audioReactive.stop();
+            sourceCtrl.updateDisplay();
+          });
+          break;
+        case 'File':
+          fileInput.click();
+          break;
+      }
+    });
+
+    arFolder.add(audioReactive, 'sensitivity', 0.5, 3.0, 0.1).name('Sensitivity');
+  }
 
   // Post-FX
   const fxFolder = gui.addFolder('Post-FX');
