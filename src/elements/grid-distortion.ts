@@ -78,7 +78,7 @@ export class GridDistortionElement extends BaseElement {
     this.cellInstanceCount = this.maxActive * 4;
     const cellGeo = new THREE.PlaneGeometry(1, 1);
     const cellMat = new THREE.MeshBasicMaterial({
-      color: this.palette.secondary,
+      color: 0xffffff,
       transparent: true,
       opacity: 1,
       depthWrite: false,
@@ -235,7 +235,7 @@ export class GridDistortionElement extends BaseElement {
         instMesh.setMatrixAt(ci, dummy.matrix);
 
         // Bake per-tetro opacity into instance color brightness
-        const a = tetro.opacity * opacity * 0.6;
+        const a = tetro.opacity * opacity;
         const color = new THREE.Color(
           this.palette.secondary.r * a,
           this.palette.secondary.g * a,
