@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import type { AudioFrame } from '../audio/audio-reactive';
 
 /**
  * Multi-band spectrum analyzer bars with peak-hold markers.
@@ -22,6 +23,7 @@ export class FreqAnalyzerElement extends BaseElement {
   private barCount: number = 0;
   private updateTimer: number = 0;
   private updateInterval: number = 0;
+  private liveSpectrum: Float32Array | null = null;
 
   build(): void {
     this.glitchAmount = 3;
@@ -80,19 +82,31 @@ export class FreqAnalyzerElement extends BaseElement {
     this.group.add(this.borderLines);
   }
 
+  tickAudio(frame: AudioFrame): void {
+    this.liveSpectrum = frame.spectrum;
+  }
+
   update(dt: number, _time: number): void {
     const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
 
-    // Update targets periodically
-    this.updateTimer += dt;
-    if (this.updateTimer >= this.updateInterval) {
-      this.updateTimer = 0;
+    if (this.liveSpectrum) {
+      // Map real spectrum bins to bar targets
+      const specLen = this.liveSpectrum.length; // 32
       for (let i = 0; i < this.barCount; i++) {
-        // Simulate spectrum shape - center frequencies tend higher
-        const center = this.barCount / 2;
-        const dist = Math.abs(i - center) / center;
-        this.barTargets[i] = this.rng.float(0.05, 1.0 - dist * 0.4);
+        const specIdx = Math.floor((i / this.barCount) * specLen);
+        this.barTargets[i] = this.liveSpectrum[Math.min(specIdx, specLen - 1)];
+      }
+    } else {
+      // Procedural fallback
+      this.updateTimer += dt;
+      if (this.updateTimer >= this.updateInterval) {
+        this.updateTimer = 0;
+        for (let i = 0; i < this.barCount; i++) {
+          const center = this.barCount / 2;
+          const dist = Math.abs(i - center) / center;
+          this.barTargets[i] = this.rng.float(0.05, 1.0 - dist * 0.4);
+        }
       }
     }
 

@@ -7,6 +7,7 @@ import { StateMachine } from '../animation/state-machine';
 import { randomEasing } from '../animation/easing';
 import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
 import type { ElementMeta } from './tags';
+import type { AudioFrame } from '../audio/audio-reactive';
 
 /** Callback for elements to emit audio events */
 export type AudioEmitter = (event: string, param?: number) => void;
@@ -95,6 +96,13 @@ export abstract class BaseElement {
         break;
     }
   }
+
+  /**
+   * Called every frame with real audio analysis data when audio-reactive is active.
+   * Override in audio-visualization elements to render real frequency/waveform data.
+   * Default implementation is a no-op.
+   */
+  tickAudio(_frame: AudioFrame): void {}
 
   /**
    * Intensity broadcast (1–5). Called on ALL active elements simultaneously.

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import type { AudioFrame } from '../audio/audio-reactive';
 
 /**
  * Waterfall spectrogram display — frequency bands scroll vertically over time.
@@ -25,6 +26,7 @@ export class SpectrogramElement extends BaseElement {
   private readonly UPDATE_INTERVAL = 1 / 4; // slower target changes for visible peak drift
   private renderAccum: number = 0;
   private readonly RENDER_INTERVAL = 1 / 12;
+  private liveSpectrum: Float32Array | null = null;
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -108,8 +110,28 @@ export class SpectrogramElement extends BaseElement {
     }
   }
 
+  tickAudio(frame: AudioFrame): void {
+    this.liveSpectrum = frame.spectrum;
+  }
+
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
+
+    // Use real spectrum when available
+    if (this.liveSpectrum) {
+      const specLen = this.liveSpectrum.length;
+      for (let i = 0; i < this.freqBands; i++) {
+        const specIdx = Math.floor((i / this.freqBands) * specLen);
+        this.bandTargets[i] = this.liveSpectrum[Math.min(specIdx, specLen - 1)];
+      }
+    } else {
+      // Procedural fallback
+      this.updateAccum += dt;
+      if (this.updateAccum >= this.UPDATE_INTERVAL) {
+        this.updateAccum = 0;
+        this.generateTargets();
+      }
+    }
 
     // Spring animate band values
     for (let i = 0; i < this.freqBands; i++) {
@@ -117,13 +139,6 @@ export class SpectrogramElement extends BaseElement {
       this.bandVelocities[i] += force * dt;
       this.bandVelocities[i] *= Math.exp(-4 * dt);
       this.bandValues[i] += this.bandVelocities[i] * dt;
-    }
-
-    // Periodically generate new targets
-    this.updateAccum += dt;
-    if (this.updateAccum >= this.UPDATE_INTERVAL) {
-      this.updateAccum = 0;
-      this.generateTargets();
     }
 
     // Render to canvas

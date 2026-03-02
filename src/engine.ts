@@ -55,6 +55,8 @@ export class Engine {
   /** Current intensity level (0 = baseline, 1–5 = active). */
   currentIntensity: number = 0;
   private intensityKeyDownTime: number = 0;
+  /** Smooth intensity envelope for audio-reactive decay. */
+  private intensityEnvelope: number = 0;
 
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
@@ -120,10 +122,10 @@ export class Engine {
       this.generate(this.config.seed);
     }, () => !!this.mobileToolbar);
 
-    // Wire audio-reactive → intensity system
+    // Wire audio-reactive → intensity system (envelope-based, no hard cutoff)
     this.audioReactive.onKick = (level) => {
+      this.intensityEnvelope = level;
       this.broadcastIntensity(level);
-      setTimeout(() => this.broadcastIntensity(0), 150);
     };
 
     this.gui = createGUI(
@@ -421,6 +423,24 @@ export class Engine {
     // Audio-reactive runs regardless of build/dwell phase
     this.audioReactive.update(dt);
 
+    // Envelope decay: smooth intensity falloff between kicks
+    if (this.audioReactive.isActive && this.intensityEnvelope > 0) {
+      this.intensityEnvelope *= Math.exp(-6 * dt); // ~170ms half-life
+      // Between kicks, track RMS as a subtle baseline
+      const frame = this.audioReactive.frame;
+      const rmsBase = frame ? frame.rms * 2 : 0;
+      const envLevel = Math.max(rmsBase, this.intensityEnvelope);
+      if (envLevel < 0.1) {
+        if (this.currentIntensity !== 0) this.broadcastIntensity(0);
+        this.intensityEnvelope = 0;
+      } else {
+        const rounded = Math.min(5, Math.max(1, Math.round(envLevel)));
+        if (rounded !== this.currentIntensity) {
+          this.broadcastIntensity(rounded);
+        }
+      }
+    }
+
     // Phase 2: staggered build — pop a batch each frame
     if (this.pendingBuild.length > 0) {
       const count = Math.min(this.BUILD_BATCH_SIZE, this.pendingBuild.length);
@@ -483,6 +503,15 @@ export class Engine {
       el.tick(dt, this.elapsed);
     }
 
+    // Pass real audio data to elements when audio-reactive is active
+    const audioFrame = this.audioReactive.frame;
+    if (audioFrame) {
+      for (const el of this.elements) {
+        if (!el.group.visible || el.stateMachine.state === 'idle') continue;
+        el.tickAudio(audioFrame);
+      }
+    }
+
     // Update post-FX
     this.pipeline.update(this.elapsed, this.config);
   }
@@ -530,7 +559,8 @@ export class Engine {
       if (el.stateMachine.state === 'idle') continue;
       el.onIntensity(level);
     }
-    if (level > 0) {
+    // Don't play synth blips when audio-reactive is active — the user's music IS the audio
+    if (level > 0 && !this.audioReactive.isActive) {
       this.audio.intensityBlip(level);
     }
   }

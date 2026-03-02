@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import type { AudioFrame } from '../audio/audio-reactive';
 
 /**
  * Seismograph trace with a scrolling pen line.
@@ -17,6 +18,7 @@ export class SeismographElement extends BaseElement {
   private spikeChance: number = 0;
   private noiseScale: number = 0;
   private alertMode: boolean = false;
+  private liveWaveform: Float32Array | null = null;
 
   build(): void {
     this.glitchAmount = 4;
@@ -61,6 +63,10 @@ export class SeismographElement extends BaseElement {
     this.group.add(this.borderLines);
   }
 
+  tickAudio(frame: AudioFrame): void {
+    this.liveWaveform = frame.waveform;
+  }
+
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
@@ -74,14 +80,30 @@ export class SeismographElement extends BaseElement {
       positions.setY(i, positions.getY(i + 1));
     }
 
-    // Compute new value for the rightmost vertex
-    let value = Math.sin(time * 3.0) * 0.3
-      + Math.sin(time * 7.3) * 0.2
-      + Math.sin(time * 13.7) * 0.1;
+    let value: number;
 
-    // Occasional spike
-    if (this.rng.chance(this.spikeChance)) {
-      value += this.rng.float(-1, 1) * 1.5;
+    if (this.liveWaveform) {
+      // Use the peak of the current waveform buffer as the pen value
+      let maxAbs = 0;
+      let maxVal = 0;
+      for (let i = 0; i < this.liveWaveform.length; i++) {
+        const abs = Math.abs(this.liveWaveform[i]);
+        if (abs > maxAbs) {
+          maxAbs = abs;
+          maxVal = this.liveWaveform[i];
+        }
+      }
+      value = maxVal * 2; // scale up for visual impact
+    } else {
+      // Procedural fallback
+      value = Math.sin(time * 3.0) * 0.3
+        + Math.sin(time * 7.3) * 0.2
+        + Math.sin(time * 13.7) * 0.1;
+
+      // Occasional spike
+      if (this.rng.chance(this.spikeChance)) {
+        value += this.rng.float(-1, 1) * 1.5;
+      }
     }
 
     // Glitch makes spikes more frequent

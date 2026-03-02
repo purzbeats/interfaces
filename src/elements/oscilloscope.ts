@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import type { AudioFrame } from '../audio/audio-reactive';
 
 /**
  * Lissajous figure with phosphor persistence trails.
@@ -19,6 +20,7 @@ export class OscilloscopeElement extends BaseElement {
   private freqY: number = 0;
   private phaseShift: number = 0;
   private freqDrift: number = 0;
+  private liveWaveform: Float32Array | null = null;
   build(): void {
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
@@ -59,6 +61,10 @@ export class OscilloscopeElement extends BaseElement {
     this.group.add(this.borderLines);
   }
 
+  tickAudio(frame: AudioFrame): void {
+    this.liveWaveform = frame.waveform;
+  }
+
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
@@ -67,22 +73,54 @@ export class OscilloscopeElement extends BaseElement {
     const rx = w * 0.4;
     const ry = h * 0.4;
 
-    // Slowly drift frequency ratio
-    const driftX = this.freqX + Math.sin(time * this.freqDrift) * 0.3;
-    const driftY = this.freqY + Math.cos(time * this.freqDrift * 0.7) * 0.3;
+    const live = this.liveWaveform;
 
     // Update each trace with a time offset for persistence
     for (let t = 0; t < this.traceCount; t++) {
-      const traceTime = time - t * 0.05; // slight delay per trail
       const traceOpacity = 1 - t / this.traceCount;
       const pos = this.traces[t].geometry.getAttribute('position') as THREE.BufferAttribute;
 
-      for (let i = 0; i < this.numPoints; i++) {
-        const s = (i / this.numPoints) * Math.PI * 2;
-        const px = cx + Math.sin(s * driftX + traceTime * 1.5) * rx;
-        const py = cy + Math.sin(s * driftY + traceTime * 1.5 + this.phaseShift) * ry;
-        pos.setXYZ(i, px, py, 1);
+      if (live && t === 0) {
+        // Primary trace: real audio Lissajous (waveform vs delayed waveform)
+        const delay = Math.floor(live.length / 4); // 90° phase shift
+        for (let i = 0; i < this.numPoints; i++) {
+          const si = Math.floor((i / this.numPoints) * (live.length - 1));
+          const di = (si + delay) % live.length;
+          const px = cx + live[si] * rx;
+          const py = cy + live[di] * ry;
+          pos.setXYZ(i, px, py, 1);
+        }
+      } else if (live && t > 0) {
+        // Persistence traces: read from previous frame positions with slight decay
+        // Use procedural with reduced amplitude as ghost trail
+        const traceTime = time - t * 0.08;
+        const driftX = this.freqX + Math.sin(time * this.freqDrift) * 0.3;
+        const driftY = this.freqY + Math.cos(time * this.freqDrift * 0.7) * 0.3;
+        const fade = 0.3 + 0.7 * (1 - t / this.traceCount);
+        for (let i = 0; i < this.numPoints; i++) {
+          const s = (i / this.numPoints) * Math.PI * 2;
+          const si = Math.floor((i / this.numPoints) * (live.length - 1));
+          const di = (si + Math.floor(live.length / 4)) % live.length;
+          // Blend live audio with procedural for ghosting
+          const lx = live[si] * rx;
+          const ly = live[di] * ry;
+          const px_proc = Math.sin(s * driftX + traceTime * 1.5) * rx;
+          const py_proc = Math.sin(s * driftY + traceTime * 1.5 + this.phaseShift) * ry;
+          pos.setXYZ(i, cx + lx * fade + px_proc * (1 - fade), cy + ly * fade + py_proc * (1 - fade), 1);
+        }
+      } else {
+        // Procedural fallback (no audio)
+        const traceTime = time - t * 0.05;
+        const driftX = this.freqX + Math.sin(time * this.freqDrift) * 0.3;
+        const driftY = this.freqY + Math.cos(time * this.freqDrift * 0.7) * 0.3;
+        for (let i = 0; i < this.numPoints; i++) {
+          const s = (i / this.numPoints) * Math.PI * 2;
+          const px = cx + Math.sin(s * driftX + traceTime * 1.5) * rx;
+          const py = cy + Math.sin(s * driftY + traceTime * 1.5 + this.phaseShift) * ry;
+          pos.setXYZ(i, px, py, 1);
+        }
       }
+
       pos.needsUpdate = true;
       (this.traces[t].material as THREE.LineBasicMaterial).opacity = opacity * traceOpacity * 0.7;
     }

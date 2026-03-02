@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import type { AudioFrame } from '../audio/audio-reactive';
 
 /**
  * Dual VU meter with peak hold indicators.
@@ -22,6 +23,8 @@ export class AudioMeterElement extends BaseElement {
   private segmentCount: number = 0;
   private updateTimer: number = 0;
   private updateInterval: number = 0;
+  private liveRms: number = -1;
+  private liveBands: Float32Array | null = null;
   build(): void {
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
@@ -84,12 +87,18 @@ export class AudioMeterElement extends BaseElement {
     const opacity = this.applyEffects(dt);
     const { y, h } = this.px;
 
-    // Update targets periodically
-    this.updateTimer += dt;
-    if (this.updateTimer >= this.updateInterval) {
-      this.updateTimer = 0;
-      for (let ch = 0; ch < 2; ch++) {
-        this.targets[ch] = this.rng.float(0.05, 1.0);
+    // Update targets: real audio or procedural
+    if (this.liveBands) {
+      // Ch 0 = bass-weighted (sub+bass), Ch 1 = mid-weighted (mid+high)
+      this.targets[0] = Math.min(1, (this.liveBands[0] + this.liveBands[1]) * 1.2);
+      this.targets[1] = Math.min(1, (this.liveBands[2] + this.liveBands[3]) * 1.2);
+    } else {
+      this.updateTimer += dt;
+      if (this.updateTimer >= this.updateInterval) {
+        this.updateTimer = 0;
+        for (let ch = 0; ch < 2; ch++) {
+          this.targets[ch] = this.rng.float(0.05, 1.0);
+        }
       }
     }
 
@@ -132,6 +141,11 @@ export class AudioMeterElement extends BaseElement {
     }
 
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+  }
+
+  tickAudio(frame: AudioFrame): void {
+    this.liveRms = frame.rms;
+    this.liveBands = frame.bands;
   }
 
   onAction(action: string): void {

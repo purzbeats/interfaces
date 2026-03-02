@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import type { AudioFrame } from '../audio/audio-reactive';
 
 export class WaveformElement extends BaseElement {
   static readonly registration: ElementRegistration = {
@@ -14,6 +15,7 @@ export class WaveformElement extends BaseElement {
   private phase: number = 0;
   private noiseFreq: number = 0;
   private waveType: number = 0;
+  private liveWaveform: Float32Array | null = null;
 
   build(): void {
     this.glitchAmount = 5;
@@ -51,6 +53,10 @@ export class WaveformElement extends BaseElement {
     })));
   }
 
+  tickAudio(frame: AudioFrame): void {
+    this.liveWaveform = frame.waveform;
+  }
+
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
@@ -60,24 +66,38 @@ export class WaveformElement extends BaseElement {
     const cy = y + h / 2;
     const amp = h * this.amplitude;
 
+    const live = this.liveWaveform;
+
     for (let i = 0; i < this.numPoints; i++) {
       const t = i / (this.numPoints - 1);
       const px = x + w * t + gx;
 
       let value: number;
-      switch (this.waveType) {
-        case 0:
-          value = Math.sin(t * this.frequency * Math.PI * 2 + time * 3 + this.phase);
-          break;
-        case 1:
-          value = ((t * this.frequency + time * 0.5) % 1) * 2 - 1;
-          value += Math.sin(t * this.noiseFreq + time * 5) * 0.3;
-          break;
-        default:
-          value = Math.sin(t * this.frequency * Math.PI * 2 + time * 2 + this.phase)
-            + Math.sin(t * this.frequency * 1.5 * Math.PI * 2 + time * 3) * 0.5
-            + Math.sin(t * this.noiseFreq + time * 7) * 0.15;
-          value /= 1.65;
+
+      if (live) {
+        // Real audio waveform — interpolate from 128-sample buffer
+        const samplePos = t * (live.length - 1);
+        const idx = Math.floor(samplePos);
+        const frac = samplePos - idx;
+        const a = live[idx];
+        const b = live[Math.min(idx + 1, live.length - 1)];
+        value = a + (b - a) * frac;
+      } else {
+        // Procedural fallback
+        switch (this.waveType) {
+          case 0:
+            value = Math.sin(t * this.frequency * Math.PI * 2 + time * 3 + this.phase);
+            break;
+          case 1:
+            value = ((t * this.frequency + time * 0.5) % 1) * 2 - 1;
+            value += Math.sin(t * this.noiseFreq + time * 5) * 0.3;
+            break;
+          default:
+            value = Math.sin(t * this.frequency * Math.PI * 2 + time * 2 + this.phase)
+              + Math.sin(t * this.frequency * 1.5 * Math.PI * 2 + time * 3) * 0.5
+              + Math.sin(t * this.noiseFreq + time * 7) * 0.15;
+            value /= 1.65;
+        }
       }
 
       // Glitch: inject spikes

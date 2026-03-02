@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import type { AudioFrame } from '../audio/audio-reactive';
 
 /**
  * Multiple offset waveform lines creating a pseudo-3D layered effect.
@@ -17,6 +18,9 @@ export class Waveform3dElement extends BaseElement {
   private pointsPerLine: number = 0;
   private frequencies: number[] = [];
   private phases: number[] = [];
+  private liveWaveform: Float32Array | null = null;
+  /** Ring buffer of past waveforms for the stacked layers. */
+  private waveformHistory: Float32Array[] = [];
 
   build(): void {
     this.glitchAmount = 5;
@@ -63,12 +67,22 @@ export class Waveform3dElement extends BaseElement {
     this.group.add(this.borderLines);
   }
 
+  tickAudio(frame: AudioFrame): void {
+    this.liveWaveform = frame.waveform;
+    // Push a copy into the history ring buffer (front = newest)
+    this.waveformHistory.unshift(new Float32Array(frame.waveform));
+    while (this.waveformHistory.length > this.lineCount) {
+      this.waveformHistory.pop();
+    }
+  }
+
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
 
     const margin = h * 0.1;
     const usableH = h - margin * 2;
+    const hasLive = this.waveformHistory.length > 0;
 
     for (let li = 0; li < this.lineCount; li++) {
       const line = this.lines[li];
@@ -78,17 +92,34 @@ export class Waveform3dElement extends BaseElement {
       const freq = this.frequencies[li];
       const phase = this.phases[li];
 
+      // Front line (li = lineCount-1) uses newest waveform, back uses oldest
+      const histIdx = this.lineCount - 1 - li;
+      const liveData = hasLive && histIdx < this.waveformHistory.length
+        ? this.waveformHistory[histIdx]
+        : null;
+
       const positions = line.geometry.getAttribute('position') as THREE.BufferAttribute;
 
       for (let p = 0; p < this.pointsPerLine; p++) {
         const t = p / (this.pointsPerLine - 1);
         const px = x + t * w;
-
-        // Envelope: taper at edges
         const envelope = Math.sin(t * Math.PI);
 
-        let value = Math.sin(t * freq * Math.PI * 2 + time * 2 + phase) * envelope;
-        value += Math.sin(t * freq * 2.3 * Math.PI + time * 3.1 + phase * 1.7) * 0.3 * envelope;
+        let value: number;
+
+        if (liveData) {
+          // Real audio: interpolate from waveform buffer
+          const samplePos = t * (liveData.length - 1);
+          const idx = Math.floor(samplePos);
+          const frac = samplePos - idx;
+          const a = liveData[idx];
+          const b = liveData[Math.min(idx + 1, liveData.length - 1)];
+          value = (a + (b - a) * frac) * envelope;
+        } else {
+          // Procedural fallback
+          value = Math.sin(t * freq * Math.PI * 2 + time * 2 + phase) * envelope;
+          value += Math.sin(t * freq * 2.3 * Math.PI + time * 3.1 + phase * 1.7) * 0.3 * envelope;
+        }
 
         // Glitch: inject noise
         if (this.glitchTimer > 0 && Math.sin(p * 5.3 + this.glitchTimer * 30) > 0.7) {
