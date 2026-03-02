@@ -97,6 +97,7 @@ export class ShowcaseMode {
   private onBackToGallery: (() => void) | null = null;
   private enteredFromGallery: boolean = false;
   private keyHandler: (e: KeyboardEvent) => void;
+  private wheelHandler: (e: WheelEvent) => void;
   private resizeHandler: () => void;
   private stashedChildren: THREE.Object3D[] = [];
   private swipeHandler: TouchSwipeHandler | null = null;
@@ -115,6 +116,7 @@ export class ShowcaseMode {
     this.overlay.style.display = 'none';
 
     this.keyHandler = (e: KeyboardEvent) => this.handleKey(e);
+    this.wheelHandler = (e: WheelEvent) => this.handleWheel(e);
     this.resizeHandler = () => this.handleResize();
   }
 
@@ -190,6 +192,7 @@ export class ShowcaseMode {
     this.pipeline.resize(this.config.width, this.config.height);
 
     window.addEventListener('keydown', this.keyHandler);
+    window.addEventListener('wheel', this.wheelHandler, { passive: false });
     window.addEventListener('resize', this.resizeHandler);
     this.swipeHandler = new TouchSwipeHandler(
       this.ctx.renderer.domElement,
@@ -241,6 +244,7 @@ export class ShowcaseMode {
     }
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('wheel', this.wheelHandler);
     window.removeEventListener('resize', this.resizeHandler);
     this.swipeHandler?.destroy();
     this.swipeHandler = null;
@@ -264,6 +268,7 @@ export class ShowcaseMode {
     }
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('wheel', this.wheelHandler);
     window.removeEventListener('resize', this.resizeHandler);
     this.swipeHandler?.destroy();
     this.swipeHandler = null;
@@ -285,6 +290,17 @@ export class ShowcaseMode {
   /** Set a callback for returning to gallery. Called by GalleryMode when entering showcase from grid. */
   setBackToGallery(cb: (() => void) | null): void {
     this.onBackToGallery = cb;
+  }
+
+  private handleWheel(e: WheelEvent): void {
+    if (!this.active || this.fullscreen) return;
+    e.preventDefault();
+    if (e.deltaY > 0) {
+      this.currentIndex = (this.currentIndex + 1) % this.types.length;
+    } else if (e.deltaY < 0) {
+      this.currentIndex = (this.currentIndex - 1 + this.types.length) % this.types.length;
+    }
+    this.spawnElement();
   }
 
   private handleKey(e: KeyboardEvent): void {
@@ -409,6 +425,7 @@ export class ShowcaseMode {
     this.clearElement();
     this.overlay.remove();
     window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('wheel', this.wheelHandler);
     window.removeEventListener('resize', this.resizeHandler);
   }
 }
