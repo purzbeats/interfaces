@@ -8,6 +8,9 @@ import { resizeRenderer, type RendererContext } from './renderer/setup';
 import { type PostFXPipeline } from './postfx/pipeline';
 import { type Config, computeAspectSize } from './config';
 import { getMeta } from './elements/tags';
+import { TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
+
+const OVERLAY_BAR_PX = 72; // reserved height for the info bar below the element
 
 class TouchSwipeHandler {
   private startX = 0;
@@ -125,21 +128,29 @@ export class ShowcaseMode {
     el.id = 'showcase-overlay';
     Object.assign(el.style, {
       position: 'fixed',
-      bottom: '0',
       left: '0',
       right: '0',
-      padding: '24px 32px',
-      background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+      height: `${OVERLAY_BAR_PX}px`,
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 24px',
+      background: 'rgba(0,0,0,0.85)',
+      borderTop: '1px solid rgba(255,255,255,0.1)',
       color: '#fff',
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace',
       zIndex: '900',
       pointerEvents: 'none',
       transition: 'opacity 0.3s ease',
+      boxSizing: 'border-box',
     });
     return el;
   }
 
   private updateOverlay(): void {
+    const mobile = this.isMobile();
+    const bottomOffset = mobile ? TOOLBAR_HEIGHT : 0;
+    this.overlay.style.bottom = `${bottomOffset}px`;
+
     const name = this.types[this.currentIndex];
     const meta = getMeta(name);
     const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -154,22 +165,30 @@ export class ShowcaseMode {
       tags.push(...meta.sizes);
     }
 
+    let hints: string;
+    if (mobile) {
+      hints = 'swipe \u2194 navigate \u00b7 double-tap fullscreen';
+    } else {
+      const parts: string[] = ['\u2190 \u2192 or scroll', 'F fullscreen'];
+      if (this.enteredFromGallery) parts.push('B back');
+      parts.push('G exit');
+      hints = parts.join(' \u00b7 ');
+    }
+
     this.overlay.innerHTML = `
-      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px;">
-        <div>
-          <div style="font-size:11px; letter-spacing:3px; text-transform:uppercase; opacity:0.5; margin-bottom:4px;">
-            ELEMENT ${num} / ${total}
-          </div>
-          <div style="font-size:28px; font-weight:bold; letter-spacing:2px; text-transform:uppercase;">
-            ${displayName}
-          </div>
-          <div style="font-size:11px; opacity:0.45; margin-top:6px; letter-spacing:1px;">
-            ${tags.join(' \u00b7 ')}
-          </div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:10px; letter-spacing:3px; text-transform:uppercase; opacity:0.5; margin-bottom:2px;">
+          ELEMENT ${num} / ${total}
         </div>
-        <div style="font-size:11px; opacity:0.4; text-align:right; white-space:nowrap;">
-          ${this.isMobile() ? 'swipe \u2194 navigate \u00b7 \u2193 fullscreen' : `\u2190 \u2192 navigate \u00a0\u00b7\u00a0 ${this.enteredFromGallery ? 'B back \u00b7 ' : ''}G exit`}
+        <div style="font-size:20px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+          ${displayName}
         </div>
+        <div style="font-size:10px; opacity:0.45; margin-top:4px; letter-spacing:1px;">
+          ${tags.join(' \u00b7 ')}
+        </div>
+      </div>
+      <div style="font-size:10px; opacity:0.4; text-align:right; white-space:nowrap; flex-shrink:0;">
+        ${hints}
       </div>
     `;
   }
@@ -213,11 +232,13 @@ export class ShowcaseMode {
           case 'down':
             if (!this.fullscreen) {
               this.setFullscreen(true);
+              this.spawnElement();
             }
             break;
           case 'up':
             if (this.fullscreen) {
               this.setFullscreen(false);
+              this.spawnElement();
             }
             break;
           case 'tap':
@@ -229,6 +250,7 @@ export class ShowcaseMode {
             break;
           case 'doubletap':
             this.setFullscreen(!this.fullscreen);
+            this.spawnElement();
             break;
         }
       }
@@ -316,6 +338,12 @@ export class ShowcaseMode {
         this.currentIndex = (this.currentIndex - 1 + this.types.length) % this.types.length;
         this.spawnElement();
         break;
+      case 'f':
+      case 'F':
+        e.preventDefault();
+        this.setFullscreen(!this.fullscreen);
+        this.spawnElement(); // re-create with/without bottom inset
+        break;
       case 'b':
       case 'B':
         if (this.enteredFromGallery && this.onBackToGallery) {
@@ -371,12 +399,12 @@ export class ShowcaseMode {
     this.palette = getPalette(this.config.palette);
     this.ctx.scene.background = this.palette.bg;
 
-    // Use aspect-constrained dimensions from config
     const w = this.config.width;
     const h = this.config.height;
 
-    // Fullscreen region with small padding
-    const region: Region = createRegion('showcase', 0, 0, 1, 1, 0.02);
+    // Inset region to leave room for the overlay bar at the bottom (GL y=0 is bottom)
+    const bottomInset = this.fullscreen ? 0 : OVERLAY_BAR_PX / h;
+    const region: Region = createRegion('showcase', 0, bottomInset, 1, 1 - bottomInset, 0.02);
     region.elementType = type;
 
     const rng = new SeededRandom(this.config.seed + this.currentIndex);
