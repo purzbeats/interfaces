@@ -381,6 +381,7 @@ export class GalleryMode {
         pointer-events:auto;
         min-width:80px;
         text-align:center;
+        transition:transform 0.1s ease, background 0.15s ease;
       `;
       const prevOpacity = this.page > 0 ? '0.8' : '0.2';
       const nextOpacity = this.page < this.totalPages - 1 ? '0.8' : '0.2';
@@ -442,11 +443,26 @@ export class GalleryMode {
     }
 
     // --- Wire up touch nav buttons ---
-    this.overlay.querySelector('#gallery-prev-btn')?.addEventListener('click', (e) => {
+    const wireTouchFeedback = (el: Element | null) => {
+      if (!el) return;
+      el.addEventListener('touchstart', () => {
+        (el as HTMLElement).style.transform = 'scale(0.92)';
+        (el as HTMLElement).style.background = 'rgba(255,255,255,0.18)';
+      });
+      el.addEventListener('touchend', () => {
+        (el as HTMLElement).style.transform = 'scale(1)';
+        (el as HTMLElement).style.background = 'rgba(255,255,255,0.08)';
+      });
+    };
+    const prevBtn = this.overlay.querySelector('#gallery-prev-btn');
+    const nextBtn = this.overlay.querySelector('#gallery-next-btn');
+    wireTouchFeedback(prevBtn);
+    wireTouchFeedback(nextBtn);
+    prevBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.prevPage();
     });
-    this.overlay.querySelector('#gallery-next-btn')?.addEventListener('click', (e) => {
+    nextBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.nextPage();
     });
@@ -467,7 +483,7 @@ export class GalleryMode {
       border-radius:3px;
       cursor:pointer;
       opacity:${opacity};
-      transition:all 0.15s ease;
+      transition:all 0.15s ease, transform 0.1s ease;
       user-select:none;
       white-space:nowrap;
       flex-shrink:0;

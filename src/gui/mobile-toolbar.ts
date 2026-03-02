@@ -10,7 +10,6 @@ export interface MobileToolbarCallbacks {
   onToggleLoop: () => void;
   onToggleSettings: () => void;
   onResumeAudio: () => void;
-  onIntensity: (level: number) => void;
 }
 
 const ROW_HEIGHT = 48;
@@ -22,8 +21,6 @@ export class MobileToolbar {
   private pauseBtn!: HTMLButtonElement;
   private muteBtn!: HTMLButtonElement;
   private loopBtn!: HTMLButtonElement;
-  private intensityBtns: HTMLButtonElement[] = [];
-  private activeIntensity: number = 0;
   private audioResumed = false;
   private callbacks: MobileToolbarCallbacks;
 
@@ -153,96 +150,10 @@ export class MobileToolbar {
     this.loopBtn = this.makeBtn('\u21BB', 'LOOP');
     this.wireTap(this.loopBtn, () => this.fire(this.callbacks.onToggleLoop));
 
-    // Intensity strip: 5 segments
-    const strip = document.createElement('div');
-    Object.assign(strip.style, {
-      flex: '2.5',
-      display: 'flex',
-      alignItems: 'stretch',
-      borderRight: '1px solid rgba(51, 255, 102, 0.12)',
-    });
-
-    for (let i = 1; i <= 5; i++) {
-      const seg = document.createElement('button');
-      seg.textContent = String(i);
-      Object.assign(seg.style, {
-        flex: '1',
-        background: 'none',
-        border: 'none',
-        borderRight: i < 5 ? '1px solid rgba(51, 255, 102, 0.06)' : 'none',
-        color: 'rgba(51, 255, 102, 0.4)',
-        fontFamily: 'inherit',
-        fontSize: '14px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        padding: '0',
-        textAlign: 'center',
-        WebkitTapHighlightColor: 'transparent',
-      });
-
-      // Press-and-hold for intensity
-      seg.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        this.setIntensity(i);
-        this.fire(() => this.callbacks.onIntensity(i));
-      }, { passive: false });
-      seg.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        this.setIntensity(0);
-        this.fire(() => this.callbacks.onIntensity(0));
-      });
-      seg.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        this.setIntensity(i);
-        this.fire(() => this.callbacks.onIntensity(i));
-      });
-      seg.addEventListener('mouseup', (e) => {
-        e.preventDefault();
-        this.setIntensity(0);
-        this.fire(() => this.callbacks.onIntensity(0));
-      });
-
-      this.intensityBtns.push(seg);
-      strip.appendChild(seg);
-    }
-
-    // Label above the strip
-    const stripLabel = document.createElement('div');
-    stripLabel.textContent = 'INTENSITY';
-    Object.assign(stripLabel.style, {
-      position: 'absolute',
-      bottom: `${ROW_HEIGHT - 2}px`,
-      right: '0',
-      width: strip.style.flex, // doesn't work directly, use the strip's bounds
-      fontSize: '6px',
-      letterSpacing: '1px',
-      color: 'rgba(51, 255, 102, 0.3)',
-      textAlign: 'center',
-      pointerEvents: 'none',
-    });
-
-    botRow.append(showcase, gallery, this.loopBtn, strip);
+    botRow.append(showcase, gallery, this.loopBtn);
 
     wrapper.append(topRow, botRow);
     return wrapper;
-  }
-
-  private setIntensity(level: number): void {
-    this.activeIntensity = level;
-    for (let i = 0; i < 5; i++) {
-      const seg = this.intensityBtns[i];
-      if (i < level) {
-        const heat = (i + 1) / 5;
-        const r = Math.round(51 + heat * 204);
-        const g = Math.round(255 - heat * 155);
-        const b = Math.round(102 - heat * 80);
-        seg.style.background = `rgba(${r}, ${g}, ${b}, 0.3)`;
-        seg.style.color = `rgb(${r}, ${g}, ${b})`;
-      } else {
-        seg.style.background = 'none';
-        seg.style.color = 'rgba(51, 255, 102, 0.4)';
-      }
-    }
   }
 
   private fire(fn: () => void): void {

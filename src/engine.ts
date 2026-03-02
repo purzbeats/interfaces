@@ -14,6 +14,9 @@ import { MobileToolbar, TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
 import { takeScreenshot, createVideoRecorder, type VideoRecorder } from './export/exporter';
 import { AudioSynth } from './audio/synth';
 import { AudioReactive } from './audio/audio-reactive';
+import { TouchRipple } from './touch/touch-ripple';
+import { TouchManager } from './touch/touch-manager';
+import { ShakeDetector } from './touch/shake-detector';
 import { loadConfig, saveConfig, updateURL } from './persistence';
 import { setDividerBrightness, setDividerThickness } from './elements/separator';
 import type { Region } from './layout/region';
@@ -44,6 +47,10 @@ export class Engine {
   private gallery!: GalleryMode;
   private mobileToolbar: MobileToolbar | null = null;
   private mobileQuery!: MediaQueryList;
+  private touchRipple: TouchRipple | null = null;
+  private touchManager: TouchManager | null = null;
+  private shakeDetector: ShakeDetector | null = null;
+  private touchTargetId: string | null = null;
 
   /** Current intensity level (0 = baseline, 1–5 = active). */
   currentIntensity: number = 0;
@@ -141,6 +148,45 @@ export class Engine {
     this.mobileQuery = window.matchMedia('(max-width: 767px) and (pointer: coarse)');
     const handleMobileChange = (matches: boolean) => {
       if (matches && !this.mobileToolbar) {
+        // Touch system
+        this.touchRipple = new TouchRipple();
+        const canvas = this.ctx.renderer.domElement;
+        this.touchManager = new TouchManager(canvas, {
+          onIntensityChange: (level) => {
+            this.broadcastIntensity(level);
+            if (level > 0 && this.touchRipple) {
+              // ripples are spawned inside TouchManager already
+            }
+          },
+          onElementTarget: (elementId) => {
+            // Fade old element, light new one
+            if (this.touchTargetId && this.touchTargetId !== elementId) {
+              const old = this.elementMap.get(this.touchTargetId);
+              if (old) old.onIntensity(0);
+            }
+            this.touchTargetId = elementId;
+            if (elementId) {
+              const el = this.elementMap.get(elementId);
+              if (el) {
+                el.onIntensity(this.currentIntensity || 1);
+                this.audio.blip(200 + Math.random() * 200);
+              }
+            }
+          },
+          hitTestElement: (nx, ny) => this.hitTestElement(nx, ny),
+        }, this.touchRipple);
+
+        // Shake detector
+        this.shakeDetector = new ShakeDetector(() => {
+          if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 80]);
+          this.config.seed = Math.floor(Math.random() * 100000);
+          this.generate(this.config.seed);
+        });
+        // Request permission on first canvas touch
+        canvas.addEventListener('touchstart', () => {
+          this.shakeDetector?.requestPermission();
+        }, { once: true, passive: true });
+
         this.mobileToolbar = new MobileToolbar({
           onRegenerate: () => {
             this.config.seed = Math.floor(Math.random() * 100000);
@@ -167,13 +213,19 @@ export class Engine {
           },
           onToggleSettings: () => this.gui.toggle(),
           onResumeAudio: () => this.audio.blip(0, 0),
-          onIntensity: (level) => this.broadcastIntensity(level),
         });
         this.applyAspect();
         resizeRenderer(this.ctx, this.config.width, this.config.height);
         this.pipeline.resize(this.config.width, this.config.height);
         this.generate(this.config.seed);
       } else if (!matches && this.mobileToolbar) {
+        this.touchManager?.destroy();
+        this.touchManager = null;
+        this.touchRipple?.destroy();
+        this.touchRipple = null;
+        this.shakeDetector?.destroy();
+        this.shakeDetector = null;
+        this.touchTargetId = null;
         this.mobileToolbar.destroy();
         this.mobileToolbar = null;
         this.applyAspect();
@@ -483,6 +535,18 @@ export class Engine {
     }
   }
 
+  /** Hit-test normalized coordinates against element regions. Returns element ID or null. */
+  hitTestElement(nx: number, ny: number): string | null {
+    for (const el of this.elements) {
+      if (!el.group.visible || el.stateMachine.state === 'idle') continue;
+      const r = el.region;
+      if (nx >= r.x && nx <= r.x + r.width && ny >= r.y && ny <= r.y + r.height) {
+        return el.id;
+      }
+    }
+    return null;
+  }
+
   /** Called when aspect ratio setting changes. */
   applyAspectAndRegenerate(): void {
     this.applyAspect();
@@ -517,11 +581,6 @@ export class Engine {
       }
     };
     canvas.addEventListener('click', (e) => handleTap(e.clientX, e.clientY));
-    canvas.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
-        handleTap(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: true });
 
     window.addEventListener('keyup', (e) => {
       const intensityLevel = parseInt(e.key);
@@ -657,6 +716,9 @@ export class Engine {
     this.showcase.dispose();
     this.gallery.dispose();
     this.gui.destroy();
+    this.touchManager?.destroy();
+    this.touchRipple?.destroy();
+    this.shakeDetector?.destroy();
     this.mobileToolbar?.destroy();
     this.mobileToolbar = null;
     this.audio.dispose();

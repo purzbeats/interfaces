@@ -13,11 +13,13 @@ class TouchSwipeHandler {
   private startX = 0;
   private startY = 0;
   private el: HTMLElement;
-  private onSwipe: (dir: 'left' | 'right' | 'down' | 'up' | 'tap') => void;
+  private onSwipe: (dir: 'left' | 'right' | 'down' | 'up' | 'tap' | 'doubletap') => void;
   private boundStart: (e: TouchEvent) => void;
   private boundEnd: (e: TouchEvent) => void;
+  private lastTapTime: number = 0;
+  private singleTapTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(el: HTMLElement, onSwipe: (dir: 'left' | 'right' | 'down' | 'up' | 'tap') => void) {
+  constructor(el: HTMLElement, onSwipe: (dir: 'left' | 'right' | 'down' | 'up' | 'tap' | 'doubletap') => void) {
     this.el = el;
     this.onSwipe = onSwipe;
     this.boundStart = (e) => this.handleStart(e);
@@ -40,7 +42,23 @@ class TouchSwipeHandler {
     const absDy = Math.abs(dy);
 
     if (absDx < 10 && absDy < 10) {
-      this.onSwipe('tap');
+      // Tap detected — check for double-tap
+      const now = performance.now();
+      if (now - this.lastTapTime < 300) {
+        // Double-tap
+        if (this.singleTapTimer !== null) {
+          clearTimeout(this.singleTapTimer);
+          this.singleTapTimer = null;
+        }
+        this.lastTapTime = 0;
+        this.onSwipe('doubletap');
+      } else {
+        this.lastTapTime = now;
+        this.singleTapTimer = setTimeout(() => {
+          this.singleTapTimer = null;
+          this.onSwipe('tap');
+        }, 300);
+      }
     } else if (dy > 60 && absDy > absDx) {
       this.onSwipe('down');
     } else if (dy < -60 && absDy > absDx) {
@@ -53,6 +71,7 @@ class TouchSwipeHandler {
   }
 
   destroy(): void {
+    if (this.singleTapTimer !== null) clearTimeout(this.singleTapTimer);
     this.el.removeEventListener('touchstart', this.boundStart);
     this.el.removeEventListener('touchend', this.boundEnd);
   }
@@ -201,6 +220,9 @@ export class ShowcaseMode {
             } else {
               this.exit();
             }
+            break;
+          case 'doubletap':
+            this.setFullscreen(!this.fullscreen);
             break;
         }
       }
