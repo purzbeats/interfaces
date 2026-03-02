@@ -33,6 +33,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'cpu-cores': 1, 'audio-meter': 1, 'data-table': 1,
       'uptime-counter': 1, 'pressure-gauge': 1,
       'neural-mesh': 1, 'rule-grid': 1, 'harmonograph': 1,
+      'grid-distortion': 1,
     },
   },
 
@@ -83,6 +84,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'thermal-map': 1, 'memory-map': 1,
       'lorenz-attractor': 2, 'dna-helix': 2, 'pendulum-wave': 1,
       'rule-grid': 1, 'neural-mesh': 1, 'plasma-field': 1,
+      'grid-distortion': 2,
     },
   },
 
@@ -154,6 +156,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'uptime-counter': 1, 'boot-sequence': 2, 'network-graph': 2,
       'data-table': 2, 'cpu-cores': 1, 'voltage-arc': 1,
       'harmonograph': 2, 'flow-field': 1, 'neural-mesh': 1, 'rule-grid': 1,
+      'grid-distortion': 1,
     },
   },
 
@@ -183,6 +186,7 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'wave-interference': 2, 'star-field': 1,
       'lorenz-attractor': 2, 'pendulum-wave': 2, 'plasma-field': 1,
       'dna-helix': 1, 'fractal-tree': 1, 'boids-swarm': 1,
+      'grid-distortion': 2,
     },
   },
 };
