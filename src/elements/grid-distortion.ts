@@ -76,6 +76,13 @@ export class GridDistortionElement extends BaseElement {
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
     const { x, y, w, h } = this.px;
+    // Inset the grid to keep displacement within the tile border
+    const maxAmp = this.waveAmp * (this.alertMode ? 2.5 : 1) * 1.3; // worst-case amplitude
+    const pad = Math.max(maxAmp, Math.min(w, h) * 0.08);
+    const ix = x + pad;
+    const iy = y + pad;
+    const iw = w - pad * 2;
+    const ih = h - pad * 2;
     const dx = this.divisionsX;
     const dy = this.divisionsY;
     const positions = this.gridLines.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -85,14 +92,14 @@ export class GridDistortionElement extends BaseElement {
     // Horizontal lines
     for (let row = 0; row <= dy; row++) {
       const gy = row / dy;
-      const baseY = y + gy * h;
+      const baseY = iy + gy * ih;
       for (let col = 0; col < dx; col++) {
         const gx1 = col / dx;
         const gx2 = (col + 1) / dx;
         const [d1x, d1y] = this.getDisplacement(gx1, gy, time);
         const [d2x, d2y] = this.getDisplacement(gx2, gy, time);
-        positions.setXYZ(vi, x + gx1 * w + d1x, baseY + d1y, 1);
-        positions.setXYZ(vi + 1, x + gx2 * w + d2x, baseY + d2y, 1);
+        positions.setXYZ(vi, ix + gx1 * iw + d1x, baseY + d1y, 1);
+        positions.setXYZ(vi + 1, ix + gx2 * iw + d2x, baseY + d2y, 1);
         vi += 2;
       }
     }
@@ -100,14 +107,14 @@ export class GridDistortionElement extends BaseElement {
     // Vertical lines
     for (let col = 0; col <= dx; col++) {
       const gx = col / dx;
-      const baseX = x + gx * w;
+      const baseX = ix + gx * iw;
       for (let row = 0; row < dy; row++) {
         const gy1 = row / dy;
         const gy2 = (row + 1) / dy;
         const [d1x, d1y] = this.getDisplacement(gx, gy1, time);
         const [d2x, d2y] = this.getDisplacement(gx, gy2, time);
-        positions.setXYZ(vi, baseX + d1x, y + gy1 * h + d1y, 1);
-        positions.setXYZ(vi + 1, baseX + d2x, y + gy2 * h + d2y, 1);
+        positions.setXYZ(vi, baseX + d1x, iy + gy1 * ih + d1y, 1);
+        positions.setXYZ(vi + 1, baseX + d2x, iy + gy2 * ih + d2y, 1);
         vi += 2;
       }
     }
