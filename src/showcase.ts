@@ -94,6 +94,8 @@ export class ShowcaseMode {
   private overlay: HTMLDivElement;
   private active: boolean = false;
   private onExit: () => void;
+  private onBackToGallery: (() => void) | null = null;
+  private enteredFromGallery: boolean = false;
   private keyHandler: (e: KeyboardEvent) => void;
   private resizeHandler: () => void;
   private stashedChildren: THREE.Object3D[] = [];
@@ -164,14 +166,15 @@ export class ShowcaseMode {
           </div>
         </div>
         <div style="font-size:11px; opacity:0.4; text-align:right; white-space:nowrap;">
-          ${this.isMobile() ? 'swipe \u2194 navigate \u00b7 \u2193 fullscreen' : '\u2190 \u2192 navigate \u00a0\u00b7\u00a0 G exit'}
+          ${this.isMobile() ? 'swipe \u2194 navigate \u00b7 \u2193 fullscreen' : `\u2190 \u2192 navigate \u00a0\u00b7\u00a0 ${this.enteredFromGallery ? 'B back \u00b7 ' : ''}G exit`}
         </div>
       </div>
     `;
   }
 
-  enter(startIndex?: number): void {
+  enter(startIndex?: number, fromGallery: boolean = false): void {
     this.active = true;
+    this.enteredFromGallery = fromGallery;
     this.currentIndex = startIndex ?? 0;
     this.overlay.style.display = '';
 
@@ -232,6 +235,7 @@ export class ShowcaseMode {
 
   exit(): void {
     this.active = false;
+    this.enteredFromGallery = false;
     if (this.fullscreen) {
       this.setFullscreen(false);
     }
@@ -251,8 +255,36 @@ export class ShowcaseMode {
     this.onExit();
   }
 
+  /** Return to gallery, preserving gallery's page/filter state. */
+  private backToGallery(): void {
+    this.active = false;
+    this.enteredFromGallery = false;
+    if (this.fullscreen) {
+      this.setFullscreen(false);
+    }
+    this.overlay.style.display = 'none';
+    window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('resize', this.resizeHandler);
+    this.swipeHandler?.destroy();
+    this.swipeHandler = null;
+    this.clearElement();
+
+    // Restore stashed scene children so gallery can re-stash them
+    for (const child of this.stashedChildren) {
+      this.ctx.scene.add(child);
+    }
+    this.stashedChildren = [];
+
+    this.onBackToGallery?.();
+  }
+
   get isActive(): boolean {
     return this.active;
+  }
+
+  /** Set a callback for returning to gallery. Called by GalleryMode when entering showcase from grid. */
+  setBackToGallery(cb: (() => void) | null): void {
+    this.onBackToGallery = cb;
   }
 
   private handleKey(e: KeyboardEvent): void {
@@ -267,6 +299,13 @@ export class ShowcaseMode {
         e.preventDefault();
         this.currentIndex = (this.currentIndex - 1 + this.types.length) % this.types.length;
         this.spawnElement();
+        break;
+      case 'b':
+      case 'B':
+        if (this.enteredFromGallery && this.onBackToGallery) {
+          e.preventDefault();
+          this.backToGallery();
+        }
         break;
       case 'g':
       case 'G':

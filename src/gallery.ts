@@ -120,13 +120,16 @@ export class GalleryMode {
     this.pageSize = this.cols * this.rows;
   }
 
-  enter(): void {
+  enter(resume: boolean = false): void {
     this.active = true;
-    this.activeFilter = null;
-    this.filteredTypes = this.allTypes;
+    if (!resume) {
+      this.activeFilter = null;
+      this.filteredTypes = this.allTypes;
+      this.page = 0;
+    }
     this.updateGridDimensions();
     this.recomputePages();
-    this.page = 0;
+    if (this.page >= this.totalPages) this.page = Math.max(0, this.totalPages - 1);
     this.overlay.style.display = '';
 
     // Stash scene children
@@ -186,7 +189,8 @@ export class GalleryMode {
 
     // Map filtered type name back to showcase's global index
     const showcaseIndex = this.allTypes.indexOf(typeName);
-    this.showcase.enter(showcaseIndex >= 0 ? showcaseIndex : 0);
+    this.showcase.setBackToGallery(() => this.enter(true));
+    this.showcase.enter(showcaseIndex >= 0 ? showcaseIndex : 0, true);
   }
 
   update(dt: number): void {
