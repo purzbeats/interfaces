@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Matrix-style cascading data columns with horizontal scan bands.
  * Characters rain downward at different speeds per column.
  */
 export class DataCascadeElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'data-cascade',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -138,6 +143,12 @@ export class DataCascadeElement extends BaseElement {
       }
       this.emitAudio('seekSound', 120);
     }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    // One-shot effects only — no permanent state mutation
   }
 
   dispose(): void {

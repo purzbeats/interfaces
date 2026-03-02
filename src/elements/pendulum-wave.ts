@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Multiple pendulums swinging at slightly different periods, creating
@@ -7,6 +8,10 @@ import { BaseElement } from './base-element';
  * as a retro terminal display with fading trails.
  */
 export class PendulumWaveElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'pendulum-wave',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private supportBeam!: THREE.LineSegments;
   private strings!: THREE.LineSegments;
   private bobs!: THREE.Points;
@@ -238,6 +243,18 @@ export class PendulumWaveElement extends BaseElement {
     (this.trail.material as THREE.PointsMaterial).opacity = opacity * 0.7;
     (this.equilibriumLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.15;
     (this.frameLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.2;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.amplitudeBoost = 2.0;
+    } else if (level >= 3) {
+      this.amplitudeBoost = 0.8;
+    } else {
+      this.amplitudeBoost = 0.3;
+    }
   }
 
   onAction(action: string): void {

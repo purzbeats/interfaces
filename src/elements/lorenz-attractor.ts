@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Lorenz strange attractor with multiple trailing particle traces.
@@ -7,6 +8,10 @@ import { BaseElement } from './base-element';
  * rendered as luminous trails on a research terminal display.
  */
 export class LorenzAttractorElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'lorenz-attractor',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private traces: THREE.Line[] = [];
   private traceMaterials: THREE.LineBasicMaterial[] = [];
   private crosshairs!: THREE.LineSegments;
@@ -238,6 +243,26 @@ export class LorenzAttractorElement extends BaseElement {
         this.states[t].y = (Math.random() - 0.5) * 10;
         this.states[t].z = 20 + Math.random() * 15;
         // Clear trail buffers so fresh traces draw
+        this.buffers[t].head = 0;
+        this.buffers[t].filled = false;
+      }
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    // Parameter nudge proportional to level
+    for (const state of this.states) {
+      state.x += (Math.random() - 0.5) * level * 0.5;
+      state.y += (Math.random() - 0.5) * level * 0.5;
+    }
+    if (level >= 5) {
+      // Bifurcation: reset to new random initial conditions
+      for (let t = 0; t < this.states.length; t++) {
+        this.states[t].x = (Math.random() - 0.5) * 10;
+        this.states[t].y = (Math.random() - 0.5) * 10;
+        this.states[t].z = 20 + Math.random() * 15;
         this.buffers[t].head = 0;
         this.buffers[t].filled = false;
       }

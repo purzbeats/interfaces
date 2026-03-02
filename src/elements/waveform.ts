@@ -1,7 +1,12 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 export class WaveformElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'waveform',
+    meta: { shape: 'linear', roles: ['data-display'], moods: ['diagnostic'], sizes: ['works-small'] },
+  };
   private line!: THREE.Line;
   private numPoints: number = 0;
   private frequency: number = 0;

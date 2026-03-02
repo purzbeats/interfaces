@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 const BOOT_LINES = [
@@ -26,6 +27,10 @@ const BOOT_LINES = [
  * Canvas typewriter, lines appear one at a time with delay before status tag.
  */
 export class BootSequenceElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'boot-sequence',
+    meta: { shape: 'rectangular', roles: ['text', 'data-display'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -159,6 +164,17 @@ export class BootSequenceElement extends BaseElement {
 
     applyScanlines(ctx, canvas, 0.1, this.loopCount + this.currentLine * 0.1);
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      // Restart the boot sequence
+      this.currentLine = 0;
+      this.charIndex = 0;
+      this.completedLines = [];
+    }
   }
 
   onAction(action: string): void {

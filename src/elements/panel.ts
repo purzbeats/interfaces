@@ -1,7 +1,12 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 export class PanelElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'panel',
+    meta: { shape: 'rectangular', roles: ['structural'], moods: ['ambient'], sizes: ['works-small', 'needs-medium', 'needs-large'] },
+  };
   private borderLines!: THREE.LineSegments;
   private fillMesh!: THREE.Mesh;
   private headerMesh!: THREE.Mesh;

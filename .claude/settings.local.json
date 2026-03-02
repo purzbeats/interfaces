@@ -23,7 +23,9 @@
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
       "Bash(git status:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(node:*)"
     ]
   }
 }

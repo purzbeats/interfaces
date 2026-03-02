@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Perlin-like noise flow field with particle traces.
@@ -9,6 +10,10 @@ import { BaseElement } from './base-element';
  */
 
 export class FlowFieldElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'flow-field',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private pointsMesh!: THREE.Points;
   private trailMesh!: THREE.Points;
   private borderLines!: THREE.LineSegments;
@@ -306,6 +311,19 @@ export class FlowFieldElement extends BaseElement {
 
     (this.trailMesh.material as THREE.PointsMaterial).opacity = opacity * 0.45;
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.2;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.alertSpeedBoost = 3.0;
+      this.alertTimer = 1.0;
+    } else if (level >= 3) {
+      this.brightnessBoost = 0.6;
+    } else {
+      this.brightnessBoost = 0.3;
+    }
   }
 
   onAction(action: string): void {

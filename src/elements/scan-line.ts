@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Horizontal line sweeping top-to-bottom with fading trail.
  * Static scatter points brighten as the line passes over them.
  */
 export class ScanLineElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'scan-line',
+    meta: { shape: 'linear', roles: ['scanner', 'decorative'], moods: ['ambient', 'tactical'], sizes: ['works-small', 'needs-medium'] },
+  };
   private scanLine!: THREE.Line;
   private trailMesh!: THREE.Mesh;
   private trailMat!: THREE.MeshBasicMaterial;
@@ -138,6 +143,20 @@ export class ScanLineElement extends BaseElement {
     colors.needsUpdate = true;
     (this.scatterPoints.material as THREE.PointsMaterial).opacity = opacity * 0.8;
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    // Brighten scatter points
+    const boost = level >= 3 ? 1.0 : 0.5;
+    for (let i = 0; i < this.pointCount; i++) {
+      this.scatterBrightness[i] = Math.min(1.0, this.scatterBrightness[i] + boost);
+    }
+    if (level >= 5) {
+      this.scanSpeed *= 3;
+      setTimeout(() => { this.scanSpeed /= 3; }, 400);
+    }
   }
 
   onAction(action: string): void {

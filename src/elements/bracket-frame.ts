@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Animated bracket frame — corner brackets that expand outward from center,
  * with data labels and tick marks along edges. Classic sci-fi targeting overlay.
  */
 export class BracketFrameElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'bracket-frame',
+    meta: { shape: 'rectangular', roles: ['structural', 'scanner'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private corners: THREE.LineSegments[] = [];
   private edgeLines!: THREE.LineSegments;
   private canvas!: HTMLCanvasElement;
@@ -136,6 +141,23 @@ export class BracketFrameElement extends BaseElement {
       this.texture.needsUpdate = true;
     }
     (this.labelMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.6;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      for (const c of this.corners) {
+        (c.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
+      }
+      setTimeout(() => {
+        for (const c of this.corners) {
+          (c.material as THREE.LineBasicMaterial).color.copy(this.palette.primary);
+        }
+      }, 2000);
+    }
+    this.expandTarget = level >= 3 ? 0.7 : 0.85;
+    setTimeout(() => { this.expandTarget = 1; }, 500);
   }
 
   onAction(action: string): void {

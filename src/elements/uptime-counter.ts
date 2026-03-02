@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
@@ -7,6 +8,10 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
  * Canvas text, ticks up in real time from a random start.
  */
 export class UptimeCounterElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'uptime-counter',
+    meta: { shape: 'linear', roles: ['text', 'data-display'], moods: ['diagnostic', 'ambient'], sizes: ['works-small'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;

@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Expanding ping rings from center that illuminate static blips.
  * No rotation — rings expand via vertex position updates.
  */
 export class RadialScannerElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'radial-scanner',
+    meta: { shape: 'radial', roles: ['scanner'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private crosshairs!: THREE.LineSegments;
   private blipPoints!: THREE.Points;
   private blipBrightness: number[] = [];
@@ -182,6 +187,24 @@ export class RadialScannerElement extends BaseElement {
     (this.borderRing.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
     (this.crosshairs.material as THREE.LineBasicMaterial).opacity = opacity * 0.25;
     (this.centerDot.material as THREE.PointsMaterial).opacity = opacity;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 3) {
+      // Brighten all blips
+      for (let i = 0; i < this.blipCount; i++) {
+        this.blipBrightness[i] = Math.min(1.0, this.blipBrightness[i] + level * 0.2);
+      }
+    }
+    if (level >= 5) {
+      // Fire all pings rapidly
+      this.pingTimer = 0;
+    } else {
+      // Fire a single ping
+      this.pingTimer = 0;
+    }
   }
 
   onAction(action: string): void {

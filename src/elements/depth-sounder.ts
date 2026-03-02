@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Scrolling bathymetric depth profile chart.
  * Line shifts left each frame, new terrain appended from noise, depth grid behind.
  */
 export class DepthSounderElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'depth-sounder',
+    meta: { shape: 'rectangular', roles: ['data-display', 'scanner'], moods: ['tactical'], sizes: ['needs-medium'] },
+  };
   private terrainLine!: THREE.Line;
   private gridLines!: THREE.LineSegments;
   private borderLines!: THREE.LineSegments;

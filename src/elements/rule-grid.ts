@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines } from '../animation/retro-text';
 
 /**
@@ -9,6 +10,10 @@ import { applyScanlines } from '../animation/retro-text';
  * Rule 90 produces the Sierpinski triangle, Rule 30 produces chaos, etc.
  */
 export class RuleGridElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'rule-grid',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -314,6 +319,25 @@ export class RuleGridElement extends BaseElement {
 
     if (action === 'pulse') {
       // pulseTimer already set by super — triggers bright flash in render
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      // Switch to a random rule
+      if (this.glitchRuleTimer <= 0) {
+        this.savedRuleNumber = this.ruleNumber;
+        this.savedRuleTable.set(this.ruleTable);
+      }
+      let newRule: number;
+      do {
+        newRule = this.rng.pick(RuleGridElement.GOOD_RULES);
+      } while (newRule === this.ruleNumber && RuleGridElement.GOOD_RULES.length > 1);
+      this.ruleNumber = newRule;
+      this.buildRuleTable(newRule, this.ruleTable);
+      this.glitchRuleTimer = 1.0;
     }
   }
 

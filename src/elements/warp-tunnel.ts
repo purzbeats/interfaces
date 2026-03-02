@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Converging radial lines with expanding depth rings.
  * Radial LineSegments from vanishing point + rings that spawn at center and expand.
  */
 export class WarpTunnelElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'warp-tunnel',
+    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private radialLines!: THREE.LineSegments;
   private rings: THREE.Line[] = [];
   private ringRadii: number[] = [];

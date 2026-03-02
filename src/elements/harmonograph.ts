@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Harmonograph — simulated pendulum drawing that traces damped Lissajous
@@ -9,6 +10,10 @@ import { BaseElement } from './base-element';
  * Pure geometry (Line), loads instantly, always moving.
  */
 export class HarmonographElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'harmonograph',
+    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private line!: THREE.Line;
   private lineMat!: THREE.LineBasicMaterial;
   private fadeLine!: THREE.Line;
@@ -234,6 +239,25 @@ export class HarmonographElement extends BaseElement {
       this.positions.fill(0);
       this.line.geometry.setDrawRange(0, 0);
       this.pulseTimer = 1.5;
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    // Phase nudge proportional to level
+    this.phaseX += level * 0.1;
+    this.phaseY += level * 0.1;
+    if (level >= 3) {
+      this.ampX *= 1 + level * 0.05;
+      this.ampY *= 1 + level * 0.05;
+    }
+    if (level >= 5) {
+      // Full parameter reset
+      const radius = Math.min(this.px.w, this.px.h) * 0.42;
+      this.randomizeParams(radius);
+      this.positions.fill(0);
+      this.line.geometry.setDrawRange(0, 0);
     }
   }
 

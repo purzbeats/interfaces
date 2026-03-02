@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -10,6 +11,10 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
  * Top-aligned chars get brighter; no full-screen flash.
  */
 export class CipherWheelElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'cipher-wheel',
+    meta: { shape: 'radial', roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -163,6 +168,24 @@ export class CipherWheelElement extends BaseElement {
       // Spin all rings fast in same direction briefly
       for (let r = 0; r < this.ringCount; r++) {
         this.ringSpeeds[r] = 4 + r * 0.5;
+      }
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 3) {
+      // Reverse a ring (one-shot, toggles back on next tap)
+      this.ringSpeeds[0] *= -1;
+    }
+    if (level >= 5) {
+      // Scramble all — randomize characters and spin fast
+      for (let r = 0; r < this.ringCount; r++) {
+        this.ringSpeeds[r] = this.rng.float(3, 6) * (this.rng.chance(0.5) ? 1 : -1);
+        for (let i = 0; i < this.ringChars[r].length; i++) {
+          this.ringChars[r][i] = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[this.rng.int(0, 35)];
+        }
       }
     }
   }

@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Waterfall spectrogram display — frequency bands scroll vertically over time.
  * Canvas-based rendering with color-mapped intensity.
  */
 export class SpectrogramElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'spectrogram',
+    meta: { shape: 'rectangular', roles: ['data-display'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+  };
   private canvas!: HTMLCanvasElement;
   private canvasCtx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -178,6 +183,20 @@ export class SpectrogramElement extends BaseElement {
 
     ctx.putImageData(topRow, 0, 0);
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      for (let i = 0; i < this.freqBands; i++) {
+        this.bandTargets[i] = 1.0;
+      }
+    } else if (level >= 3) {
+      for (let i = 0; i < this.freqBands; i++) {
+        this.bandTargets[i] = Math.min(1.0, this.bandTargets[i] + level * 0.15);
+      }
+    }
   }
 
   onAction(action: string): void {

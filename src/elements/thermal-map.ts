@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Heat-map grid of color-interpolated cells with wandering hotspot and heat diffusion.
  * Canvas-based rendering.
  */
 export class ThermalMapElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'thermal-map',
+    meta: { shape: 'rectangular', roles: ['data-display', 'scanner'], moods: ['tactical', 'diagnostic'], sizes: ['needs-medium'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -184,6 +189,25 @@ export class ThermalMapElement extends BaseElement {
 
     ctx.putImageData(imgData, 0, 0);
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      // Max heat everywhere
+      for (let i = 0; i < this.heatGrid.length; i++) {
+        this.heatGrid[i] = 1.0;
+      }
+    } else {
+      // Boost heat at hotspot locations
+      const boost = level >= 3 ? 3 : 1;
+      for (let n = 0; n < boost; n++) {
+        for (const hs of this.hotspots) {
+          this.applyHeat(Math.round(hs.x), Math.round(hs.y));
+        }
+      }
+    }
   }
 
   onAction(action: string): void {

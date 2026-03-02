@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Flocking simulation (boids algorithm) rendered as a tactical swarm display.
@@ -7,6 +8,10 @@ import { BaseElement } from './base-element';
  * faint trails, and a background tactical grid.
  */
 export class BoidsSwarmElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'boids-swarm',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private boidCount: number = 0;
   private posX!: Float32Array;
   private posY!: Float32Array;
@@ -392,6 +397,30 @@ export class BoidsSwarmElement extends BaseElement {
         this.velX[i] += (dx / dist) * this.maxSpeed * 0.5;
         this.velY[i] += (dy / dist) * this.maxSpeed * 0.5;
       }
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const { x, y, w, h } = this.px;
+    // Scatter boids proportional to level
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const force = level * 0.2;
+    for (let i = 0; i < this.boidCount; i++) {
+      const dx = this.posX[i] - cx;
+      const dy = this.posY[i] - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
+      this.velX[i] += (dx / dist) * this.maxSpeed * force;
+      this.velY[i] += (dy / dist) * this.maxSpeed * force;
+    }
+    if (level >= 5) {
+      // Spawn predator
+      this.predatorActive = true;
+      this.predatorTimer = 0.8;
+      this.predatorX = x + this.rng.float(w * 0.2, w * 0.8);
+      this.predatorY = y + this.rng.float(h * 0.2, h * 0.8);
     }
   }
 }

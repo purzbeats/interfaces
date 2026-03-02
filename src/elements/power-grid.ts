@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Schematic power distribution network with animated current flow.
@@ -7,6 +8,10 @@ import { BaseElement } from './base-element';
  * flowing particles along paths. Sections can flicker independently.
  */
 export class PowerGridElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'power-grid',
+    meta: { shape: 'rectangular', roles: ['data-display', 'structural'], moods: ['diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private treeLines!: THREE.LineSegments;
   private busLines!: THREE.LineSegments;
   private junctionPoints!: THREE.Points;
@@ -184,6 +189,20 @@ export class PowerGridElement extends BaseElement {
     (this.junctionPoints.material as THREE.PointsMaterial).opacity = opacity * (0.5 + avgLoad * 0.4);
     (this.flowPoints.material as THREE.PointsMaterial).opacity = opacity * 0.85;
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      for (const j of this.junctions) {
+        j.loadTarget = 1.0;
+      }
+    } else if (level >= 3) {
+      for (const j of this.junctions) {
+        j.loadTarget = Math.min(1.0, j.loadTarget + level * 0.15);
+      }
+    }
   }
 
   onAction(action: string): void {

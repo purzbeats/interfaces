@@ -26,6 +26,7 @@ npm run preview
 | L | Toggle continuous loop mode |
 | G | Showcase mode (cycle through all elements) |
 | M | Toggle sound |
+| 1–5 | Intensity broadcast (tap = one-shot, hold = sustained, release = baseline) |
 
 On mobile (<768px), a bottom toolbar provides touch-friendly buttons for all controls.
 

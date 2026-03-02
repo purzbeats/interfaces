@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Concentric expanding rings that ripple outward from center.
  * Each ring spawns at center and grows outward, fading as it expands.
  */
 export class ConcentricRingsElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'concentric-rings',
+    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient'], sizes: ['needs-medium'] },
+  };
   private ringMeshes: THREE.Line[] = [];
   private ringPhases: number[] = [];
   private maxRings: number = 0;
@@ -77,6 +82,15 @@ export class ConcentricRingsElement extends BaseElement {
     const dot = this.group.children[this.group.children.length - 1] as THREE.Mesh;
     dot.position.x = cx + gx;
     (dot.material as THREE.MeshBasicMaterial).opacity = opacity * 0.6;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    // Reset all ring phases for a burst effect
+    for (let i = 0; i < this.maxRings; i++) {
+      this.ringPhases[i] = 0;
+    }
   }
 
   onAction(action: string): void {

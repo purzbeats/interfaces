@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Sinusoidal orbit ground track over lat/lon grid.
  * Grid LineSegments + sinusoidal Line path, dot moves along track leaving fading trail.
  */
 export class SatelliteTrackElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'satellite-track',
+    meta: { shape: 'rectangular', roles: ['scanner', 'data-display'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private gridLines!: THREE.LineSegments;
   private trackLine!: THREE.Line;
   private satDot!: THREE.Points;

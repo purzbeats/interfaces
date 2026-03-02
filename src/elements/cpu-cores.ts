@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Grid of squares showing independent core load levels.
  * Grid of PlaneGeometry meshes, each with independent brightness via random walk.
  */
 export class CpuCoresElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'cpu-cores',
+    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+  };
   private cores: THREE.Mesh[] = [];
   private coreLoads: number[] = [];
   private coreTargets: number[] = [];
@@ -86,6 +91,19 @@ export class CpuCoresElement extends BaseElement {
     }
 
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const count = this.cols * this.rows;
+    for (let i = 0; i < count; i++) {
+      if (level >= 5) {
+        this.coreTargets[i] = 1.0;
+      } else {
+        this.coreTargets[i] = Math.min(1.0, this.coreTargets[i] + level * (level >= 3 ? 0.3 : 0.15));
+      }
+    }
   }
 
   onAction(action: string): void {

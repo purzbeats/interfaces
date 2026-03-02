@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Particles orbiting a center point at different radii and speeds,
  * with faint orbit trails — like an atom diagram or satellite tracker.
  */
 export class OrbitalDisplayElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'orbital-display',
+    meta: { shape: 'radial', roles: ['data-display', 'decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private orbitLines: THREE.Line[] = [];
   private particlePoints!: THREE.Points;
   private centerDot!: THREE.Points;
@@ -128,6 +133,23 @@ export class OrbitalDisplayElement extends BaseElement {
     pos.needsUpdate = true;
     colors.needsUpdate = true;
     (this.particlePoints.material as THREE.PointsMaterial).opacity = opacity;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 3) {
+      // Speed boost impulse
+      for (const orb of this.orbits) {
+        orb.speed += level * 0.3 * Math.sign(orb.speed);
+      }
+    }
+    if (level >= 5) {
+      (this.centerDot.material as THREE.PointsMaterial).color.copy(this.palette.alert);
+      setTimeout(() => {
+        (this.centerDot.material as THREE.PointsMaterial).color.copy(this.palette.primary);
+      }, 2000);
+    }
   }
 
   onAction(action: string): void {

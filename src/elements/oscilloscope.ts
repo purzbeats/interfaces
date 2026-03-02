@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Lissajous figure with phosphor persistence trails.
  * Multiple Line traces at decreasing opacity, frequencies drift slowly.
  */
 export class OscilloscopeElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'oscilloscope',
+    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+  };
   private traces: THREE.Line[] = [];
   private borderLines!: THREE.LineSegments;
   private numPoints: number = 0;

@@ -1,5 +1,6 @@
 import { type Config, DEFAULT_CONFIG, computeAspectSize } from './config';
 import { ShowcaseMode } from './showcase';
+import { GalleryMode } from './gallery';
 import { SeededRandom } from './random';
 import { createRenderer, resizeRenderer, type RendererContext } from './renderer/setup';
 import { getPalette, type Palette } from './color/palettes';
@@ -40,6 +41,7 @@ export class Engine {
   private pendingBuild: { element: BaseElement; wrapper: THREE.Group }[] = [];
   private readonly BUILD_BATCH_SIZE = 3;
   private showcase!: ShowcaseMode;
+  private gallery!: GalleryMode;
   private mobileToolbar: MobileToolbar | null = null;
   private mobileQuery!: MediaQueryList;
 
@@ -97,6 +99,13 @@ export class Engine {
     );
     this.recorder = createVideoRecorder(this.ctx.renderer.domElement, this.config.export.fps);
     this.showcase = new ShowcaseMode(this.ctx, this.pipeline, this.config, () => {
+      // On exit: restore aspect, regenerate the normal composition
+      this.applyAspect();
+      resizeRenderer(this.ctx, this.config.width, this.config.height);
+      this.pipeline.resize(this.config.width, this.config.height);
+      this.generate(this.config.seed);
+    });
+    this.gallery = new GalleryMode(this.ctx, this.pipeline, this.config, this.showcase, () => {
       // On exit: restore aspect, regenerate the normal composition
       this.applyAspect();
       resizeRenderer(this.ctx, this.config.width, this.config.height);
@@ -337,9 +346,13 @@ export class Engine {
   update(dt: number): void {
     if (this.disposed) return;
 
-    // Showcase mode takes over update/render
+    // Showcase/gallery mode takes over update/render
     if (this.showcase.isActive) {
       this.showcase.update(dt);
+      return;
+    }
+    if (this.gallery.isActive) {
+      this.gallery.update(dt);
       return;
     }
 
@@ -418,6 +431,10 @@ export class Engine {
     if (this.disposed) return;
     if (this.showcase.isActive) {
       this.showcase.render();
+      return;
+    }
+    if (this.gallery.isActive) {
+      this.gallery.render();
       return;
     }
     this.pipeline.composer.render();
@@ -542,8 +559,13 @@ export class Engine {
           this.timeline.loop = !this.timeline.loop;
           break;
         case 'g':
-          if (!this.showcase.isActive) {
+          if (!this.showcase.isActive && !this.gallery.isActive) {
             this.showcase.enter();
+          }
+          break;
+        case 'b':
+          if (!this.gallery.isActive && !this.showcase.isActive) {
+            this.gallery.enter();
           }
           break;
         case '+':
@@ -602,6 +624,7 @@ export class Engine {
       el.dispose();
     }
     this.showcase.dispose();
+    this.gallery.dispose();
     this.gui.destroy();
     this.mobileToolbar?.destroy();
     this.mobileToolbar = null;

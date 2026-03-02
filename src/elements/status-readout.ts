@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 const STATUS_MESSAGES = [
@@ -9,6 +10,10 @@ const STATUS_MESSAGES = [
 ];
 
 export class StatusReadoutElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'status-readout',
+    meta: { shape: 'linear', roles: ['text'], moods: ['tactical', 'diagnostic'], sizes: ['works-small'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -127,6 +132,15 @@ export class StatusReadoutElement extends BaseElement {
     applyScanlines(ctx, canvas, 0.08, time);
 
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.isAlert = true;
+      setTimeout(() => { this.isAlert = false; }, 3000);
+    }
   }
 
   onAction(action: string): void {

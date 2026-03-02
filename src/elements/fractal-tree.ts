@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * L-system fractal tree that grows branch-by-branch with gentle wind sway.
@@ -23,6 +24,10 @@ interface BranchSegment {
 }
 
 export class FractalTreeElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'fractal-tree',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private linesMesh!: THREE.LineSegments;
   private lineMat!: THREE.LineBasicMaterial;
   private groundLine!: THREE.LineSegments;
@@ -420,6 +425,21 @@ export class FractalTreeElement extends BaseElement {
     if (action === 'pulse') {
       // Flash all leaf-level branches with secondary color
       this.leafFlashTimer = 0.6;
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) { this.speedMultiplier = 1; this.windStrength = 0.015; return; }
+    // Graduated wind: gentle breeze to storm (absolute, not cumulative)
+    this.windStrength = 0.015 + level * 0.015;
+    if (level >= 3) {
+      this.leafFlashTimer = 0.3;
+      this.speedMultiplier = 1 + level * 0.3;
+    }
+    if (level >= 5) {
+      this.alertTimer = 1.5;
+      this.speedMultiplier = 3;
     }
   }
 }

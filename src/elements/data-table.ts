@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
@@ -7,6 +8,10 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
  * Canvas table, rows scroll up, values change periodically, highlighted row.
  */
 export class DataTableElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'data-table',
+    meta: { shape: 'rectangular', roles: ['data-display', 'text'], moods: ['diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;

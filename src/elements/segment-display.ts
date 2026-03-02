@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Seven-segment LED-style 3-4 digit counter.
  * Pure geometry (LineSegments for each segment), spring-driven value.
  */
 export class SegmentDisplayElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'segment-display',
+    meta: { shape: 'rectangular', roles: ['text', 'gauge'], moods: ['tactical'], sizes: ['works-small', 'needs-medium'] },
+  };
   private digitSegments: THREE.LineSegments[] = [];
   private borderLines!: THREE.LineSegments;
   private digitCount: number = 0;
@@ -221,6 +226,15 @@ export class SegmentDisplayElement extends BaseElement {
 
       pos.needsUpdate = true;
     }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.targetValue = this.maxValue;
+    }
+    this.velocity += level * (level >= 3 ? 200 : 100);
   }
 
   onAction(action: string): void {

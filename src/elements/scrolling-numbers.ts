@@ -1,7 +1,12 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 export class ScrollingNumbersElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'scrolling-numbers',
+    meta: { shape: 'rectangular', roles: ['data-display', 'text'], moods: ['tactical', 'diagnostic'], sizes: ['works-small', 'needs-medium'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -123,6 +128,17 @@ export class ScrollingNumbersElement extends BaseElement {
         this.scrollSpeeds[c] = this.rng.float(15, 80);
       }
       this.emitAudio('seekSound', 150);
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 3) {
+      // One-shot offset jump for visual disruption
+      for (let c = 0; c < this.columns; c++) {
+        this.scrollOffsets[c] += this.rng.float(5, 20);
+      }
     }
   }
 

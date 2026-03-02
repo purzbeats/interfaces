@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Signal strength bars — staggered vertical bars that bounce with spring physics.
  * Like an audio spectrum analyzer or signal level indicator.
  */
 export class SignalBarsElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'signal-bars',
+    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+  };
   private bars: THREE.Mesh[] = [];
   private barValues: number[] = [];
   private barTargets: number[] = [];
@@ -115,6 +120,16 @@ export class SignalBarsElement extends BaseElement {
         this.barTargets[i] = 1.0;
         this.barVelocities[i] = 4;
       }
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const boost = level * 0.15;
+    for (let i = 0; i < this.barCount; i++) {
+      this.barTargets[i] = Math.min(1.0, this.barTargets[i] + boost);
+      this.barVelocities[i] += level * 0.5;
     }
   }
 }

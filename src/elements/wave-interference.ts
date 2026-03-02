@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Two circular wave sources creating animated moire patterns.
  * Two sets of expanding concentric ring Lines, centers drift slowly.
  */
 export class WaveInterferenceElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'wave-interference',
+    meta: { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private sourceRings: THREE.Line[][] = [[], []];
   private sourcePos: Array<{ x: number; y: number; vx: number; vy: number }> = [];
   private ringRadii: number[][] = [[], []];

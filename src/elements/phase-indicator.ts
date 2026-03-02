@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Radial tick ring with animated needle (vertex-based, not rotation).
  * Center readout showing current phase angle/value.
  */
 export class PhaseIndicatorElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'phase-indicator',
+    meta: { shape: 'radial', roles: ['gauge'], moods: ['tactical', 'diagnostic'], sizes: ['works-small', 'needs-medium'] },
+  };
   private tickRing!: THREE.LineSegments;
   private needle!: THREE.Line;
   private centerDot!: THREE.Mesh;
@@ -154,6 +159,15 @@ export class PhaseIndicatorElement extends BaseElement {
     ctx.fillText(this.label, canvas.width / 2, canvas.height * 0.72);
 
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    this.velocity += level * (level >= 3 ? 2 : 1);
+    if (level >= 5) {
+      this.velocity += 8;
+    }
   }
 
   onAction(action: string): void {

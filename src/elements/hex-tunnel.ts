@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Concentric hexagonal rings expanding outward like looking down a hex tunnel.
  * Each ring is a full hexagon outline at increasing radii with staggered phase.
  */
 export class HexTunnelElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'hex-tunnel',
+    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient', 'tactical'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private rings: THREE.Line[] = [];
   private ringPhases: number[] = [];
   private ringCount: number = 0;

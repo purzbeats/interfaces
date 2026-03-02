@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * ECG/heartbeat-style sharp pulse waveform with scrolling trace.
  * Clean flatline punctuated by sharp QRS-complex-like spikes.
  */
 export class PulseWaveElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'pulse-wave',
+    meta: { shape: 'linear', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+  };
   private traceLine!: THREE.Line;
   private gridLines!: THREE.LineSegments;
   private numPoints: number = 0;

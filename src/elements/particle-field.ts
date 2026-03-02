@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Field of drifting particles with connection lines between nearby ones.
  * Network-graph / constellation style display.
  */
 export class ParticleFieldElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'particle-field',
+    meta: { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private pointsMesh!: THREE.Points;
   private linesMesh!: THREE.LineSegments;
   private borderLines!: THREE.LineSegments;
@@ -128,6 +133,22 @@ export class ParticleFieldElement extends BaseElement {
     (this.linesMesh.material as THREE.LineBasicMaterial).opacity = opacity * 0.6;
 
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.2;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const kick = level * (level >= 3 ? 30 : 10);
+    for (const p of this.particles) {
+      p.vx += this.rng.float(-1, 1) * kick;
+      p.vy += this.rng.float(-1, 1) * kick;
+    }
+    if (level >= 5) {
+      (this.pointsMesh.material as THREE.PointsMaterial).color.copy(this.palette.alert);
+      setTimeout(() => {
+        (this.pointsMesh.material as THREE.PointsMaterial).color.copy(this.palette.primary);
+      }, 2000);
+    }
   }
 
   onAction(action: string): void {

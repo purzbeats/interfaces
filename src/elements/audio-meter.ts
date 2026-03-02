@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Dual VU meter with peak hold indicators.
  * Two columns of PlaneGeometry segments with spring physics, peak Lines fall slowly.
  */
 export class AudioMeterElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'audio-meter',
+    meta: { shape: 'rectangular', roles: ['gauge', 'data-display'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+  };
   private bars: THREE.Mesh[][] = [[], []];
   private levels: number[] = [0, 0];
   private targets: number[] = [0, 0];
@@ -142,6 +147,16 @@ export class AudioMeterElement extends BaseElement {
     if (action === 'alert') {
       this.targets[0] = 1;
       this.targets[1] = 1;
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const boost = level * 0.15;
+    for (let ch = 0; ch < 2; ch++) {
+      this.targets[ch] = Math.min(1.0, this.targets[ch] + boost);
+      this.velocities[ch] += level * 0.5;
     }
   }
 }

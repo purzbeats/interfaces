@@ -1,7 +1,12 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 export class ProgressBarElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'progress-bar',
+    meta: { shape: 'linear', roles: ['gauge'], moods: ['diagnostic'], sizes: ['works-small'] },
+  };
   private fillMesh!: THREE.Mesh;
   private borderLines!: THREE.LineSegments;
   private isVertical: boolean = false;
@@ -74,6 +79,16 @@ export class ProgressBarElement extends BaseElement {
 
     (this.fillMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.6;
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.targetValue = 1.0;
+    } else {
+      this.targetValue = Math.min(1.0, this.targetValue + level * (level >= 3 ? 0.3 : 0.15));
+    }
   }
 
   onAction(action: string): void {

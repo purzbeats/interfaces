@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Tactical grid with wandering point, trailing path, and coordinate readout.
  * Geometry-based grid lines with canvas overlay for coordinates.
  */
 export class CoordGridElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'coord-grid',
+    meta: { shape: 'rectangular', roles: ['scanner', 'data-display'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private gridLines!: THREE.LineSegments;
   private pathLine!: THREE.Line;
   private pointMesh!: THREE.Mesh;
@@ -187,6 +192,17 @@ export class CoordGridElement extends BaseElement {
     ctx.fillText(text, 4, canvas.height / 2);
 
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const kick = level * (level >= 3 ? 40 : 15);
+    this.pointVx += (this.rng.float(-1, 1)) * kick;
+    this.pointVy += (this.rng.float(-1, 1)) * kick;
+    if (level >= 5) {
+      this.trail.length = 0;
+    }
   }
 
   onAction(action: string): void {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
@@ -7,6 +8,10 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
  * Counts down from a random value and resets at zero.
  */
 export class CountdownTimerElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'countdown-timer',
+    meta: { shape: 'rectangular', roles: ['text', 'gauge'], moods: ['tactical'], sizes: ['works-small', 'needs-medium'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -119,6 +124,16 @@ export class CountdownTimerElement extends BaseElement {
 
     applyScanlines(ctx, canvas, 0.08, this.remaining);
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.remaining = this.urgentThreshold * 0.5;
+    } else if (level >= 3) {
+      this.remaining = Math.max(0, this.remaining - 10);
+    }
   }
 
   onAction(action: string): void {

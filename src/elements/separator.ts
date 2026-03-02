@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { stateOpacity } from '../animation/fx';
 
 /** Shared divider settings, set from engine config. */
@@ -12,6 +13,10 @@ export function setDividerBrightness(v: number): void { _dividerBrightness = v; 
 export function setDividerThickness(v: number): void { _dividerThickness = v; }
 
 export class SeparatorElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'separator',
+    meta: { shape: 'linear', roles: ['structural'], moods: ['ambient'], sizes: ['works-small'] },
+  };
   private lines!: LineSegments2;
   private mat!: LineMaterial;
   private flickerTimer: number = 0;   // brief opacity dip

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines, drawJitteredText, drawGlowText } from '../animation/retro-text';
 
 const LABELS = [
@@ -13,6 +14,10 @@ const LABELS = [
 ];
 
 export class TextLabelElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'text-label',
+    meta: { shape: 'linear', roles: ['text'], moods: ['ambient', 'tactical'], sizes: ['works-small'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -131,6 +136,16 @@ export class TextLabelElement extends BaseElement {
     applyScanlines(ctx, canvas, 0.1, this.cursorBlink);
 
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      // Re-trigger the reveal animation
+      this.revealIndex = 0;
+      this.isRevealed = false;
+    }
   }
 
   onAction(action: string): void {

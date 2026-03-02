@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * ECG trace with leading dot and QRS complex waveform.
  * Single Line geometry, write-head draws repeating ECG pattern left-to-right, wraps with erasure.
  */
 export class HeartMonitorElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'heart-monitor',
+    meta: { shape: 'linear', roles: ['data-display', 'gauge'], moods: ['diagnostic', 'tactical'], sizes: ['works-small', 'needs-medium'] },
+  };
   private line!: THREE.Line;
   private dot!: THREE.Points;
   private borderLines!: THREE.LineSegments;
@@ -122,6 +127,19 @@ export class HeartMonitorElement extends BaseElement {
     if (t < 0.5) return Math.sin((t - 0.35) / 0.15 * Math.PI) * 0.2;
     // Baseline
     return 0;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.flatline = true;
+      (this.line.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
+      setTimeout(() => {
+        this.flatline = false;
+        (this.line.material as THREE.LineBasicMaterial).color.copy(this.palette.primary);
+      }, 3000);
+    }
   }
 
   onAction(action: string): void {

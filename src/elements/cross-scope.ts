@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Cross-shaped oscilloscope — two perpendicular waveforms (X and Y axis)
  * creating Lissajous-like patterns in the center. Very technical, very EVA.
  */
 export class CrossScopeElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'cross-scope',
+    meta: { shape: 'radial', roles: ['data-display'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+  };
   private hLine!: THREE.Line;
   private vLine!: THREE.Line;
   private crosshair!: THREE.LineSegments;

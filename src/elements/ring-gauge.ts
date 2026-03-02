@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { drawGlowText } from '../animation/retro-text';
 
 /**
@@ -7,6 +8,10 @@ import { drawGlowText } from '../animation/retro-text';
  * with numerical readout and tick marks. Think fuel gauge, AT field strength.
  */
 export class RingGaugeElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'ring-gauge',
+    meta: { shape: 'radial', roles: ['gauge'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+  };
   private bgRing!: THREE.Line;
   private fillRing!: THREE.Line;
   private ticks!: THREE.LineSegments;
@@ -171,6 +176,15 @@ export class RingGaugeElement extends BaseElement {
     drawGlowText(ctx, this.label, canvas.width / 2, canvas.height * 0.72, dimHex, 2);
 
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.targetValue = 1.0;
+    }
+    this.velocity += level * (level >= 3 ? 2 : 1);
   }
 
   onAction(action: string): void {

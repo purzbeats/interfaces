@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Grid of tiny blocks showing allocation/deallocation waves.
  * Canvas-based rendering of memory block states.
  */
 export class MemoryMapElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'memory-map',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;

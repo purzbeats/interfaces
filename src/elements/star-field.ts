@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Parallax star field with per-star twinkling, occasional shooting stars,
  * and subtle nebula glow regions. Three depth layers drift outward from center.
  */
 export class StarFieldElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'star-field',
+    meta: { shape: 'rectangular', roles: ['decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private layers: THREE.Points[] = [];
   private layerData: Array<{
     positions: Float32Array;
@@ -203,6 +208,23 @@ export class StarFieldElement extends BaseElement {
           vx: this.rng.float(100, 300),
           vy: this.rng.float(-400, -200),
           life: 0.4,
+        });
+      }
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      // Hyperspace — burst of shooting stars (one-shot, no permanent velocity mutation)
+      for (let i = 0; i < 4; i++) {
+        this.shoots.push({
+          x: this.px.x + this.rng.float(0, this.px.w),
+          y: this.px.y + this.px.h,
+          vx: this.rng.float(200, 500),
+          vy: this.rng.float(-600, -300),
+          life: 0.5,
         });
       }
     }

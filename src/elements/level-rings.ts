@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Multi-metric concentric arcs (3-5 rings), each with independent fill level.
  * No rotation — arcs are drawn via vertex positions.
  */
 export class LevelRingsElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'level-rings',
+    meta: { shape: 'radial', roles: ['gauge', 'data-display'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+  };
   private bgRings: THREE.Line[] = [];
   private fillRings: THREE.Line[] = [];
   private canvas!: HTMLCanvasElement;
@@ -160,6 +165,17 @@ export class LevelRingsElement extends BaseElement {
     }
 
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    for (let i = 0; i < this.ringCount; i++) {
+      if (level >= 5) {
+        this.targets[i] = 1.0;
+      }
+      this.velocities[i] += level * (level >= 3 ? 2 : 1);
+    }
   }
 
   onAction(action: string): void {

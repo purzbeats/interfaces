@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Animated targeting reticle that tracks a wandering point —
  * concentric circles, rotating crosshairs, and distance readout.
  */
 export class TargetLockElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'target-lock',
+    meta: { shape: 'radial', roles: ['scanner', 'gauge'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private outerRing!: THREE.Line;
   private innerRing!: THREE.Line;
   private crosshairs!: THREE.LineSegments;
@@ -222,6 +227,14 @@ export class TargetLockElement extends BaseElement {
       this.texture.needsUpdate = true;
     }
     (this.labelMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.8;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const kick = level * (level >= 3 ? 30 : 10);
+    this.targetVx += this.rng.float(-1, 1) * kick;
+    this.targetVy += this.rng.float(-1, 1) * kick;
   }
 
   onAction(action: string): void {

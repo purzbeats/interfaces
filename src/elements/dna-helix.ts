@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Rotating double helix (DNA strand) with base pair connections.
@@ -8,6 +9,10 @@ import { BaseElement } from './base-element';
  * with depth-based brightness, scrolling, and a measurement scale.
  */
 export class DnaHelixElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'dna-helix',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private strand1!: THREE.Line;
   private strand2!: THREE.Line;
   private basePairs!: THREE.LineSegments;
@@ -249,6 +254,17 @@ export class DnaHelixElement extends BaseElement {
     (this.bobPoints.material as THREE.PointsMaterial).opacity = opacity * 0.85;
     (this.scaleTicks.material as THREE.LineBasicMaterial).opacity = opacity * 0.25;
     (this.scaleLabels.material as THREE.PointsMaterial).opacity = opacity * 0.3;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.unwindAmount = 1.0;
+      this.alertSpinBoost = 3.0;
+    } else if (level >= 3) {
+      this.unwindAmount = 0.3;
+    }
   }
 
   onAction(action: string): void {

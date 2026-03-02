@@ -1,7 +1,12 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 export class GraphElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'graph',
+    meta: { shape: 'rectangular', roles: ['data-display'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+  };
   private line!: THREE.Line;
   private bars: THREE.Mesh[] = [];
   private isBarGraph: boolean = false;
@@ -116,6 +121,18 @@ export class GraphElement extends BaseElement {
         (child.material as THREE.LineBasicMaterial).opacity = opacity * 0.4;
       }
     });
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    for (let i = 0; i < this.numPoints; i++) {
+      if (level >= 5) {
+        this.targetPoints[i] = this.rng.float(0.8, 1.0);
+      } else {
+        this.targetPoints[i] = Math.min(1.0, this.targetPoints[i] + level * (level >= 3 ? 0.3 : 0.1));
+      }
+    }
   }
 
   onAction(action: string): void {

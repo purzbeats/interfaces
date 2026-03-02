@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Hexagonal grid — NERV-style honeycomb pattern.
  * Cells activate individually with staggered timing, some pulsing, some solid.
  */
 export class HexGridElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'hex-grid',
+    meta: { shape: 'radial', roles: ['decorative', 'scanner'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private cells: THREE.LineSegments[] = [];
   private fills: THREE.Mesh[] = [];
   private cellActivation: number[] = [];
@@ -94,6 +99,25 @@ export class HexGridElement extends BaseElement {
       // Fill brightness oscillates slowly per cell
       const fillBright = this.cellTargetBright[i] * (0.7 + Math.sin(time * 2 + i * 0.7) * 0.3);
       (this.fills[i].material as THREE.MeshBasicMaterial).opacity = cellOpacity * fillBright;
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const count = this.cellTargetBright.length;
+    if (level >= 5) {
+      for (let i = 0; i < count; i++) {
+        if (this.rng.chance(0.5)) {
+          this.cellTargetBright[i] = 1.0;
+        }
+      }
+    } else if (level >= 3) {
+      for (let i = 0; i < count; i++) {
+        if (this.rng.chance(0.3)) {
+          this.cellTargetBright[i] = Math.min(1.0, this.cellTargetBright[i] + 0.5);
+        }
+      }
     }
   }
 

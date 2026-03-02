@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Grid of small circles whose brightness animates in wave patterns.
  * Like a pin-art display or LED matrix with ripple/wave effects.
  */
 export class DotMatrixElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'dot-matrix',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium'] },
+  };
   private dotMesh!: THREE.Points;
   private cols: number = 0;
   private rows: number = 0;
@@ -122,6 +127,14 @@ export class DotMatrixElement extends BaseElement {
       }
     }
     colors.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.waveMode = (this.waveMode + 1) % 4;
+    }
   }
 
   onAction(action: string): void {

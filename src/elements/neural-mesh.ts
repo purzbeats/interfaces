@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 interface Neuron {
   x: number;
@@ -27,6 +28,10 @@ interface Pulse {
  * that can cascade through the mesh in chain reactions.
  */
 export class NeuralMeshElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'neural-mesh',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private neuronPoints!: THREE.Points;
   private neuronColors!: Float32Array;
   private edgeLines!: THREE.LineSegments;
@@ -342,6 +347,25 @@ export class NeuralMeshElement extends BaseElement {
         // Delay by setting brightness inversely — closer neurons fire first
         n.brightness = Math.max(0, 1.0 - k * 0.06);
         if (k < 5) this.fireNeuron(sorted[k].i);
+      }
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    // Fire neurons proportional to level
+    const fireCount = level;
+    for (let i = 0; i < fireCount; i++) {
+      const idx = this.rng.int(0, this.neurons.length - 1);
+      this.neurons[idx].cooldown = 0;
+      this.fireNeuron(idx);
+    }
+    if (level >= 5) {
+      // Cascade all — fire everything
+      for (let i = 0; i < this.neurons.length; i++) {
+        this.neurons[i].cooldown = 0;
+        this.fireNeuron(i);
       }
     }
   }

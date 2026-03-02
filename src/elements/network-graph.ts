@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Node-link diagram with pulsing data packets along edges.
  * Points for nodes, LineSegments for edges, packet Points travel between nodes.
  */
 export class NetworkGraphElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'network-graph',
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private nodePoints!: THREE.Points;
   private edgeLines!: THREE.LineSegments;
   private packetPoints!: THREE.Points;
@@ -133,6 +138,23 @@ export class NetworkGraphElement extends BaseElement {
     (this.nodePoints.material as THREE.PointsMaterial).opacity = opacity * 0.8;
     (this.edgeLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
     (this.packetPoints.material as THREE.PointsMaterial).opacity = opacity;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 3) {
+      // Boost packet speeds (additive, not multiplicative)
+      for (const p of this.packets) {
+        p.speed += level * 0.5;
+      }
+    }
+    if (level >= 5) {
+      (this.nodePoints.material as THREE.PointsMaterial).color.copy(this.palette.alert);
+      setTimeout(() => {
+        (this.nodePoints.material as THREE.PointsMaterial).color.copy(this.palette.secondary);
+      }, 2000);
+    }
   }
 
   onAction(action: string): void {

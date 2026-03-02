@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Scrolling ribbon of binary/hex characters flowing left-to-right.
  * Canvas-based rendering at reduced framerate.
  */
 export class BinaryStreamElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'binary-stream',
+    meta: { shape: 'linear', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['works-small'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -123,6 +128,12 @@ export class BinaryStreamElement extends BaseElement {
       this.scrollSpeed *= 4;
       setTimeout(() => { this.scrollSpeed /= 4; }, 500);
     }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    // One-shot effects only — no permanent state mutation
   }
 
   dispose(): void {

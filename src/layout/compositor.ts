@@ -15,6 +15,11 @@ export interface CompositorResult {
 function resolveWeights(template: TemplateConfig): Record<string, number> {
   const weights: Record<string, number> = {};
 
+  // Baseline: every registered element gets a small default weight
+  for (const name of allElementNames()) {
+    weights[name] = 0.5;
+  }
+
   if (template.tagWeights) {
     for (const [tag, tagWeight] of Object.entries(template.tagWeights)) {
       for (const name of allElementNames()) {

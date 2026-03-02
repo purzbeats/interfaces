@@ -6,9 +6,16 @@ import type { SeededRandom } from '../random';
 import { StateMachine } from '../animation/state-machine';
 import { randomEasing } from '../animation/easing';
 import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
+import type { ElementMeta } from './tags';
 
 /** Callback for elements to emit audio events */
 export type AudioEmitter = (event: string, param?: number) => void;
+
+/** Static registration data declared on each element subclass. */
+export interface ElementRegistration {
+  name: string;
+  meta: ElementMeta;
+}
 
 export abstract class BaseElement {
   readonly id: string;

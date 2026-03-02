@@ -1,8 +1,13 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { glitchOffset } from '../animation/fx';
 
 export class RadarSweepElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'radar-sweep',
+    meta: { shape: 'radial', roles: ['scanner'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private sweepLine!: THREE.Line;
   private ringLines!: THREE.LineSegments;
   private blips: THREE.Points | null = null;
@@ -137,5 +142,12 @@ export class RadarSweepElement extends BaseElement {
       this.pulseTimer = 2.0;
       this.speed *= 2;
     }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) { this.alertMode = false; return; }
+    // Absolute speed boost (not cumulative)
+    if (level >= 5) { this.alertMode = true; }
   }
 }

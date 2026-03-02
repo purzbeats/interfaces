@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Analog Bourdon tube gauge with needle, tick marks, and danger zone arc.
  * 270° arc + tick marks + needle with spring physics.
  */
 export class PressureGaugeElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'pressure-gauge',
+    meta: { shape: 'radial', roles: ['gauge'], moods: ['diagnostic', 'tactical'], sizes: ['works-small', 'needs-medium'] },
+  };
   private arcLines!: THREE.LineSegments;
   private dangerArc!: THREE.LineSegments;
   private needle!: THREE.Line;
@@ -139,6 +144,15 @@ export class PressureGaugeElement extends BaseElement {
     (this.arcLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.4;
     (this.dangerArc.material as THREE.LineBasicMaterial).opacity = opacity * 0.6;
     (this.tickLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
+      this.needleTarget = 1.0;
+    }
+    this.needleVelocity += level * (level >= 3 ? 2 : 1);
   }
 
   onAction(action: string): void {

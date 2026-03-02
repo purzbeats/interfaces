@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Subtle electrical arc between two electrodes.
  * A single jagged line regenerated a few times per second, with gentle flicker.
  */
 export class VoltageArcElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'voltage-arc',
+    meta: { shape: 'linear', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], sizes: ['works-small', 'needs-medium'] },
+  };
   private arcLines!: THREE.LineSegments;
   private electrodeLines!: THREE.LineSegments;
   private arcSegments: number = 0;
@@ -100,6 +105,14 @@ export class VoltageArcElement extends BaseElement {
       this.regenRate = this.rng.float(20, 40); // crackle faster briefly
     }
     if (action === 'alert') {
+      (this.arcLines.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    if (level >= 5) {
       (this.arcLines.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);
     }
   }

@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Multi-band spectrum analyzer bars with peak-hold markers.
  * Spring physics per bar with independently animated peak dots.
  */
 export class FreqAnalyzerElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'freq-analyzer',
+    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+  };
   private bars: THREE.Mesh[] = [];
   private peakLines!: THREE.LineSegments;
   private borderLines!: THREE.LineSegments;
@@ -131,6 +136,17 @@ export class FreqAnalyzerElement extends BaseElement {
 
     (this.peakLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    for (let i = 0; i < this.barCount; i++) {
+      if (level >= 5) {
+        this.barTargets[i] = 1.0;
+      }
+      this.barVelocities[i] += level * (level >= 3 ? 2 : 1);
+    }
   }
 
   onAction(action: string): void {

@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Segmented vertical bar with severity zones (LOW/MED/HIGH/CRIT).
  * Spring-physics driven level indicator.
  */
 export class ThreatMeterElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'threat-meter',
+    meta: { shape: 'linear', roles: ['gauge'], moods: ['tactical'], sizes: ['works-small'] },
+  };
   private segments: THREE.Mesh[] = [];
   private borderLines!: THREE.LineSegments;
   private canvas!: HTMLCanvasElement;
@@ -164,6 +169,17 @@ export class ThreatMeterElement extends BaseElement {
       this.targetValue = 1.0;
       this.alertTimer = 2.0;
       this.pulseTimer = 2.0;
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    // Impulse upward proportional to level
+    this.velocity += level * 1.2;
+    if (level >= 5) {
+      this.targetValue = 1.0;
+      this.alertTimer = 1.0;
     }
   }
 

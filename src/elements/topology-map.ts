@@ -1,11 +1,16 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 
 /**
  * Animated topographic contour map with shifting elevation.
  * Lines rendered via marching-squares-like approach on a noise field.
  */
 export class TopologyMapElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'topology-map',
+    meta: { shape: 'rectangular', roles: ['scanner', 'decorative'], moods: ['tactical', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+  };
   private contourLines: THREE.LineSegments[] = [];
   private noiseField: number[] = [];
   private fieldW: number = 0;

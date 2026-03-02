@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BaseElement } from './base-element';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
 import { applyScanlines, drawGlowText } from '../animation/retro-text';
 
 /**
@@ -7,6 +8,10 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
  * Scrolling tick LineSegments + canvas labels + fixed center reference marker.
  */
 export class FlightLadderElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'flight-ladder',
+    meta: { shape: 'linear', roles: ['gauge', 'text'], moods: ['tactical'], sizes: ['works-small', 'needs-medium'] },
+  };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private texture!: THREE.CanvasTexture;
@@ -153,6 +158,18 @@ export class FlightLadderElement extends BaseElement {
 
     applyScanlines(ctx, canvas, 0.06, this.altitude * 0.001);
     this.texture.needsUpdate = true;
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) return;
+    const altKick = level * (level >= 3 ? 1000 : 500);
+    this.altitudeVel += altKick;
+    this.speedVel += level * 5;
+    if (level >= 5) {
+      this.altitudeTarget = 0;
+      this.speedTarget = 100;
+    }
   }
 
   onAction(action: string): void {
