@@ -61,6 +61,7 @@ export class GalleryMode {
   private touchStartHandler: (e: TouchEvent) => void;
   private touchEndHandler: (e: TouchEvent) => void;
   private resizeHandler: () => void;
+  private wheelHandler: (e: WheelEvent) => void;
   private stashedChildren: THREE.Object3D[] = [];
   private isMobileCheck: () => boolean;
   private swipeStartX: number = 0;
@@ -99,6 +100,7 @@ export class GalleryMode {
     this.touchStartHandler = (e: TouchEvent) => this.handleTouchStart(e);
     this.touchEndHandler = (e: TouchEvent) => this.handleTouchEnd(e);
     this.resizeHandler = () => this.handleResize();
+    this.wheelHandler = (e: WheelEvent) => this.handleWheel(e);
   }
 
   get isActive(): boolean {
@@ -143,6 +145,7 @@ export class GalleryMode {
     this.pipeline.resize(this.config.width, this.config.height);
 
     window.addEventListener('keydown', this.keyHandler);
+    window.addEventListener('wheel', this.wheelHandler, { passive: false });
     this.ctx.renderer.domElement.addEventListener('click', this.clickHandler);
     const canvas = this.ctx.renderer.domElement;
     canvas.addEventListener('touchstart', this.touchStartHandler, { passive: true });
@@ -156,6 +159,7 @@ export class GalleryMode {
     this.active = false;
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('wheel', this.wheelHandler);
     this.ctx.renderer.domElement.removeEventListener('click', this.clickHandler);
     this.ctx.renderer.domElement.removeEventListener('touchstart', this.touchStartHandler);
     this.ctx.renderer.domElement.removeEventListener('touchend', this.touchEndHandler);
@@ -175,6 +179,7 @@ export class GalleryMode {
     this.active = false;
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('wheel', this.wheelHandler);
     this.ctx.renderer.domElement.removeEventListener('click', this.clickHandler);
     this.ctx.renderer.domElement.removeEventListener('touchstart', this.touchStartHandler);
     this.ctx.renderer.domElement.removeEventListener('touchend', this.touchEndHandler);
@@ -211,6 +216,7 @@ export class GalleryMode {
     this.clearElements();
     this.overlay.remove();
     window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('wheel', this.wheelHandler);
     this.ctx.renderer.domElement.removeEventListener('click', this.clickHandler);
     this.ctx.renderer.domElement.removeEventListener('touchstart', this.touchStartHandler);
     this.ctx.renderer.domElement.removeEventListener('touchend', this.touchEndHandler);
@@ -492,6 +498,16 @@ export class GalleryMode {
       white-space:nowrap;
       flex-shrink:0;
     ">${label}</span>`;
+  }
+
+  private handleWheel(e: WheelEvent): void {
+    if (!this.active) return;
+    e.preventDefault();
+    if (e.deltaY > 0) {
+      this.nextPage();
+    } else if (e.deltaY < 0) {
+      this.prevPage();
+    }
   }
 
   private handleKey(e: KeyboardEvent): void {
