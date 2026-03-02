@@ -426,6 +426,29 @@ export class AudioSynth {
     lockOsc.stop(lockTime + 0.4);
   }
 
+  /** Graduated intensity feedback — scales from quiet blip (L1) to heavy burst (L5). */
+  intensityBlip(level: number): void {
+    if (level <= 0 || level > 5) return;
+    switch (level) {
+      case 1:
+        this.blip(250, 0.04);
+        break;
+      case 2:
+        this.blip(350, 0.06);
+        break;
+      case 3:
+        this.dataChirp();
+        break;
+      case 4:
+        this.glitchNoise(0.15);
+        break;
+      case 5:
+        this.glitchNoise(0.25);
+        this.alert(0.6);
+        break;
+    }
+  }
+
   dispose(): void {
     this.ctx?.close();
     this.ctx = null;

@@ -89,6 +89,38 @@ export abstract class BaseElement {
     }
   }
 
+  /**
+   * Intensity broadcast (1–5). Called on ALL active elements simultaneously.
+   * Level 0 = return to baseline (clear timers). Override for custom behavior.
+   */
+  onIntensity(level: number): void {
+    switch (level) {
+      case 0:
+        // Return to baseline — clear effect timers
+        this.pulseTimer = 0;
+        this.glitchTimer = 0;
+        break;
+      case 1:
+        this.pulseTimer = 0.15;
+        break;
+      case 2:
+        this.pulseTimer = 0.3;
+        break;
+      case 3:
+        this.pulseTimer = 0.4;
+        this.glitchTimer = 0.2;
+        break;
+      case 4:
+        this.pulseTimer = 0.6;
+        this.glitchTimer = 0.4;
+        break;
+      case 5:
+        this.pulseTimer = 1.0;
+        this.glitchTimer = 0.8;
+        break;
+    }
+  }
+
   tick(dt: number, time: number): void {
     this.stateMachine.update(dt);
     if (this.stateMachine.state === 'idle' && this.group.visible) {
