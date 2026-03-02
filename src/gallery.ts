@@ -18,6 +18,12 @@ const MOBILE_ROWS = 2;
 const CELL_PAD = 0.01;
 const SWIPE_THRESHOLD = 50; // minimum px for a swipe
 
+// Reserved pixel heights for overlay zones (above/below the grid)
+const FILTER_BAR_PX = 36;
+const BOTTOM_AREA_PX = 56;        // page indicator + hint text
+const BOTTOM_AREA_MOBILE_PX = 108; // + PREV/NEXT buttons
+const LABEL_HEIGHT_PX = 20;       // per-cell label below each cell
+
 // All available filter tags, grouped by category
 const SHAPE_TAGS = ['rectangular', 'linear', 'radial'] as const;
 const ROLE_TAGS = ['gauge', 'scanner', 'data-display', 'text', 'decorative'] as const;
@@ -272,13 +278,30 @@ export class GalleryMode {
     return el;
   }
 
+  /** Compute pixel + normalized grid metrics for the inset grid area. */
+  private gridMetrics(canvasRect: DOMRect) {
+    const mobile = this.isMobile;
+    const bottomPx = mobile && this.totalPages > 1 ? BOTTOM_AREA_MOBILE_PX : BOTTOM_AREA_PX;
+    const topPx = FILTER_BAR_PX;
+    // Available height for grid cells + their labels
+    const totalAvailH = canvasRect.height - topPx - bottomPx;
+    // Each row gets a cell + a label strip below it
+    const rowSlotH = totalAvailH / this.rows;
+    const labelH = LABEL_HEIGHT_PX;
+    const cellH = rowSlotH - labelH;
+    // Normalized (0–1) for WebGL regions
+    const topNorm = topPx / canvasRect.height;
+    const bottomNorm = bottomPx / canvasRect.height;
+    const cellW = canvasRect.width / this.cols;
+    return { topPx, bottomPx, topNorm, bottomNorm, cellH, cellW, rowSlotH, labelH, totalAvailH };
+  }
+
   private updateOverlay(): void {
     const canvas = this.ctx.renderer.domElement;
     const canvasRect = canvas.getBoundingClientRect();
-    const cellW = canvasRect.width / this.cols;
-    const cellH = canvasRect.height / this.rows;
     const mobile = this.isMobile;
     const bottomOffset = mobile ? TOOLBAR_HEIGHT : 0;
+    const gm = this.gridMetrics(canvasRect);
 
     // Offset from viewport to canvas
     const ox = canvasRect.left;
@@ -342,7 +365,7 @@ export class GalleryMode {
 
     html += `</div>`;
 
-    // --- Labels for each cell ---
+    // --- Labels for each cell (below each cell, in the label strip) ---
     const startIdx = this.page * this.pageSize;
     const count = Math.min(this.pageSize, this.filteredTypes.length - startIdx);
     for (let i = 0; i < count; i++) {
@@ -351,14 +374,18 @@ export class GalleryMode {
       const name = this.filteredTypes[startIdx + i];
       const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-      const left = ox + col * cellW;
-      const top = oy + (row + 1) * cellH - 24;
+      const left = ox + col * gm.cellW;
+      const top = oy + gm.topPx + row * gm.rowSlotH + gm.cellH;
 
       html += `<div style="
         position:fixed;
         left:${left}px;
         top:${top}px;
-        width:${cellW}px;
+        width:${gm.cellW}px;
+        height:${gm.labelH}px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
         text-align:center;
         font-size:${mobile ? '11px' : '10px'};
         letter-spacing:1px;
@@ -570,11 +597,21 @@ export class GalleryMode {
   private hitTestCell(clientX: number, clientY: number): void {
     const canvas = this.ctx.renderer.domElement;
     const rect = canvas.getBoundingClientRect();
+    const gm = this.gridMetrics(rect);
     const x = clientX - rect.left;
     const y = clientY - rect.top;
 
-    const col = Math.max(0, Math.min(this.cols - 1, Math.floor(x / (rect.width / this.cols))));
-    const row = Math.max(0, Math.min(this.rows - 1, Math.floor(y / (rect.height / this.rows))));
+    // Check if click is within the inset grid area
+    if (y < gm.topPx || y > rect.height - gm.bottomPx) return;
+
+    const gridY = y - gm.topPx;
+    const col = Math.max(0, Math.min(this.cols - 1, Math.floor(x / gm.cellW)));
+    const row = Math.max(0, Math.min(this.rows - 1, Math.floor(gridY / gm.rowSlotH)));
+
+    // Ignore clicks on the label strip below the cell
+    const yInSlot = gridY - row * gm.rowSlotH;
+    if (yInSlot > gm.cellH) return;
+
     const cellIndex = row * this.cols + col;
     const filteredIndex = this.page * this.pageSize + cellIndex;
 
@@ -632,20 +669,32 @@ export class GalleryMode {
     const startIdx = this.page * this.pageSize;
     const count = Math.min(this.pageSize, this.filteredTypes.length - startIdx);
 
+    // Compute inset grid area in normalized coords
+    const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
+    const gm = this.gridMetrics(canvasRect);
+    // GL coords: y=0 bottom, y=1 top. topNorm = filter bar at top of screen = top of GL.
+    const gridBottom = gm.bottomNorm; // pagination area at screen bottom
+    const gridCellH = (gm.cellH / canvasRect.height); // cell height in normalized coords
+    const gridLabelH = (gm.labelH / canvasRect.height); // label strip height in normalized
+    const gridRowSlotH = gridCellH + gridLabelH;
+    const gridCellW = 1 / this.cols;
+
     for (let i = 0; i < count; i++) {
       const col = i % this.cols;
       const row = Math.floor(i / this.cols);
       const type = this.filteredTypes[startIdx + i];
 
-      // Camera is (left=0, right=w, top=h, bottom=0) so y=0 is screen-bottom.
-      // Flip row so row 0 renders at top of screen to match DOM labels.
+      // GL y=0 is screen-bottom. Row 0 should be at top of grid area.
+      // Top of grid area in GL = 1 - topNorm.
+      // Row 0 cell top = 1 - topNorm, row 0 cell bottom = 1 - topNorm - gridCellH
       const flippedRow = (this.rows - 1 - row);
+      const cellY = gridBottom + flippedRow * gridRowSlotH + gridLabelH; // skip label strip below
       const region: Region = createRegion(
         `gallery-${i}`,
-        col / this.cols,
-        flippedRow / this.rows,
-        1 / this.cols,
-        1 / this.rows,
+        col * gridCellW,
+        cellY,
+        gridCellW,
+        gridCellH,
         CELL_PAD,
       );
       region.elementType = type;
