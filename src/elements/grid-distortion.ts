@@ -80,7 +80,7 @@ export class GridDistortionElement extends BaseElement {
     const cellMat = new THREE.MeshBasicMaterial({
       color: this.palette.secondary,
       transparent: true,
-      opacity: 0,
+      opacity: 1,
       depthWrite: false,
     });
     this.cellMesh = new THREE.InstancedMesh(cellGeo, cellMat, this.cellInstanceCount);
@@ -228,14 +228,19 @@ export class GridDistortionElement extends BaseElement {
         dummy.position.set(
           ix + gx * iw + dispX,
           iy + gy * ih + dispY,
-          0.5
+          1.5
         );
         dummy.scale.set(cellW * 0.85, cellH * 0.85, 1);
         dummy.updateMatrix();
         instMesh.setMatrixAt(ci, dummy.matrix);
 
-        // Per-instance color with opacity baked into alpha
-        const color = new THREE.Color().copy(this.palette.secondary);
+        // Bake per-tetro opacity into instance color brightness
+        const a = tetro.opacity * opacity * 0.6;
+        const color = new THREE.Color(
+          this.palette.secondary.r * a,
+          this.palette.secondary.g * a,
+          this.palette.secondary.b * a,
+        );
         instMesh.setColorAt(ci, color);
 
         ci++;
@@ -246,13 +251,6 @@ export class GridDistortionElement extends BaseElement {
       instMesh.instanceMatrix.needsUpdate = true;
       if (instMesh.instanceColor) instMesh.instanceColor.needsUpdate = true;
     }
-
-    // Set shared material opacity as max of all active tetros
-    let maxTetroOpacity = 0;
-    for (const t of this.activeTetros) {
-      if (t.opacity > maxTetroOpacity) maxTetroOpacity = t.opacity;
-    }
-    (instMesh.material as THREE.MeshBasicMaterial).opacity = opacity * maxTetroOpacity * 0.25;
   }
 
   onAction(action: string): void {
