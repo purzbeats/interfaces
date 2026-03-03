@@ -32,6 +32,12 @@ export class WarpTunnelElement extends BaseElement {
 
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
+    const clipPlanes = [
+      new THREE.Plane(new THREE.Vector3(1, 0, 0), -x),
+      new THREE.Plane(new THREE.Vector3(-1, 0, 0), x + w),
+      new THREE.Plane(new THREE.Vector3(0, 1, 0), -y),
+      new THREE.Plane(new THREE.Vector3(0, -1, 0), y + h),
+    ];
     const cx = x + w / 2;
     const cy = y + h / 2;
     this.maxRadius = Math.sqrt(w * w + h * h) / 2;
@@ -52,6 +58,7 @@ export class WarpTunnelElement extends BaseElement {
       color: this.palette.dim,
       transparent: true,
       opacity: 0,
+      clippingPlanes: clipPlanes,
     }));
     this.group.add(this.radialLines);
 
@@ -72,6 +79,7 @@ export class WarpTunnelElement extends BaseElement {
         color: this.palette.primary,
         transparent: true,
         opacity: 0,
+        clippingPlanes: clipPlanes,
       }));
       this.rings.push(ring);
       this.ringRadii.push(-1);

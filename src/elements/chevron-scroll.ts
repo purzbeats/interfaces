@@ -19,13 +19,20 @@ export class ChevronScrollElement extends BaseElement {
 
   build(): void {
     this.glitchAmount = 3;
-    const { w, h } = this.px;
+    const { x, y, w, h } = this.px;
 
     // Space chevrons evenly; each chevron is ~h wide
     const chevronW = Math.max(8, h * 0.6);
     this.spacing = chevronW * 1.8;
     this.chevronCount = Math.ceil(w / this.spacing) + 2;
     this.scrollSpeed = this.rng.float(30, 80);
+
+    const clipPlanes = [
+      new THREE.Plane(new THREE.Vector3(1, 0, 0), -x),       // left
+      new THREE.Plane(new THREE.Vector3(-1, 0, 0), x + w),   // right
+      new THREE.Plane(new THREE.Vector3(0, 1, 0), -y),       // bottom
+      new THREE.Plane(new THREE.Vector3(0, -1, 0), y + h),   // top
+    ];
 
     // Each chevron = 2 line segments (4 vertices = 2 pairs)
     const verts = new Float32Array(this.chevronCount * 4 * 3);
@@ -37,6 +44,7 @@ export class ChevronScrollElement extends BaseElement {
       vertexColors: true,
       transparent: true,
       opacity: 0,
+      clippingPlanes: clipPlanes,
     }));
     this.group.add(this.chevronLines);
 

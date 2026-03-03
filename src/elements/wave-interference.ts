@@ -33,6 +33,12 @@ export class WaveInterferenceElement extends BaseElement {
 
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
+    const clipPlanes = [
+      new THREE.Plane(new THREE.Vector3(1, 0, 0), -x),
+      new THREE.Plane(new THREE.Vector3(-1, 0, 0), x + w),
+      new THREE.Plane(new THREE.Vector3(0, 1, 0), -y),
+      new THREE.Plane(new THREE.Vector3(0, -1, 0), y + h),
+    ];
     this.maxRadius = Math.max(w, h) * 0.6;
     this.expandSpeed = this.rng.float(p.expandSpeed[0], p.expandSpeed[1]);
     this.spawnInterval = this.rng.float(p.spawnInterval[0], p.spawnInterval[1]);
@@ -58,6 +64,7 @@ export class WaveInterferenceElement extends BaseElement {
           color: colors[s],
           transparent: true,
           opacity: 0,
+          clippingPlanes: clipPlanes,
         }));
         this.sourceRings[s].push(ring);
         this.ringRadii[s].push(-1);
