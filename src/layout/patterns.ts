@@ -298,6 +298,47 @@ function pictureInPicture(rng: SeededRandom): Region[] {
   ];
 }
 
+// --- Pattern K: "radial-sanctum" ---
+// Concentric 5×5 grid: small central hero, 8 inner ring panels, 8 outer frame widgets.
+// Designed for "wheels within wheels" — dense ring of radial elements around a focal point.
+function radialSanctum(rng: SeededRandom): Region[] {
+  // Jittered 5×5 grid boundaries
+  const c1 = jitter(0.20, rng, 0.015, 0.16, 0.24);
+  const c2 = jitter(0.40, rng, 0.015, 0.36, 0.44);
+  const c3 = jitter(0.60, rng, 0.015, 0.56, 0.64);
+  const c4 = jitter(0.80, rng, 0.015, 0.76, 0.84);
+
+  const r1 = jitter(0.20, rng, 0.015, 0.16, 0.24);
+  const r2 = jitter(0.40, rng, 0.015, 0.36, 0.44);
+  const r3 = jitter(0.60, rng, 0.015, 0.56, 0.64);
+  const r4 = jitter(0.80, rng, 0.015, 0.76, 0.84);
+
+  return [
+    // Ring 0: central hero (the entity)
+    createTieredRegion('hero-0', 'hero', c2, r2, c3 - c2, r3 - r2),
+
+    // Ring 1: 8 inner panels (the eyes / wheels)
+    createTieredRegion('panel-0', 'panel', c1, r1, c2 - c1, r2 - r1),   // top-left
+    createTieredRegion('panel-1', 'panel', c2, r1, c3 - c2, r2 - r1),   // top
+    createTieredRegion('panel-2', 'panel', c3, r1, c4 - c3, r2 - r1),   // top-right
+    createTieredRegion('panel-3', 'panel', c1, r2, c2 - c1, r3 - r2),   // left
+    createTieredRegion('panel-4', 'panel', c3, r2, c4 - c3, r3 - r2),   // right
+    createTieredRegion('panel-5', 'panel', c1, r3, c2 - c1, r4 - r3),   // bottom-left
+    createTieredRegion('panel-6', 'panel', c2, r3, c3 - c2, r4 - r3),   // bottom
+    createTieredRegion('panel-7', 'panel', c3, r3, c4 - c3, r4 - r3),   // bottom-right
+
+    // Ring 2: 8 outer widgets (4 corners + 4 edges)
+    createTieredRegion('widget-0', 'widget', 0, 0, c1, r1),             // corner TL
+    createTieredRegion('widget-1', 'widget', c4, 0, 1 - c4, r1),        // corner TR
+    createTieredRegion('widget-2', 'widget', 0, r4, c1, 1 - r4),        // corner BL
+    createTieredRegion('widget-3', 'widget', c4, r4, 1 - c4, 1 - r4),   // corner BR
+    createTieredRegion('widget-4', 'widget', c1, 0, c4 - c1, r1),       // edge top
+    createTieredRegion('widget-5', 'widget', c1, r4, c4 - c1, 1 - r4),  // edge bottom
+    createTieredRegion('widget-6', 'widget', 0, r1, c1, r4 - r1),       // edge left
+    createTieredRegion('widget-7', 'widget', c4, r1, 1 - c4, r4 - r1),  // edge right
+  ];
+}
+
 // --- Pattern registry ---
 
 export const PATTERNS: Record<string, LayoutPattern> = {
@@ -311,6 +352,7 @@ export const PATTERNS: Record<string, LayoutPattern> = {
   'cockpit':            { name: 'cockpit',             generate: cockpit },
   'watchtower':         { name: 'watchtower',          generate: watchtower },
   'picture-in-picture': { name: 'picture-in-picture',  generate: pictureInPicture },
+  'radial-sanctum':     { name: 'radial-sanctum',      generate: radialSanctum },
 };
 
 export function getPattern(name: string): LayoutPattern | undefined {

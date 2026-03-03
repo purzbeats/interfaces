@@ -189,6 +189,26 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'grid-distortion': 2,
     },
   },
+  'biblically-accurate': {
+    name: 'biblically-accurate',
+    layoutPattern: 'radial-sanctum',
+    createRegions: () => [
+      createRegion('center', 0.40, 0.40, 0.20, 0.20, 0.005),
+      createRegion('inner-ring', 0.20, 0.20, 0.60, 0.60, 0.005),
+      createRegion('outer-ring', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0, splitVariance: 0.1, minWidth: 0.12, minHeight: 0.1 },
+    elementWeights: {
+      'watching-eye': 4, 'spiral-vortex': 3, 'clock-melt': 3,
+      'concentric-rings': 3, 'iris-aperture': 2, 'cipher-wheel': 2,
+      'data-rings': 2, 'ring-gauge': 2, 'level-rings': 2,
+      'breathing-grid': 2, 'infinite-hallway': 2, 'static-channel': 2,
+      'corrupted-text': 2, 'face-brackets': 2,
+      'hex-tunnel': 2, 'warp-tunnel': 2, 'orbital-display': 2,
+      'radial-scanner': 1, 'radar-sweep': 1, 'target-lock': 1,
+      'harmonograph': 1, 'plasma-field': 1, 'star-field': 1,
+    },
+  },
 };
 
 export function getTemplate(name: string, rng: SeededRandom): TemplateConfig {
