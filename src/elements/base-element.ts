@@ -48,8 +48,8 @@ export abstract class BaseElement {
 
   /** Power-on/off animation style. Chosen randomly per element. */
   private bootStyle: 'clean' | 'glitchy' | 'stuttery' | 'flashy';
-  /** Whether this element shakes/glitches on power-off. */
-  private shutdownGlitch: boolean;
+  /** Whether this element flickers on power-off. */
+  private shutdownFlicker: boolean;
 
   constructor(
     region: Region,
@@ -84,7 +84,7 @@ export abstract class BaseElement {
     else this.bootStyle = 'flashy';
 
     // ~40% chance of glitch/shake on shutdown
-    this.shutdownGlitch = rng.float(0, 1) < 0.4;
+    this.shutdownFlicker = rng.float(0, 1) < 0.4;
   }
 
   abstract build(): void;
@@ -97,14 +97,11 @@ export abstract class BaseElement {
     let opacity: number;
 
     if (state === 'activating') {
-      // Power-on animation varies by boot style
+      // Power-on animation varies by boot style (flicker/strobe only, no shake)
       switch (this.bootStyle) {
         case 'glitchy':
-          opacity = powerOnOpacity(progress);
-          // Horizontal jitter during first 60% of boot
-          if (progress < 0.6) {
-            this.group.position.x = glitchOffset(1 - progress, this.glitchAmount * 1.5);
-          }
+          // Flicker during first 60% of boot
+          opacity = powerOnOpacity(progress) * (progress < 0.6 ? bootFlicker(progress) : 1);
           break;
         case 'stuttery':
           // Step-quantized opacity — feels like a CRT warming up in jumps
@@ -119,12 +116,12 @@ export abstract class BaseElement {
           break;
       }
     } else if (state === 'deactivating') {
-      // Power-off: fade with optional flicker/shake
+      // Power-off: fade with optional flicker
       opacity = powerOffOpacity(progress);
 
-      // Horizontal shake during shutdown
-      if (this.shutdownGlitch && progress < 0.7) {
-        this.group.position.x = glitchOffset(1 - progress, this.glitchAmount);
+      // Strobe flicker during shutdown
+      if (this.shutdownFlicker && progress < 0.5) {
+        opacity *= bootFlicker(progress * 2);
       }
     } else {
       opacity = stateOpacity(state, progress);
