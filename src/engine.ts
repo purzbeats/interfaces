@@ -1,6 +1,7 @@
 import { type Config, DEFAULT_CONFIG, computeAspectSize } from './config';
 import { ShowcaseMode } from './showcase';
 import { GalleryMode } from './gallery';
+import { EditorMode } from './editor';
 import { SeededRandom } from './random';
 import { createRenderer, resizeRenderer, type RendererContext } from './renderer/setup';
 import { getPalette, type Palette } from './color/palettes';
@@ -55,6 +56,7 @@ export class Engine {
   private readonly BUILD_BATCH_SIZE = 3;
   private showcase!: ShowcaseMode;
   private gallery!: GalleryMode;
+  private editor!: EditorMode;
   private mobileToolbar: MobileToolbar | null = null;
   private mobileQuery!: MediaQueryList;
   private touchRipple: TouchRipple | null = null;
@@ -151,6 +153,14 @@ export class Engine {
       this.generate(this.config.seed);
     }, () => !!this.mobileToolbar);
 
+    this.editor = new EditorMode(this.ctx, this.pipeline, this.config, () => {
+      // On exit: restore aspect, regenerate the normal composition
+      this.applyAspect();
+      resizeRenderer(this.ctx, this.config.width, this.config.height);
+      this.pipeline.resize(this.config.width, this.config.height);
+      this.generate(this.config.seed);
+    }, () => !!this.mobileToolbar);
+
     // Wire audio-reactive → intensity system (per-band envelopes)
     this.audioReactive.onKick = (level) => {
       // Kick detected — boost bass and sub envelopes
@@ -234,10 +244,19 @@ export class Engine {
           },
           onScreenshot: () => takeScreenshot(this.ctx.renderer.domElement),
           onShowcase: () => {
-            if (!this.showcase.isActive && !this.gallery.isActive) this.showcase.enter();
+            if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive) this.showcase.enter();
           },
           onGallery: () => {
-            if (!this.gallery.isActive && !this.showcase.isActive) this.gallery.enter();
+            if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive) this.gallery.enter();
+          },
+          onEditor: () => {
+            if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive) {
+              this.editor.promptEntry(
+                this.current?.regions,
+                this.current ? this.current.elementTypeMap : undefined,
+                this.config.palette,
+              );
+            }
           },
           onToggleLoop: () => {
             this.timeline.loop = !this.timeline.loop;
@@ -672,7 +691,11 @@ export class Engine {
   update(dt: number): void {
     if (this.disposed) return;
 
-    // Showcase/gallery mode takes over update/render
+    // Editor/showcase/gallery mode takes over update/render
+    if (this.editor.isActive) {
+      this.editor.update(dt);
+      return;
+    }
     if (this.showcase.isActive) {
       this.showcase.update(dt);
       return;
@@ -874,6 +897,10 @@ export class Engine {
 
   render(): void {
     if (this.disposed) return;
+    if (this.editor.isActive) {
+      this.editor.render();
+      return;
+    }
     if (this.showcase.isActive) {
       this.showcase.render();
       return;
@@ -1066,15 +1093,24 @@ export class Engine {
           showToast(this.timeline.loop ? 'Loop: on' : 'Loop: off');
           break;
         case 'g':
-          if (!this.showcase.isActive && !this.gallery.isActive) {
+          if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive) {
             this.showcase.enter();
             showToast('Showcase mode');
           }
           break;
         case 'b':
-          if (!this.gallery.isActive && !this.showcase.isActive) {
+          if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive) {
             this.gallery.enter();
             showToast('Gallery mode');
+          }
+          break;
+        case 'e':
+          if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive) {
+            this.editor.promptEntry(
+              this.current?.regions,
+              this.current ? this.current.elementTypeMap : undefined,
+              this.config.palette,
+            );
           }
           break;
         case '+':
@@ -1144,6 +1180,7 @@ export class Engine {
     }
     this.showcase.dispose();
     this.gallery.dispose();
+    this.editor.dispose();
     this.gui.destroy();
     this.touchManager?.destroy();
     this.touchRipple?.destroy();
