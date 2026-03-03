@@ -62,6 +62,9 @@ export class Engine {
   private generationCounter: number = 0;
   private rollingTimer: number = 0;
   private swapCounter: number = 0;
+  private mutationCount: number = 0;
+  private originalElementCount: number = 0;
+  private readonly MAX_MUTATIONS_BEFORE_RESET = 50;
 
   /** Current intensity level (0 = baseline, 1–5 = active). */
   currentIntensity: number = 0;
@@ -341,6 +344,7 @@ export class Engine {
     this.generationCounter++;
     this.pendingBuild = [];
     this.rollingTimer = 0;
+    this.mutationCount = 0;
 
     // If there's already an outgoing composition, tear it down immediately
     if (this.outgoing) {
@@ -361,6 +365,9 @@ export class Engine {
 
     // Build new composition (deferred — staggered build in update())
     this.current = this.buildComposition(seed, true);
+    this.originalElementCount = this.current.elements.filter(
+      (el) => !this.current!.regionMap.get(el.id)?.isDivider
+    ).length;
 
     // Generate timeline
     const wasLooping = this.timeline?.loop ?? true;
@@ -468,24 +475,46 @@ export class Engine {
   /** Pick and execute a random rolling mutation. */
   private rollingMutate(): void {
     if (!this.current) return;
+
+    // Periodic full reset: after many mutations, crossfade to a fresh layout
+    this.mutationCount++;
+    if (this.mutationCount >= this.MAX_MUTATIONS_BEFORE_RESET) {
+      const newSeed = Math.floor(Math.random() * 100000);
+      this.config.seed = newSeed;
+      this.generate(newSeed);
+      return;
+    }
+
     const swappable = this.getSwappable();
     if (swappable.length === 0) return;
 
     const rng = new SeededRandom(Date.now());
+
+    // Bias split/merge based on element count drift
+    const countRatio = swappable.length / Math.max(1, this.originalElementCount);
+    // Too many elements → suppress splits, prefer merges
+    // Too few elements → suppress merges, prefer splits
+    const canSplit = countRatio < 1.5 && swappable.length < 30;
+    const canMerge = countRatio > 0.6 && swappable.length > 3;
+
     const roll = rng.float(0, 1);
 
     if (roll < 0.55) {
-      // Simple swap: replace 1 element
       this.mutateSwap(1, rng, swappable);
     } else if (roll < 0.75) {
-      // Multi-swap: replace 2–3 elements at once
       this.mutateSwap(Math.min(rng.int(2, 3), swappable.length), rng, swappable);
     } else if (roll < 0.90) {
-      // Split: 1 element → 2–3 smaller elements
-      this.mutateSplit(rng, swappable);
+      if (canSplit) {
+        this.mutateSplit(rng, swappable);
+      } else {
+        this.mutateSwap(1, rng, swappable);
+      }
     } else {
-      // Merge: 2 adjacent elements → 1 larger element
-      this.mutateMerge(rng, swappable);
+      if (canMerge) {
+        this.mutateMerge(rng, swappable);
+      } else {
+        this.mutateSwap(1, rng, swappable);
+      }
     }
   }
 
@@ -563,55 +592,66 @@ export class Engine {
     }
   }
 
-  /** Merge 2 adjacent elements into one larger element. */
+  /**
+   * Merge 2 adjacent elements into one larger element.
+   * Only merges regions that form a clean rectangle — same extent on the
+   * shared axis — to prevent bounding-box creep and overlap.
+   */
   private mutateMerge(rng: SeededRandom, swappable: BaseElement[]): void {
     if (swappable.length < 2) { this.mutateSwap(1, rng, swappable); return; }
 
-    // Find adjacent pairs
-    const EDGE_TOL = 0.02;
-    const pairs: [BaseElement, BaseElement][] = [];
+    const TOL = 0.005;
+    const pairs: { a: BaseElement; b: BaseElement; merged: Region }[] = [];
+
     for (let i = 0; i < swappable.length; i++) {
       for (let j = i + 1; j < swappable.length; j++) {
-        const a = swappable[i].region;
-        const b = swappable[j].region;
-        const aR = a.x + a.width, bR = b.x + b.width;
-        const aB = a.y + a.height, bB = b.y + b.height;
-        const vOverlap = a.y < bB - EDGE_TOL && b.y < aB - EDGE_TOL;
-        const hOverlap = a.x < bR - EDGE_TOL && b.x < aR - EDGE_TOL;
-        if (vOverlap && (Math.abs(aR - b.x) < EDGE_TOL || Math.abs(bR - a.x) < EDGE_TOL)) {
-          pairs.push([swappable[i], swappable[j]]);
-        } else if (hOverlap && (Math.abs(aB - b.y) < EDGE_TOL || Math.abs(bB - a.y) < EDGE_TOL)) {
-          pairs.push([swappable[i], swappable[j]]);
+        const rA = swappable[i].region;
+        const rB = swappable[j].region;
+
+        // Side by side horizontally: same y and height, shared vertical edge
+        if (Math.abs(rA.y - rB.y) < TOL && Math.abs(rA.height - rB.height) < TOL) {
+          const aR = rA.x + rA.width;
+          const bR = rB.x + rB.width;
+          if (Math.abs(aR - rB.x) < TOL || Math.abs(bR - rA.x) < TOL) {
+            const x = Math.min(rA.x, rB.x);
+            const w = rA.width + rB.width;
+            pairs.push({
+              a: swappable[i], b: swappable[j],
+              merged: {
+                id: '', x, y: rA.y, width: w, height: rA.height,
+                padding: rA.padding, tier: this.tierFromArea(w * rA.height),
+              },
+            });
+          }
+        }
+
+        // Stacked vertically: same x and width, shared horizontal edge
+        if (Math.abs(rA.x - rB.x) < TOL && Math.abs(rA.width - rB.width) < TOL) {
+          const aB = rA.y + rA.height;
+          const bB = rB.y + rB.height;
+          if (Math.abs(aB - rB.y) < TOL || Math.abs(bB - rA.y) < TOL) {
+            const y = Math.min(rA.y, rB.y);
+            const h = rA.height + rB.height;
+            pairs.push({
+              a: swappable[i], b: swappable[j],
+              merged: {
+                id: '', x: rA.x, y, width: rA.width, height: h,
+                padding: rA.padding, tier: this.tierFromArea(rA.width * h),
+              },
+            });
+          }
         }
       }
     }
 
     if (pairs.length === 0) { this.mutateSwap(1, rng, swappable); return; }
 
-    const [elA, elB] = rng.pick(pairs);
-    const rA = elA.region;
-    const rB = elB.region;
+    const pick = rng.pick(pairs);
+    pick.merged.id = `g${this.generationCounter}_m${this.swapCounter++}`;
 
-    // Bounding-box merge
-    const x = Math.min(rA.x, rB.x);
-    const y = Math.min(rA.y, rB.y);
-    const right = Math.max(rA.x + rA.width, rB.x + rB.width);
-    const bottom = Math.max(rA.y + rA.height, rB.y + rB.height);
-    const mergedArea = (right - x) * (bottom - y);
-
-    const mergedRegion: Region = {
-      id: `g${this.generationCounter}_m${this.swapCounter++}`,
-      x,
-      y,
-      width: right - x,
-      height: bottom - y,
-      padding: rA.padding,
-      tier: this.tierFromArea(mergedArea),
-    };
-
-    this.retireElement(elA);
-    this.retireElement(elB);
-    this.spawnElement(mergedRegion, '', rng);
+    this.retireElement(pick.a);
+    this.retireElement(pick.b);
+    this.spawnElement(pick.merged, '', rng);
   }
 
   update(dt: number): void {
