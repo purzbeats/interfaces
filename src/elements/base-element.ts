@@ -5,7 +5,11 @@ import type { Palette } from '../color/palettes';
 import type { SeededRandom } from '../random';
 import { StateMachine } from '../animation/state-machine';
 import { randomEasing } from '../animation/easing';
-import { stateOpacity, pulse, glitchOffset } from '../animation/fx';
+import {
+  stateOpacity, pulse, glitchOffset,
+  powerOnOpacity, powerOffOpacity, bootFlicker, bootStutter,
+  powerOffScaleY, powerOnBrightness,
+} from '../animation/fx';
 import type { ElementMeta } from './tags';
 import type { AudioFrame } from '../audio/audio-reactive';
 
@@ -42,6 +46,13 @@ export abstract class BaseElement {
   protected glitchTimer: number = 0;
   protected glitchAmount: number = 4;
 
+  /** Power-on/off animation style. Chosen randomly per element. */
+  private bootStyle: 'clean' | 'glitchy' | 'stuttery' | 'flashy';
+  /** Whether this element uses CRT vertical collapse on power-off. */
+  private crtShutdown: boolean;
+  /** Saved base Y scale to restore after power-off animation. */
+  private baseScaleY: number = 1;
+
   constructor(
     region: Region,
     palette: Palette,
@@ -63,8 +74,19 @@ export abstract class BaseElement {
 
     this.stateMachine = new StateMachine();
     this.stateMachine.config.activating.easing = randomEasing(rng);
-    this.stateMachine.config.activating.duration = rng.float(0.3, 0.8);
-    this.stateMachine.config.deactivating.duration = rng.float(0.2, 0.5);
+    // Slow, dramatic activation/deactivation for power-on/off feel
+    this.stateMachine.config.activating.duration = rng.float(1.5, 3.0);
+    this.stateMachine.config.deactivating.duration = rng.float(1.0, 2.0);
+
+    // Choose a random boot style — ~40% clean, ~25% glitchy, ~20% stuttery, ~15% flashy
+    const roll = rng.float(0, 1);
+    if (roll < 0.40) this.bootStyle = 'clean';
+    else if (roll < 0.65) this.bootStyle = 'glitchy';
+    else if (roll < 0.85) this.bootStyle = 'stuttery';
+    else this.bootStyle = 'flashy';
+
+    // ~40% chance of CRT vertical collapse on shutdown
+    this.crtShutdown = rng.float(0, 1) < 0.4;
   }
 
   abstract build(): void;
@@ -72,27 +94,74 @@ export abstract class BaseElement {
 
   /** Compute opacity with pulse, apply glitch offset. Call at top of update(). */
   protected applyEffects(dt: number): number {
-    let opacity = stateOpacity(this.stateMachine.state, this.stateMachine.progress);
+    const state = this.stateMachine.state;
+    const progress = this.stateMachine.progress;
+    let opacity: number;
+
+    if (state === 'activating') {
+      // Power-on animation varies by boot style
+      switch (this.bootStyle) {
+        case 'glitchy':
+          opacity = powerOnOpacity(progress);
+          // Horizontal jitter during first 60% of boot
+          if (progress < 0.6) {
+            this.group.position.x = glitchOffset(1 - progress, this.glitchAmount * 1.5);
+          }
+          break;
+        case 'stuttery':
+          // Step-quantized opacity — feels like a CRT warming up in jumps
+          opacity = bootStutter(progress, 4 + Math.floor(progress * 3));
+          break;
+        case 'flashy':
+          // Flicker on/off during mid-boot, with brightness surge
+          opacity = powerOnOpacity(progress) * bootFlicker(progress) * powerOnBrightness(progress);
+          break;
+        default: // 'clean'
+          opacity = powerOnOpacity(progress);
+          break;
+      }
+    } else if (state === 'deactivating') {
+      // Power-off: CRT shutdown feel
+      opacity = powerOffOpacity(progress);
+
+      // CRT vertical collapse
+      if (this.crtShutdown) {
+        const scaleY = powerOffScaleY(progress);
+        this.group.scale.y = this.baseScaleY * scaleY;
+      }
+    } else {
+      opacity = stateOpacity(state, progress);
+    }
+
+    // Ongoing pulse effect (from intensity broadcasts)
     if (this.pulseTimer > 0) {
       this.pulseTimer -= dt;
       opacity *= pulse(this.pulseTimer);
     }
-    if (this.glitchTimer > 0) {
+
+    // Ongoing glitch effect (not from boot — from intensity)
+    if (state !== 'activating' && this.glitchTimer > 0) {
       this.group.position.x = glitchOffset(this.glitchTimer, this.glitchAmount);
       this.glitchTimer -= dt;
-    } else {
+    } else if (state !== 'activating') {
       this.group.position.x = 0;
     }
-    return opacity;
+
+    return Math.max(opacity, 0);
   }
 
   onAction(action: string): void {
     switch (action) {
       case 'activate':
         this.group.visible = true;
+        this.group.position.x = 0;
+        // Save base scale for CRT shutdown restore
+        this.baseScaleY = this.group.scale.y || 1;
         this.stateMachine.transition('activating');
         break;
       case 'deactivate':
+        // Save base scale before CRT collapse
+        this.baseScaleY = this.group.scale.y || 1;
         this.stateMachine.transition('deactivating');
         break;
       case 'pulse':
@@ -149,6 +218,11 @@ export abstract class BaseElement {
   tick(dt: number, time: number): void {
     this.stateMachine.update(dt);
     if (this.stateMachine.state === 'idle' && this.group.visible) {
+      // Restore scale after CRT collapse before hiding
+      if (this.crtShutdown) {
+        this.group.scale.y = this.baseScaleY;
+      }
+      this.group.position.x = 0;
       this.group.visible = false;
     }
     if (this.group.visible) {

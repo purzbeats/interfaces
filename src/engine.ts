@@ -44,7 +44,9 @@ export class Engine {
   audioReactive: AudioReactive = new AudioReactive();
   private current: Composition | null = null;
   private outgoing: Composition | null = null;
-  private retiringElements: { el: BaseElement; wrapper: THREE.Group }[] = [];
+  private retiringElements: { el: BaseElement; wrapper: THREE.Group; onRetired?: () => void }[] = [];
+  /** Spawns queued to fire after their corresponding retiring element finishes powering down. */
+  private pendingSpawns: { waitingOn: BaseElement; spawn: () => void }[] = [];
   private timeline!: Timeline;
   private palette!: Palette;
   private elapsed: number = 0;
@@ -419,14 +421,14 @@ export class Engine {
   }
 
   /** Retire an element: deactivate it, move to retiring list, remove from current composition. */
-  private retireElement(el: BaseElement): void {
+  private retireElement(el: BaseElement, onRetired?: () => void): void {
     if (!this.current) return;
     const wrapper = this.current.wrapperMap.get(el.id);
     if (el.stateMachine.state !== 'idle') {
       el.onAction('deactivate');
     }
     if (wrapper) {
-      this.retiringElements.push({ el, wrapper });
+      this.retiringElements.push({ el, wrapper, onRetired });
     }
     const idx = this.current.elements.indexOf(el);
     if (idx !== -1) this.current.elements.splice(idx, 1);
@@ -528,8 +530,11 @@ export class Engine {
       const region = this.current!.regionMap.get(oldEl.id);
       if (!region) continue;
       const oldType = this.current!.elementTypeMap.get(oldEl.id) ?? 'panel';
-      this.retireElement(oldEl);
-      this.spawnElement(region, oldType, rng);
+      // Fork RNG now so the spawn closure captures its own seed
+      const spawnRng = rng.fork();
+      this.retireElement(oldEl, () => {
+        this.spawnElement(region, oldType, spawnRng);
+      });
     }
   }
 
@@ -586,10 +591,12 @@ export class Engine {
       }
     }
 
-    this.retireElement(oldEl);
-    for (const sub of subRegions) {
-      this.spawnElement(sub, oldType, rng);
-    }
+    const spawnRng = rng.fork();
+    this.retireElement(oldEl, () => {
+      for (const sub of subRegions) {
+        this.spawnElement(sub, oldType, spawnRng);
+      }
+    });
   }
 
   /**
@@ -649,9 +656,17 @@ export class Engine {
     const pick = rng.pick(pairs);
     pick.merged.id = `g${this.generationCounter}_m${this.swapCounter++}`;
 
-    this.retireElement(pick.a);
-    this.retireElement(pick.b);
-    this.spawnElement(pick.merged, '', rng);
+    // Spawn the merged element only after both have powered down
+    const spawnRng = rng.fork();
+    let retiredCount = 0;
+    const onBothRetired = () => {
+      retiredCount++;
+      if (retiredCount >= 2) {
+        this.spawnElement(pick.merged, '', spawnRng);
+      }
+    };
+    this.retireElement(pick.a, onBothRetired);
+    this.retireElement(pick.b, onBothRetired);
   }
 
   update(dt: number): void {
@@ -757,12 +772,14 @@ export class Engine {
 
     // Phase F: Retiring elements (from rolling swaps)
     for (let i = this.retiringElements.length - 1; i >= 0; i--) {
-      const { el, wrapper } = this.retiringElements[i];
+      const { el, wrapper, onRetired } = this.retiringElements[i];
       el.tick(dt, this.elapsed);
       if (el.stateMachine.state === 'idle') {
         this.ctx.scene.remove(wrapper);
         el.dispose();
         this.retiringElements.splice(i, 1);
+        // Fire queued spawn now that power-down is complete
+        if (onRetired) onRetired();
       }
     }
 
