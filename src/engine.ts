@@ -19,6 +19,9 @@ import { TouchManager } from './touch/touch-manager';
 import { ShakeDetector } from './touch/shake-detector';
 import { loadConfig, saveConfig, updateURL } from './persistence';
 import { setDividerBrightness, setDividerThickness } from './elements/separator';
+import { showToast } from './gui/toast';
+import { toggleHelp, isHelpVisible } from './gui/help-overlay';
+import { fadeTransition } from './gui/transition';
 import type { Region } from './layout/region';
 import * as THREE from 'three';
 
@@ -276,7 +279,8 @@ export class Engine {
 
     // Layout
     const layoutRng = rng.fork();
-    const { regions } = compose(this.config.template, layoutRng);
+    const canvasAspect = this.config.width / this.config.height;
+    const { regions } = compose(this.config.template, layoutRng, canvasAspect);
 
     // Audio emitter — routes element audio events to the synth
     const emitAudio = (event: string, param?: number) => {
@@ -357,7 +361,8 @@ export class Engine {
 
     // Layout
     const layoutRng = rng.fork();
-    const { regions } = compose(this.config.template, layoutRng);
+    const canvasAspect = this.config.width / this.config.height;
+    const { regions } = compose(this.config.template, layoutRng, canvasAspect);
 
     // Audio emitter
     const emitAudio = (event: string, param?: number) => {
@@ -396,6 +401,9 @@ export class Engine {
       // Queue for staggered build
       this.pendingBuild.push({ element, wrapper });
     }
+
+    // Reverse so we can pop() from the end (O(1)) instead of shift() from the front (O(n))
+    this.pendingBuild.reverse();
 
     // Generate timeline (preserve loop state)
     const wasLooping = this.timeline?.loop ?? true;
@@ -454,7 +462,7 @@ export class Engine {
     if (this.pendingBuild.length > 0) {
       const count = Math.min(this.BUILD_BATCH_SIZE, this.pendingBuild.length);
       for (let i = 0; i < count; i++) {
-        const item = this.pendingBuild.shift()!;
+        const item = this.pendingBuild.pop()!;
         item.element.build();
         item.wrapper.add(item.element.group);
         this.ctx.scene.add(item.wrapper);
@@ -594,13 +602,20 @@ export class Engine {
     this.generate(this.config.seed);
   }
 
+  private resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
   private setupEvents(): void {
     window.addEventListener('resize', () => {
+      // Immediately update canvas size for smooth visual feedback
       this.applyAspect();
       resizeRenderer(this.ctx, this.config.width, this.config.height);
       this.pipeline.resize(this.config.width, this.config.height);
-      // Regenerate to fix stale pixel coordinates
-      this.generate(this.config.seed);
+      // Debounce the expensive regeneration (layout + element rebuild)
+      if (this.resizeTimer) clearTimeout(this.resizeTimer);
+      this.resizeTimer = setTimeout(() => {
+        this.resizeTimer = null;
+        this.generate(this.config.seed);
+      }, 250);
     });
 
     // Click/touch on an element → intensity 5 one-shot on that element
@@ -630,6 +645,14 @@ export class Engine {
     });
 
     window.addEventListener('keydown', (e) => {
+      // Help overlay toggle — ? key (shift+/ or dedicated ?)
+      if (e.key === '?') {
+        toggleHelp();
+        return;
+      }
+      // While help is visible, swallow all other keys
+      if (isHelpVisible()) return;
+
       // Intensity keys 1–5 (before the main switch, so they work regardless)
       if (!e.repeat) {
         const intensityLevel = parseInt(e.key);
@@ -651,17 +674,24 @@ export class Engine {
         case 'r':
           if (!e.ctrlKey && !e.metaKey) {
             this.config.seed = Math.floor(Math.random() * 100000);
-            this.generate(this.config.seed);
+            showToast(`Seed: ${this.config.seed}`);
+            fadeTransition(() => this.generate(this.config.seed));
           }
           break;
         case 's':
           if (!e.ctrlKey && !e.metaKey) {
+            showToast('Screenshot saved');
             takeScreenshot(this.ctx.renderer.domElement);
           }
           break;
         case 'v':
-          if (this.recorder.isRecording) this.recorder.stop();
-          else this.recorder.start();
+          if (this.recorder.isRecording) {
+            this.recorder.stop();
+            showToast('Recording stopped');
+          } else {
+            this.recorder.start();
+            showToast('Recording...');
+          }
           break;
         case 'f':
           if (!document.fullscreenElement) {
@@ -673,28 +703,34 @@ export class Engine {
         case 'm':
           this.audio.muted = !this.audio.muted;
           this.mobileToolbar?.setMuted(this.audio.muted);
+          showToast(this.audio.muted ? 'Muted' : 'Unmuted');
           break;
         case ' ':
           e.preventDefault();
           this.togglePause();
           this.mobileToolbar?.setPaused(this.isPaused);
+          showToast(this.isPaused ? 'Paused' : 'Playing');
           break;
         case 'backspace':
           if (!e.ctrlKey && !e.metaKey) {
+            showToast('Restarting');
             this.restart();
           }
           break;
         case 'l':
           this.timeline.loop = !this.timeline.loop;
+          showToast(this.timeline.loop ? 'Loop: on' : 'Loop: off');
           break;
         case 'g':
           if (!this.showcase.isActive && !this.gallery.isActive) {
             this.showcase.enter();
+            showToast('Showcase mode');
           }
           break;
         case 'b':
           if (!this.gallery.isActive && !this.showcase.isActive) {
             this.gallery.enter();
+            showToast('Gallery mode');
           }
           break;
         case '+':

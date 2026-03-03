@@ -50,10 +50,10 @@ function resolveWeights(template: TemplateConfig): Record<string, number> {
 
 type RegionShape = 'square' | 'wide' | 'tall' | 'thin-strip';
 
-const SCREEN_ASPECT = 16 / 9;
+let screenAspect = 16 / 9;
 
 function classifyRegion(region: Region): RegionShape {
-  const pixelAspect = (region.width / region.height) * SCREEN_ASPECT;
+  const pixelAspect = (region.width / region.height) * screenAspect;
   if (pixelAspect > 3 || pixelAspect < 1 / 3) return 'thin-strip';
   if (pixelAspect >= 0.7 && pixelAspect <= 1.4) return 'square';
   return pixelAspect > 1 ? 'wide' : 'tall';
@@ -245,8 +245,10 @@ function demoteSlicedHeroes(regions: Region[]): void {
  */
 export function compose(
   templateName: string,
-  rng: SeededRandom
+  rng: SeededRandom,
+  canvasAspect?: number
 ): CompositorResult {
+  if (canvasAspect && canvasAspect > 0) screenAspect = canvasAspect;
   resetDividerCounter();
   const template = getTemplate(templateName, rng);
 
