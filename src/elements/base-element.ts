@@ -8,7 +8,7 @@ import { randomEasing } from '../animation/easing';
 import {
   stateOpacity, pulse, glitchOffset,
   powerOnOpacity, powerOffOpacity, bootFlicker, bootStutter,
-  powerOffScaleY, powerOnBrightness,
+  powerOnBrightness,
 } from '../animation/fx';
 import type { ElementMeta } from './tags';
 import type { AudioFrame } from '../audio/audio-reactive';
@@ -48,10 +48,8 @@ export abstract class BaseElement {
 
   /** Power-on/off animation style. Chosen randomly per element. */
   private bootStyle: 'clean' | 'glitchy' | 'stuttery' | 'flashy';
-  /** Whether this element uses CRT vertical collapse on power-off. */
-  private crtShutdown: boolean;
-  /** Saved base Y scale to restore after power-off animation. */
-  private baseScaleY: number = 1;
+  /** Whether this element shakes/glitches on power-off. */
+  private shutdownGlitch: boolean;
 
   constructor(
     region: Region,
@@ -85,8 +83,8 @@ export abstract class BaseElement {
     else if (roll < 0.85) this.bootStyle = 'stuttery';
     else this.bootStyle = 'flashy';
 
-    // ~40% chance of CRT vertical collapse on shutdown
-    this.crtShutdown = rng.float(0, 1) < 0.4;
+    // ~40% chance of glitch/shake on shutdown
+    this.shutdownGlitch = rng.float(0, 1) < 0.4;
   }
 
   abstract build(): void;
@@ -121,13 +119,12 @@ export abstract class BaseElement {
           break;
       }
     } else if (state === 'deactivating') {
-      // Power-off: CRT shutdown feel
+      // Power-off: fade with optional flicker/shake
       opacity = powerOffOpacity(progress);
 
-      // CRT vertical collapse
-      if (this.crtShutdown) {
-        const scaleY = powerOffScaleY(progress);
-        this.group.scale.y = this.baseScaleY * scaleY;
+      // Horizontal shake during shutdown
+      if (this.shutdownGlitch && progress < 0.7) {
+        this.group.position.x = glitchOffset(1 - progress, this.glitchAmount);
       }
     } else {
       opacity = stateOpacity(state, progress);
@@ -155,13 +152,9 @@ export abstract class BaseElement {
       case 'activate':
         this.group.visible = true;
         this.group.position.x = 0;
-        // Save base scale for CRT shutdown restore
-        this.baseScaleY = this.group.scale.y || 1;
         this.stateMachine.transition('activating');
         break;
       case 'deactivate':
-        // Save base scale before CRT collapse
-        this.baseScaleY = this.group.scale.y || 1;
         this.stateMachine.transition('deactivating');
         break;
       case 'pulse':
@@ -218,10 +211,6 @@ export abstract class BaseElement {
   tick(dt: number, time: number): void {
     this.stateMachine.update(dt);
     if (this.stateMachine.state === 'idle' && this.group.visible) {
-      // Restore scale after CRT collapse before hiding
-      if (this.crtShutdown) {
-        this.group.scale.y = this.baseScaleY;
-      }
       this.group.position.x = 0;
       this.group.visible = false;
     }
