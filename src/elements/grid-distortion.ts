@@ -47,16 +47,25 @@ export class GridDistortionElement extends BaseElement {
   private maxActive: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { divMin: 10, divMax: 20, freqMin: 2, freqMax: 5, ampMin: 3, ampMax: 8, spawnMin: 0.8, spawnMax: 2.0, maxAct: [2, 4] },    // Standard
+      { divMin: 20, divMax: 35, freqMin: 3, freqMax: 7, ampMin: 5, ampMax: 12, spawnMin: 0.3, spawnMax: 0.8, maxAct: [4, 6] },   // Dense
+      { divMin: 5, divMax: 10, freqMin: 1, freqMax: 3, ampMin: 1, ampMax: 4, spawnMin: 2.0, spawnMax: 4.0, maxAct: [1, 2] },     // Minimal
+      { divMin: 8, divMax: 15, freqMin: 4, freqMax: 9, ampMin: 6, ampMax: 15, spawnMin: 0.5, spawnMax: 1.5, maxAct: [3, 5] },    // Exotic
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 6;
     const { x, y, w, h } = this.px;
 
-    this.divisionsX = this.rng.int(10, 20);
-    this.divisionsY = this.rng.int(10, 20);
-    this.waveFreqX = this.rng.float(2, 5);
-    this.waveFreqY = this.rng.float(2, 5);
-    this.waveAmp = this.rng.float(3, 8);
-    this.spawnInterval = this.rng.float(0.8, 2.0);
-    this.maxActive = this.rng.int(2, 4);
+    this.divisionsX = this.rng.int(p.divMin, p.divMax);
+    this.divisionsY = this.rng.int(p.divMin, p.divMax);
+    this.waveFreqX = this.rng.float(p.freqMin, p.freqMax);
+    this.waveFreqY = this.rng.float(p.freqMin, p.freqMax);
+    this.waveAmp = this.rng.float(p.ampMin, p.ampMax);
+    this.spawnInterval = this.rng.float(p.spawnMin, p.spawnMax);
+    this.maxActive = this.rng.int(p.maxAct[0], p.maxAct[1]);
 
     // Grid lines
     const hLineCount = (this.divisionsY + 1) * this.divisionsX * 2;

@@ -22,14 +22,23 @@ export class HexTunnelElement extends BaseElement {
   private rotationAngle: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { ringMin: 8, ringMax: 14, speedMin: 0.3, speedMax: 0.6, rotMin: 0.1, rotMax: 0.3, radiusScale: 0.48 },
+      { ringMin: 16, ringMax: 24, speedMin: 0.6, speedMax: 1.2, rotMin: 0.3, rotMax: 0.6, radiusScale: 0.48 },
+      { ringMin: 4, ringMax: 6, speedMin: 0.15, speedMax: 0.3, rotMin: 0.03, rotMax: 0.1, radiusScale: 0.45 },
+      { ringMin: 10, ringMax: 18, speedMin: 0.8, speedMax: 1.5, rotMin: 0.5, rotMax: 1.0, radiusScale: 0.50 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
     this.cy = y + h / 2;
-    this.maxRadius = Math.min(w, h) * 0.48;
-    this.ringCount = this.rng.int(8, 14);
-    this.speed = this.rng.float(0.3, 0.6);
-    this.rotationSpeed = this.rng.float(0.1, 0.3) * (this.rng.chance(0.5) ? 1 : -1);
+    this.maxRadius = Math.min(w, h) * p.radiusScale;
+    this.ringCount = this.rng.int(p.ringMin, p.ringMax);
+    this.speed = this.rng.float(p.speedMin, p.speedMax);
+    this.rotationSpeed = this.rng.float(p.rotMin, p.rotMax) * (this.rng.chance(0.5) ? 1 : -1);
 
     for (let i = 0; i < this.ringCount; i++) {
       const points = this.hexPoints(0, 0, 1); // unit hex, scaled in update

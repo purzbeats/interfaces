@@ -26,15 +26,24 @@ export class MemoryMapElement extends BaseElement {
   private readonly RENDER_INTERVAL = 1 / 15;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { blockPicks: [6, 8, 10], waveMin: 1, waveMax: 3, fillChance: 0.4 },    // Standard
+      { blockPicks: [3, 4, 5], waveMin: 3, waveMax: 6, fillChance: 0.6 },      // Dense
+      { blockPicks: [12, 14, 16], waveMin: 0.5, waveMax: 1.5, fillChance: 0.2 }, // Minimal
+      { blockPicks: [5, 7, 9], waveMin: 2, waveMax: 5, fillChance: 0.75 },     // Exotic (mostly full)
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    const blockSize = this.rng.pick([6, 8, 10]);
+    const blockSize = this.rng.pick(p.blockPicks);
     this.gridW = Math.max(8, Math.floor(w / blockSize));
     this.gridH = Math.max(8, Math.floor(h / blockSize));
-    this.waveSpeed = this.rng.float(1, 3);
+    this.waveSpeed = this.rng.float(p.waveMin, p.waveMax);
 
     // Initialize with random allocation
     for (let i = 0; i < this.gridW * this.gridH; i++) {
-      this.blockStates.push(this.rng.chance(0.4) ? 1 : 0);
+      this.blockStates.push(this.rng.chance(p.fillChance) ? 1 : 0);
     }
 
     this.canvas = document.createElement('canvas');

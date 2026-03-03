@@ -23,11 +23,22 @@ export class BracketFrameElement extends BaseElement {
   private coordText: string = '';
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { bracketScale: 0.2, tickMin: 8, tickMax: 16, overshoot: 0.05, labelRate: 10 },
+      { bracketScale: 0.3, tickMin: 16, tickMax: 32, overshoot: 0.12, labelRate: 20 },
+      { bracketScale: 0.12, tickMin: 4, tickMax: 8, overshoot: 0.02, labelRate: 5 },
+      { bracketScale: 0.35, tickMin: 6, tickMax: 12, overshoot: 0.18, labelRate: 15 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
-    const bracketLen = Math.min(w, h) * 0.2;
+    const bracketLen = Math.min(w, h) * p.bracketScale;
     const bracketThick = 2;
+    (this as any)._overshootAmount = p.overshoot + this.rng.float(-0.01, 0.01);
+    (this as any)._labelRate = p.labelRate;
 
     // Generate fake coordinates
     this.coordText = `X:${this.rng.int(100, 999)} Y:${this.rng.int(100, 999)}`;
@@ -65,7 +76,7 @@ export class BracketFrameElement extends BaseElement {
 
     // Edge tick marks along top and right
     const edgeVerts: number[] = [];
-    const tickCount = this.rng.int(8, 16);
+    const tickCount = this.rng.int(p.tickMin, p.tickMax);
     const tickBase = Math.max(4, Math.min(w, h) * 0.015);
     for (let i = 0; i <= tickCount; i++) {
       const t = i / tickCount;
@@ -112,7 +123,7 @@ export class BracketFrameElement extends BaseElement {
     // Corners expand from center with overshoot
     const diff = this.expandTarget - this.expandProgress;
     this.expandProgress += diff * dt * 5;
-    const overshoot = this.expandProgress + Math.sin(this.expandProgress * Math.PI) * 0.05;
+    const overshoot = this.expandProgress + Math.sin(this.expandProgress * Math.PI) * (this as any)._overshootAmount;
 
     for (let i = 0; i < this.corners.length; i++) {
       const s = Math.max(0.01, overshoot);
@@ -124,7 +135,7 @@ export class BracketFrameElement extends BaseElement {
 
     // Render label
     this.renderAccum += dt;
-    if (this.renderAccum >= 1 / 10) {
+    if (this.renderAccum >= 1 / (this as any)._labelRate) {
       this.renderAccum = 0;
       const { ctx, canvas } = this;
       ctx.clearRect(0, 0, canvas.width, canvas.height);

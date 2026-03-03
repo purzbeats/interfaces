@@ -21,15 +21,24 @@ export class DotMatrixElement extends BaseElement {
   private waveMode: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { spacingPicks: [8, 10, 12, 14], freqMin: 0.05, freqMax: 0.15, speedMin: 2, speedMax: 5, dotScale: 0.4, modePicks: [0, 1, 2, 3] },  // Standard
+      { spacingPicks: [4, 5, 6], freqMin: 0.08, freqMax: 0.25, speedMin: 5, speedMax: 12, dotScale: 0.55, modePicks: [0, 3] },               // Dense
+      { spacingPicks: [16, 20, 24], freqMin: 0.03, freqMax: 0.08, speedMin: 0.8, speedMax: 2, dotScale: 0.25, modePicks: [1, 2] },            // Minimal
+      { spacingPicks: [7, 9, 11], freqMin: 0.12, freqMax: 0.35, speedMin: 1, speedMax: 4, dotScale: 0.6, modePicks: [2, 3] },                 // Exotic
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    const spacing = this.rng.pick([8, 10, 12, 14]);
+    const spacing = this.rng.pick(p.spacingPicks);
     this.cols = Math.max(4, Math.floor(w / spacing));
     this.rows = Math.max(4, Math.floor(h / spacing));
     this.dotCount = this.cols * this.rows;
-    this.waveFreqX = this.rng.float(0.05, 0.15);
-    this.waveFreqY = this.rng.float(0.05, 0.15);
-    this.waveSpeed = this.rng.float(2, 5);
-    this.waveMode = this.rng.int(0, 3); // 0=ripple, 1=diagonal, 2=horizontal, 3=radial
+    this.waveFreqX = this.rng.float(p.freqMin, p.freqMax);
+    this.waveFreqY = this.rng.float(p.freqMin, p.freqMax);
+    this.waveSpeed = this.rng.float(p.speedMin, p.speedMax);
+    this.waveMode = this.rng.pick(p.modePicks);
 
     const positions = new Float32Array(this.dotCount * 3);
     const colors = new Float32Array(this.dotCount * 3);
@@ -51,7 +60,7 @@ export class DotMatrixElement extends BaseElement {
         colors[i * 3] = pr;
         colors[i * 3 + 1] = pg;
         colors[i * 3 + 2] = pb;
-        sizes[i] = Math.min(cellW, cellH) * 0.4;
+        sizes[i] = Math.min(cellW, cellH) * p.dotScale;
       }
     }
 
@@ -64,7 +73,7 @@ export class DotMatrixElement extends BaseElement {
       vertexColors: true,
       transparent: true,
       opacity: 0,
-      size: spacing * 0.4,
+      size: spacing * p.dotScale,
       sizeAttenuation: false,
     });
 

@@ -18,13 +18,22 @@ export class WaveformElement extends BaseElement {
   private liveWaveform: Float32Array | null = null;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { numPoints: [64, 200] as const, frequency: [2, 8] as const, amplitude: [0.3, 0.45] as const, noiseFreq: [5, 20] as const, waveType: -1 },
+      { numPoints: [200, 400] as const, frequency: [6, 15] as const, amplitude: [0.35, 0.5] as const, noiseFreq: [15, 40] as const, waveType: 2 },
+      { numPoints: [32, 80] as const, frequency: [1, 3] as const, amplitude: [0.2, 0.35] as const, noiseFreq: [2, 8] as const, waveType: 0 },
+      { numPoints: [100, 250] as const, frequency: [4, 12] as const, amplitude: [0.4, 0.5] as const, noiseFreq: [20, 50] as const, waveType: 1 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
-    this.numPoints = this.rng.int(64, 200);
-    this.frequency = this.rng.float(2, 8);
-    this.amplitude = this.rng.float(0.3, 0.45);
+    this.numPoints = this.rng.int(p.numPoints[0], p.numPoints[1]);
+    this.frequency = this.rng.float(p.frequency[0], p.frequency[1]);
+    this.amplitude = this.rng.float(p.amplitude[0], p.amplitude[1]);
     this.phase = this.rng.float(0, Math.PI * 2);
-    this.noiseFreq = this.rng.float(5, 20);
-    this.waveType = this.rng.int(0, 3);
+    this.noiseFreq = this.rng.float(p.noiseFreq[0], p.noiseFreq[1]);
+    this.waveType = p.waveType >= 0 ? p.waveType : this.rng.int(0, 3);
 
     const positions = new Float32Array(this.numPoints * 3);
     const geo = new THREE.BufferGeometry();

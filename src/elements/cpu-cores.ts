@@ -20,11 +20,22 @@ export class CpuCoresElement extends BaseElement {
   private updateTimer: number = 0;
   private updateInterval: number = 0;
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { cols: 6, rows: 4, updateInterval: 0.6, walkStep: 0.3 },     // Standard
+      { cols: 10, rows: 8, updateInterval: 0.2, walkStep: 0.5 },    // Dense/Intense
+      { cols: 3, rows: 2, updateInterval: 1.5, walkStep: 0.15 },    // Minimal/Sparse
+      { cols: 12, rows: 3, updateInterval: 0.1, walkStep: 0.7 },    // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.cols = this.rng.int(4, 8);
-    this.rows = this.rng.int(2, 6);
-    this.updateInterval = this.rng.float(0.3, 1.0);
+    this.cols = p.cols + this.rng.int(-1, 1);
+    this.rows = p.rows + this.rng.int(-1, 1);
+    if (this.cols < 2) this.cols = 2;
+    if (this.rows < 2) this.rows = 2;
+    this.updateInterval = p.updateInterval + this.rng.float(-0.05, 0.05);
 
     const gap = Math.min(w, h) * 0.02;
     const cellW = (w - gap * (this.cols + 1)) / this.cols;

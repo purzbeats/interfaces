@@ -22,8 +22,17 @@ export class ScanLineElement extends BaseElement {
   private scanSpeed: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { speedMul: 0.28, pointCount: 50, sizeMul: 0.006, trailH: 0.15 },     // Standard
+      { speedMul: 0.55, pointCount: 120, sizeMul: 0.01, trailH: 0.25 },     // Dense/Intense
+      { speedMul: 0.12, pointCount: 15, sizeMul: 0.004, trailH: 0.08 },     // Minimal/Sparse
+      { speedMul: 0.70, pointCount: 60, sizeMul: 0.015, trailH: 0.40 },     // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    this.scanSpeed = this.rng.float(0.15, 0.4) * h;
+    this.scanSpeed = (p.speedMul + this.rng.float(-0.03, 0.03)) * h;
 
     // Scan line (horizontal)
     const lineGeo = new THREE.BufferGeometry();
@@ -48,7 +57,7 @@ export class ScanLineElement extends BaseElement {
     this.group.add(this.trailMesh);
 
     // Scatter points
-    this.pointCount = this.rng.int(30, 80);
+    this.pointCount = p.pointCount + this.rng.int(-3, 3);
     const pointPositions = new Float32Array(this.pointCount * 3);
     const pointColors = new Float32Array(this.pointCount * 3);
     for (let i = 0; i < this.pointCount; i++) {
@@ -65,7 +74,7 @@ export class ScanLineElement extends BaseElement {
     ptGeo.setAttribute('position', new THREE.BufferAttribute(pointPositions, 3));
     ptGeo.setAttribute('color', new THREE.BufferAttribute(pointColors, 3));
     this.scatterPoints = new THREE.Points(ptGeo, new THREE.PointsMaterial({
-      size: Math.max(3, Math.min(w, h) * 0.006),
+      size: Math.max(3, Math.min(w, h) * p.sizeMul),
       vertexColors: true,
       transparent: true,
       opacity: 0,

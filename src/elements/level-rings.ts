@@ -25,14 +25,28 @@ export class LevelRingsElement extends BaseElement {
   private segments: number = 48;
   private cycleTimer: number = 0;
   private renderAccum: number = 0;
+  private springK: number = 15;
+  private springDamping: number = 3;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { ringCount: [3, 5] as const, segments: 48, springK: 15, damping: 3, gapFactor: 1.0 },
+      { ringCount: [5, 8] as const, segments: 72, springK: 28, damping: 2, gapFactor: 0.85 },
+      { ringCount: [2, 3] as const, segments: 24, springK: 8, damping: 5, gapFactor: 1.3 },
+      { ringCount: [4, 6] as const, segments: 36, springK: 40, damping: 1.5, gapFactor: 0.7 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const maxR = Math.min(w, h) / 2 * 0.9;
-    this.ringCount = this.rng.int(3, 5);
-    const ringGap = maxR / (this.ringCount + 1);
+    this.ringCount = this.rng.int(p.ringCount[0], p.ringCount[1]);
+    this.segments = p.segments + this.rng.int(-4, 4);
+    this.springK = p.springK + this.rng.float(-2, 2);
+    this.springDamping = p.damping + this.rng.float(-0.3, 0.3);
+    const ringGap = maxR / (this.ringCount + 1) * (p.gapFactor + this.rng.float(-0.05, 0.05));
 
     const allLabels = ['CPU', 'MEM', 'NET', 'DISK', 'GPU', 'TEMP', 'PWR', 'IO'];
     for (let r = 0; r < this.ringCount; r++) {
@@ -111,9 +125,9 @@ export class LevelRingsElement extends BaseElement {
 
     // Spring physics per ring
     for (let r = 0; r < this.ringCount; r++) {
-      const force = (this.targets[r] - this.values[r]) * 15;
+      const force = (this.targets[r] - this.values[r]) * this.springK;
       this.velocities[r] += force * dt;
-      this.velocities[r] *= Math.exp(-3 * dt);
+      this.velocities[r] *= Math.exp(-this.springDamping * dt);
       this.values[r] += this.velocities[r] * dt;
       this.values[r] = Math.max(0, Math.min(1.1, this.values[r]));
 

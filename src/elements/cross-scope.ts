@@ -20,13 +20,22 @@ export class CrossScopeElement extends BaseElement {
   private lissPoints: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { numPoints: 128, hFreq: [1.5, 5] as const, vFreq: [1.5, 5] as const, lissPoints: [128, 300] as const },
+      { numPoints: 256, hFreq: [3, 9] as const, vFreq: [3, 9] as const, lissPoints: [300, 600] as const },
+      { numPoints: 64, hFreq: [1, 2.5] as const, vFreq: [1, 2.5] as const, lissPoints: [64, 150] as const },
+      { numPoints: 192, hFreq: [4, 12] as const, vFreq: [1, 4] as const, lissPoints: [200, 500] as const },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
-    const numPoints = 128;
-    this.hFreq = this.rng.float(1.5, 5);
-    this.vFreq = this.rng.float(1.5, 5);
-    this.lissPoints = this.rng.int(128, 300);
+    const numPoints = p.numPoints;
+    this.hFreq = this.rng.float(p.hFreq[0], p.hFreq[1]);
+    this.vFreq = this.rng.float(p.vFreq[0], p.vFreq[1]);
+    this.lissPoints = this.rng.int(p.lissPoints[0], p.lissPoints[1]);
 
     // Horizontal waveform (along bottom half)
     const hPos = new Float32Array(numPoints * 3);

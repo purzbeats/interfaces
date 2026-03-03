@@ -52,10 +52,19 @@ export class RuleGridElement extends BaseElement {
   glitchAmount = 3;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { cellSize: 5, stepInterval: 0.065, randomTopChance: 0.3 },     // Standard
+      { cellSize: 3, stepInterval: 0.03, randomTopChance: 0.5 },      // Dense/Intense
+      { cellSize: 8, stepInterval: 0.12, randomTopChance: 0.1 },      // Minimal/Sparse
+      { cellSize: 4, stepInterval: 0.02, randomTopChance: 0.7 },      // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
 
-    // Cell size ~4-6px, derive grid dimensions
-    this.cellSize = Math.max(4, Math.min(6, Math.floor(Math.min(w, h) / 40)));
+    // Cell size derives grid dimensions
+    this.cellSize = Math.max(3, p.cellSize + this.rng.int(-1, 1));
     this.cols = Math.floor(w / this.cellSize);
     this.rows = Math.floor(h / this.cellSize);
     if (this.cols < 8) this.cols = 8;
@@ -70,8 +79,8 @@ export class RuleGridElement extends BaseElement {
     // Initialize top row
     this.initTopRow();
 
-    // Step interval: 50-80ms
-    this.stepInterval = this.rng.float(0.05, 0.08);
+    // Step interval
+    this.stepInterval = p.stepInterval + this.rng.float(-0.005, 0.005);
 
     // Create canvas
     const scale = Math.min(2, window.devicePixelRatio);

@@ -20,19 +20,28 @@ export class OrbitalDisplayElement extends BaseElement {
   private maxRadius: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { orbitMin: 3, orbitMax: 6, particleMin: 6, particleMax: 14, speedMin: 0.3, speedMax: 1.2, eccMin: 0.0, eccMax: 0.25, dotSize: 0.015 },
+      { orbitMin: 6, orbitMax: 10, particleMin: 16, particleMax: 30, speedMin: 0.6, speedMax: 2.0, eccMin: 0.0, eccMax: 0.15, dotSize: 0.010 },
+      { orbitMin: 2, orbitMax: 3, particleMin: 3, particleMax: 6, speedMin: 0.15, speedMax: 0.5, eccMin: 0.0, eccMax: 0.1, dotSize: 0.025 },
+      { orbitMin: 4, orbitMax: 7, particleMin: 8, particleMax: 20, speedMin: 0.5, speedMax: 1.8, eccMin: 0.15, eccMax: 0.5, dotSize: 0.018 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
     this.cy = y + h / 2;
     this.maxRadius = Math.min(w, h) * 0.44;
 
-    const orbitCount = this.rng.int(3, 6);
-    const particleCount = this.rng.int(6, 14);
+    const orbitCount = this.rng.int(p.orbitMin, p.orbitMax);
+    const particleCount = this.rng.int(p.particleMin, p.particleMax);
 
     // Create orbit ring lines
     for (let i = 0; i < orbitCount; i++) {
       const r = this.maxRadius * ((i + 1) / (orbitCount + 0.5));
-      const eccentric = this.rng.float(0.0, 0.25);
+      const eccentric = this.rng.float(p.eccMin, p.eccMax);
       const pts = 64;
       const positions = new Float32Array(pts * 3);
       for (let j = 0; j < pts; j++) {
@@ -62,9 +71,9 @@ export class OrbitalDisplayElement extends BaseElement {
     for (let i = 0; i < particleCount; i++) {
       const orbitIdx = this.rng.int(0, orbitCount - 1);
       const r = this.maxRadius * ((orbitIdx + 1) / (orbitCount + 0.5));
-      const speed = this.rng.float(0.3, 1.2) * (this.rng.chance(0.3) ? -1 : 1);
+      const speed = this.rng.float(p.speedMin, p.speedMax) * (this.rng.chance(0.3) ? -1 : 1);
       const angle = this.rng.float(0, Math.PI * 2);
-      const eccentric = orbitIdx < this.orbitLines.length ? this.rng.float(0, 0.25) : 0;
+      const eccentric = orbitIdx < this.orbitLines.length ? this.rng.float(p.eccMin, p.eccMax) : 0;
       this.orbits.push({ radius: r, speed, angle, eccentric });
 
       particlePositions[i * 3] = 0;
@@ -82,7 +91,7 @@ export class OrbitalDisplayElement extends BaseElement {
       vertexColors: true,
       transparent: true,
       opacity: 0,
-      size: Math.max(5, Math.min(w, h) * 0.015),
+      size: Math.max(5, Math.min(w, h) * p.dotSize),
       sizeAttenuation: false,
     }));
     this.particlePoints.position.set(this.cx, this.cy, 0);

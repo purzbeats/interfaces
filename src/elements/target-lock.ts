@@ -33,6 +33,15 @@ export class TargetLockElement extends BaseElement {
   private renderAccum: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { outerPts: 64, innerPts: 48, tickCount: 36, targetSpeed: 20, dotSize: 5 },    // Standard
+      { outerPts: 128, innerPts: 96, tickCount: 72, targetSpeed: 45, dotSize: 7 },    // Dense/Intense
+      { outerPts: 32, innerPts: 24, tickCount: 12, targetSpeed: 10, dotSize: 4 },     // Minimal/Sparse
+      { outerPts: 48, innerPts: 64, tickCount: 24, targetSpeed: 60, dotSize: 8 },     // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
@@ -41,11 +50,11 @@ export class TargetLockElement extends BaseElement {
 
     this.targetX = this.cx + this.rng.float(-this.radius * 0.3, this.radius * 0.3);
     this.targetY = this.cy + this.rng.float(-this.radius * 0.3, this.radius * 0.3);
-    this.targetVx = this.rng.float(-20, 20);
-    this.targetVy = this.rng.float(-20, 20);
+    this.targetVx = this.rng.float(-p.targetSpeed, p.targetSpeed);
+    this.targetVy = this.rng.float(-p.targetSpeed, p.targetSpeed);
 
     // Outer ring
-    const outerPts = 64;
+    const outerPts = p.outerPts;
     const outerPositions = new Float32Array(outerPts * 3);
     for (let i = 0; i < outerPts; i++) {
       const a = (i / (outerPts - 1)) * Math.PI * 2;
@@ -63,7 +72,7 @@ export class TargetLockElement extends BaseElement {
     this.group.add(this.outerRing);
 
     // Inner ring (tracks target position)
-    const innerPts = 48;
+    const innerPts = p.innerPts;
     const innerPositions = new Float32Array(innerPts * 3);
     const innerGeo = new THREE.BufferGeometry();
     innerGeo.setAttribute('position', new THREE.BufferAttribute(innerPositions, 3));
@@ -87,9 +96,9 @@ export class TargetLockElement extends BaseElement {
 
     // Tick marks around outer ring
     const tickVerts: number[] = [];
-    for (let i = 0; i < 36; i++) {
-      const a = (i / 36) * Math.PI * 2;
-      const isMajor = i % 9 === 0;
+    for (let i = 0; i < p.tickCount; i++) {
+      const a = (i / p.tickCount) * Math.PI * 2;
+      const isMajor = i % Math.max(1, Math.floor(p.tickCount / 4)) === 0;
       const innerR = this.radius * (isMajor ? 0.88 : 0.93);
       tickVerts.push(
         this.cx + Math.cos(a) * innerR, this.cy + Math.sin(a) * innerR, 0,
@@ -112,7 +121,7 @@ export class TargetLockElement extends BaseElement {
       color: this.palette.alert,
       transparent: true,
       opacity: 0,
-      size: 5,
+      size: p.dotSize,
       sizeAttenuation: false,
     }));
     this.group.add(this.targetDot);

@@ -25,12 +25,23 @@ export class CountdownTimerElement extends BaseElement {
   private urgentThreshold: number = 60;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { startMin: 120, startMax: 36000, speed: 1, urgentMin: 30, urgentMax: 120, digitScale: 0.45, labels: ['COUNTDOWN', 'T-MINUS', 'TIME REMAINING', 'DETONATION', 'LAUNCH SEQ'] },
+      { startMin: 30, startMax: 600, speed: 3, urgentMin: 10, urgentMax: 30, digitScale: 0.55, labels: ['CRITICAL', 'OVERLOAD', 'BREACH IN', 'CORE MELT'] },
+      { startMin: 3600, startMax: 86400, speed: 1, urgentMin: 300, urgentMax: 600, digitScale: 0.35, labels: ['ETA', 'ARRIVAL', 'WINDOW', 'TRANSIT'] },
+      { startMin: 60, startMax: 1800, speed: 2, urgentMin: 15, urgentMax: 45, digitScale: 0.50, labels: ['SEQUENCE', 'DEFUSE', 'IGNITION', 'ABORT WINDOW'] },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.startValue = this.rng.int(120, 36000);
+    this.startValue = this.rng.int(p.startMin, p.startMax);
     this.remaining = this.startValue;
-    this.label = this.rng.pick(['COUNTDOWN', 'T-MINUS', 'TIME REMAINING', 'DETONATION', 'LAUNCH SEQ']);
-    this.urgentThreshold = this.rng.float(30, 120);
+    this.label = this.rng.pick(p.labels);
+    this.urgentThreshold = this.rng.float(p.urgentMin, p.urgentMax);
+    (this as any)._countSpeed = p.speed + this.rng.float(-0.2, 0.2);
+    (this as any)._digitScale = p.digitScale;
 
     const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
@@ -54,7 +65,7 @@ export class CountdownTimerElement extends BaseElement {
     const opacity = this.applyEffects(dt);
 
     // Count down
-    this.remaining -= dt;
+    this.remaining -= dt * (this as any)._countSpeed;
     if (this.remaining <= 0) {
       this.remaining = this.startValue;
     }
@@ -92,7 +103,7 @@ export class CountdownTimerElement extends BaseElement {
     const dimHex = '#' + this.palette.dim.getHexString();
 
     // Time digits
-    const heightSize = Math.floor(canvas.height * 0.45);
+    const heightSize = Math.floor(canvas.height * (this as any)._digitScale);
     const widthSize = Math.floor(canvas.width / (timeStr.length * 0.65));
     const bigSize = Math.max(8, Math.min(heightSize, widthSize));
     ctx.font = `bold ${bigSize}px monospace`;

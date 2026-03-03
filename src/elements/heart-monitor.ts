@@ -22,10 +22,22 @@ export class HeartMonitorElement extends BaseElement {
   private flatline: boolean = false;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { bpmMin: 60, bpmMax: 120, speedMin: 80, speedMax: 160, ampScale: 0.4, eraseGap: 3, dotSize: 0.02 },
+      { bpmMin: 100, bpmMax: 180, speedMin: 160, speedMax: 280, ampScale: 0.5, eraseGap: 5, dotSize: 0.015 },
+      { bpmMin: 40, bpmMax: 70, speedMin: 50, speedMax: 90, ampScale: 0.3, eraseGap: 2, dotSize: 0.03 },
+      { bpmMin: 80, bpmMax: 200, speedMin: 120, speedMax: 220, ampScale: 0.55, eraseGap: 8, dotSize: 0.025 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     this.numPoints = Math.max(64, Math.floor(w * 0.5));
-    this.speed = this.rng.float(80, 160); // points per second
-    this.bpm = this.rng.float(60, 120);
+    this.speed = this.rng.float(p.speedMin, p.speedMax);
+    this.bpm = this.rng.float(p.bpmMin, p.bpmMax);
+    (this as any)._ampScale = p.ampScale + this.rng.float(-0.03, 0.03);
+    (this as any)._eraseGap = p.eraseGap;
+    (this as any)._dotSize = p.dotSize;
 
     // ECG line
     const positions = new Float32Array(this.numPoints * 3);
@@ -48,7 +60,7 @@ export class HeartMonitorElement extends BaseElement {
     dotGeo.setAttribute('position', new THREE.Float32BufferAttribute([x, y + h / 2, 2], 3));
     this.dot = new THREE.Points(dotGeo, new THREE.PointsMaterial({
       color: this.palette.secondary,
-      size: Math.max(4, Math.min(w, h) * 0.02),
+      size: Math.max(4, Math.min(w, h) * (this as any)._dotSize),
       transparent: true,
       opacity: 0,
       sizeAttenuation: false,
@@ -80,7 +92,7 @@ export class HeartMonitorElement extends BaseElement {
     const advance = dt * this.speed;
     const pos = this.line.geometry.getAttribute('position') as THREE.BufferAttribute;
     const cy = y + h / 2;
-    const amp = h * 0.4;
+    const amp = h * (this as any)._ampScale;
     const beatsPerSec = this.bpm / 60;
 
     for (let a = 0; a < advance; a++) {
@@ -91,7 +103,7 @@ export class HeartMonitorElement extends BaseElement {
       pos.setY(idx, cy + value * amp);
 
       // Erase ahead (gap)
-      const eraseIdx = (idx + 3) % this.numPoints;
+      const eraseIdx = (idx + (this as any)._eraseGap) % this.numPoints;
       pos.setY(eraseIdx, cy);
 
       this.writeHead++;

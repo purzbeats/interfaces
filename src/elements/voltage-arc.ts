@@ -19,10 +19,20 @@ export class VoltageArcElement extends BaseElement {
   private arcSeed: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { segMin: 8, segMax: 14, regenMin: 6, regenMax: 12, spread: 0.15 },
+      { segMin: 18, segMax: 30, regenMin: 15, regenMax: 30, spread: 0.25 },
+      { segMin: 4, segMax: 7, regenMin: 3, regenMax: 6, spread: 0.08 },
+      { segMin: 10, segMax: 20, regenMin: 25, regenMax: 50, spread: 0.35 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
-    this.arcSegments = this.rng.int(8, 14);
-    this.regenRate = this.rng.float(6, 12); // regens per second
+    this.arcSegments = this.rng.int(p.segMin, p.segMax);
+    this.regenRate = this.rng.float(p.regenMin, p.regenMax);
+    (this as any)._spread = p.spread + this.rng.float(-0.02, 0.02);
 
     // Electrode end-caps
     const eVerts = new Float32Array([
@@ -69,7 +79,7 @@ export class VoltageArcElement extends BaseElement {
       const cy = y + h / 2;
       const startX = x + w * 0.08;
       const endX = x + w * 0.92;
-      const spread = h * 0.15; // much tighter spread
+      const spread = h * (this as any)._spread;
       let vi = 0;
 
       // Single main arc — clean jagged path

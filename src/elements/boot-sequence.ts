@@ -43,11 +43,24 @@ export class BootSequenceElement extends BaseElement {
   private completedLines: Array<{ text: string; status: string }> = [];
   private renderAccum: number = 0;
   private loopCount: number = 0;
+  private lineSubset: number = 16;
+  private delayScale: number = 1.0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { charSpeedMin: 30, charSpeedMax: 60, delayScale: 1.0, lineSubset: 16 },    // Standard (all lines)
+      { charSpeedMin: 80, charSpeedMax: 150, delayScale: 0.4, lineSubset: 16 },   // Dense (fast typing, short delays)
+      { charSpeedMin: 12, charSpeedMax: 25, delayScale: 2.0, lineSubset: 8 },     // Minimal (slow, fewer lines)
+      { charSpeedMin: 200, charSpeedMax: 400, delayScale: 0.15, lineSubset: 16 },  // Exotic (near-instant characters, very fast)
+    ];
+    const p = presets[variant];
+    this.lineSubset = p.lineSubset;
+    this.delayScale = p.delayScale;
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.charSpeed = this.rng.float(30, 60);
+    this.charSpeed = this.rng.float(p.charSpeedMin, p.charSpeedMax);
 
     const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
@@ -71,7 +84,8 @@ export class BootSequenceElement extends BaseElement {
     const opacity = this.applyEffects(dt);
 
     // Advance typewriter
-    if (this.currentLine < BOOT_LINES.length) {
+    const maxLines = Math.min(this.lineSubset, BOOT_LINES.length);
+    if (this.currentLine < maxLines) {
       if (this.lineDelay > 0) {
         this.lineDelayTimer += dt;
         if (this.lineDelayTimer >= this.lineDelay) {
@@ -87,7 +101,7 @@ export class BootSequenceElement extends BaseElement {
         this.charIndex += dt * this.charSpeed;
         const line = BOOT_LINES[this.currentLine];
         if (this.charIndex >= line.text.length) {
-          this.lineDelay = line.delay;
+          this.lineDelay = line.delay * this.delayScale;
           this.lineDelayTimer = 0;
         }
       }
@@ -143,7 +157,8 @@ export class BootSequenceElement extends BaseElement {
     }
 
     // Draw current line being typed
-    if (this.currentLine < BOOT_LINES.length) {
+    const maxLines2 = Math.min(this.lineSubset, BOOT_LINES.length);
+    if (this.currentLine < maxLines2) {
       const shown = BOOT_LINES[this.currentLine].text.slice(0, Math.floor(this.charIndex));
       drawGlowText(ctx, shown, 4, py, primaryHex, 5);
 

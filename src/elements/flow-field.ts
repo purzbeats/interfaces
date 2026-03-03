@@ -49,23 +49,32 @@ export class FlowFieldElement extends BaseElement {
   private brightnessBoost: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { cellSize: 17, particleCount: 110, speedMul: 0.20, trailLen: 6, pointSize: 1.75 },    // Standard
+      { cellSize: 10, particleCount: 200, speedMul: 0.35, trailLen: 10, pointSize: 1.5 },     // Dense/Intense
+      { cellSize: 30, particleCount: 40, speedMul: 0.10, trailLen: 3, pointSize: 2.0 },       // Minimal/Sparse
+      { cellSize: 8, particleCount: 150, speedMul: 0.45, trailLen: 12, pointSize: 1.0 },      // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 4;
     const { x, y, w, h } = this.px;
 
     // Flow field grid resolution
-    this.cellSize = this.rng.float(15, 20);
+    this.cellSize = p.cellSize + this.rng.float(-2, 2);
     this.gridCols = Math.max(2, Math.ceil(w / this.cellSize));
     this.gridRows = Math.max(2, Math.ceil(h / this.cellSize));
     this.fieldAngles = new Float32Array(this.gridCols * this.gridRows);
 
     // Particles
-    this.baseParticleCount = this.rng.int(80, 150);
+    this.baseParticleCount = p.particleCount + this.rng.int(-10, 10);
     // Allocate extra capacity for alert-spawned particles
     const maxParticles = this.baseParticleCount + 60;
     this.particleCount = this.baseParticleCount;
     this.particleX = new Float32Array(maxParticles);
     this.particleY = new Float32Array(maxParticles);
-    this.particleSpeed = Math.min(w, h) * this.rng.float(0.15, 0.25);
+    this.particleSpeed = Math.min(w, h) * (p.speedMul + this.rng.float(-0.02, 0.02));
 
     // Initialize particle positions
     for (let i = 0; i < maxParticles; i++) {
@@ -74,7 +83,7 @@ export class FlowFieldElement extends BaseElement {
     }
 
     // Trail storage
-    this.trailLength = this.rng.int(5, 8);
+    this.trailLength = p.trailLen + this.rng.int(-1, 1);
     const totalTrail = maxParticles * this.trailLength;
     this.trailX = new Float32Array(totalTrail);
     this.trailY = new Float32Array(totalTrail);
@@ -96,7 +105,7 @@ export class FlowFieldElement extends BaseElement {
       color: this.palette.primary,
       transparent: true,
       opacity: 0,
-      size: this.rng.float(1.5, 2.0),
+      size: p.pointSize + this.rng.float(-0.1, 0.1),
       sizeAttenuation: false,
     }));
     this.group.add(this.pointsMesh);

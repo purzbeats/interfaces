@@ -19,13 +19,26 @@ export class SignalBarsElement extends BaseElement {
   private borderLines!: THREE.LineSegments;
   private updateTimer: number = 0;
   private updateInterval: number = 0;
+  private springK: number = 25;
+  private springDamping: number = 4;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { barCount: [8, 24] as const, spacing: 0.02, springK: 25, damping: 4, updateInterval: [0.15, 0.6] as const },
+      { barCount: [24, 48] as const, spacing: 0.008, springK: 45, damping: 2, updateInterval: [0.05, 0.2] as const },
+      { barCount: [4, 8] as const, spacing: 0.05, springK: 12, damping: 7, updateInterval: [0.4, 1.2] as const },
+      { barCount: [12, 20] as const, spacing: 0.035, springK: 60, damping: 1.5, updateInterval: [0.1, 0.35] as const },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.barCount = this.rng.int(8, 24);
-    this.updateInterval = this.rng.float(0.15, 0.6);
-    const gap = w * 0.02;
+    this.barCount = this.rng.int(p.barCount[0], p.barCount[1]);
+    this.updateInterval = this.rng.float(p.updateInterval[0], p.updateInterval[1]);
+    this.springK = p.springK + this.rng.float(-3, 3);
+    this.springDamping = p.damping + this.rng.float(-0.5, 0.5);
+    const gap = w * (p.spacing + this.rng.float(-0.003, 0.003));
     const barW = (w - gap * (this.barCount + 1)) / this.barCount;
 
     for (let i = 0; i < this.barCount; i++) {
@@ -77,12 +90,10 @@ export class SignalBarsElement extends BaseElement {
     }
 
     // Spring physics per bar
-    const springK = 25;
-    const damping = 4;
     for (let i = 0; i < this.barCount; i++) {
-      const force = (this.barTargets[i] - this.barValues[i]) * springK;
+      const force = (this.barTargets[i] - this.barValues[i]) * this.springK;
       this.barVelocities[i] += force * dt;
-      this.barVelocities[i] *= Math.exp(-damping * dt); // damping
+      this.barVelocities[i] *= Math.exp(-this.springDamping * dt); // damping
       this.barValues[i] += this.barVelocities[i] * dt;
       this.barValues[i] = Math.max(0.01, Math.min(1.2, this.barValues[i])); // allow overshoot
 

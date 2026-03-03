@@ -22,11 +22,11 @@ export class LorenzAttractorElement extends BaseElement {
   private buffers: Array<{ positions: Float32Array; head: number; filled: boolean; count: number }> = [];
 
   /* Lorenz parameters */
-  private readonly sigma = 10;
-  private readonly rho = 28;
-  private readonly beta = 8 / 3;
-  private readonly integrationDt = 0.005;
-  private readonly substeps = 6;
+  private sigma = 10;
+  private rho = 28;
+  private beta = 8 / 3;
+  private integrationDt = 0.005;
+  private substeps = 6;
 
   /* Projection */
   private cx = 0;
@@ -36,15 +36,29 @@ export class LorenzAttractorElement extends BaseElement {
   private pointsPerTrace = 600;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { sigma: 10, rho: 28, beta: 8/3, traceMin: 2, traceMax: 3, pointsMin: 500, pointsMax: 800, substeps: 6, dt: 0.005 },
+      { sigma: 10, rho: 28, beta: 8/3, traceMin: 3, traceMax: 4, pointsMin: 900, pointsMax: 1200, substeps: 10, dt: 0.004 },
+      { sigma: 10, rho: 28, beta: 8/3, traceMin: 1, traceMax: 2, pointsMin: 300, pointsMax: 450, substeps: 4, dt: 0.006 },
+      { sigma: 14, rho: 32, beta: 3.0, traceMin: 2, traceMax: 3, pointsMin: 600, pointsMax: 1000, substeps: 8, dt: 0.004 },
+    ];
+    const p = presets[variant];
+
+    this.sigma = p.sigma + this.rng.float(-0.5, 0.5);
+    this.rho = p.rho + this.rng.float(-1, 1);
+    this.beta = p.beta + this.rng.float(-0.1, 0.1);
+    this.integrationDt = p.dt;
+    this.substeps = p.substeps;
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
     this.cy = y + h / 2;
-    // Lorenz x range roughly [-20,20], z range roughly [5,48] — map to fit region
     this.scale = Math.min(w, h) / 55;
 
-    this.traceCount = this.rng.int(2, 3);
-    this.pointsPerTrace = this.rng.int(500, 800);
+    this.traceCount = this.rng.int(p.traceMin, p.traceMax);
+    this.pointsPerTrace = this.rng.int(p.pointsMin, p.pointsMax);
 
     const traceColors = [this.palette.primary, this.palette.secondary, this.palette.dim];
 

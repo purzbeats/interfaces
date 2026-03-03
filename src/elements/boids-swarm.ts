@@ -52,16 +52,25 @@ export class BoidsSwarmElement extends BaseElement {
   glitchAmount = 4;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { boidCount: 45, sepR: 20, aliR: 40, cohR: 60, maxSpdMul: 0.6, boidSize: 2.5 },     // Standard
+      { boidCount: 90, sepR: 15, aliR: 30, cohR: 50, maxSpdMul: 0.9, boidSize: 2.0 },     // Dense/Intense
+      { boidCount: 15, sepR: 30, aliR: 60, cohR: 80, maxSpdMul: 0.35, boidSize: 3.5 },    // Minimal/Sparse
+      { boidCount: 60, sepR: 10, aliR: 70, cohR: 30, maxSpdMul: 1.0, boidSize: 3.0 },     // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    this.boidCount = this.rng.int(30, 60);
+    this.boidCount = p.boidCount + this.rng.int(-3, 3);
     this.minSpeed = Math.min(w, h) * 0.15;
-    this.maxSpeed = Math.min(w, h) * 0.6;
+    this.maxSpeed = Math.min(w, h) * p.maxSpdMul;
 
     // Scale radii relative to region size
     const scale = Math.min(w, h) / 200;
-    this.separationRadius = 20 * scale;
-    this.alignmentRadius = 40 * scale;
-    this.cohesionRadius = 60 * scale;
+    this.separationRadius = p.sepR * scale;
+    this.alignmentRadius = p.aliR * scale;
+    this.cohesionRadius = p.cohR * scale;
 
     const n = this.boidCount;
 
@@ -151,7 +160,7 @@ export class BoidsSwarmElement extends BaseElement {
       color: this.palette.primary,
       transparent: true,
       opacity: 0,
-      size: 2.5,
+      size: p.boidSize,
       sizeAttenuation: false,
     }));
     this.group.add(this.pointsMesh);

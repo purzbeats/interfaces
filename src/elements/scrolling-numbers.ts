@@ -21,12 +21,21 @@ export class ScrollingNumbersElement extends BaseElement {
   private readonly RENDER_INTERVAL = 1 / 20; // 20fps for canvas (saves perf)
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { cw: 10, ch: 16, hexChance: 0.5, speedMin: 3, speedMax: 30 },    // Standard
+      { cw: 7, ch: 11, hexChance: 0.6, speedMin: 15, speedMax: 60 },    // Dense
+      { cw: 14, ch: 22, hexChance: 0.3, speedMin: 1, speedMax: 8 },     // Minimal
+      { cw: 8, ch: 14, hexChance: 0.9, speedMin: 5, speedMax: 20 },     // Exotic (nearly all hex)
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    const charW = 10;
-    const charH = 16;
+    const charW = p.cw;
+    const charH = p.ch;
     this.columns = Math.max(2, Math.floor(w / charW));
     this.rows = Math.max(2, Math.floor(h / charH));
-    this.isHex = this.rng.chance(0.5);
+    this.isHex = this.rng.chance(p.hexChance);
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.columns * charW;
@@ -37,7 +46,7 @@ export class ScrollingNumbersElement extends BaseElement {
     this.texture.magFilter = THREE.NearestFilter;
 
     for (let c = 0; c < this.columns; c++) {
-      this.scrollSpeeds.push(this.rng.float(3, 30));
+      this.scrollSpeeds.push(this.rng.float(p.speedMin, p.speedMax));
       this.scrollOffsets.push(this.rng.float(0, 100));
     }
 

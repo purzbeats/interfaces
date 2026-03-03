@@ -18,12 +18,21 @@ export class ProgressBarElement extends BaseElement {
   private barY: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { speed: [0.5, 2.0] as const, targetRange: [0.3, 0.9] as const, barHScale: 0.15 },
+      { speed: [2.0, 5.0] as const, targetRange: [0.5, 1.0] as const, barHScale: 0.22 },
+      { speed: [0.2, 0.7] as const, targetRange: [0.1, 0.6] as const, barHScale: 0.1 },
+      { speed: [3.0, 8.0] as const, targetRange: [0.0, 1.0] as const, barHScale: 0.18 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
     this.isVertical = h > w * 1.5;
-    this.targetValue = this.rng.float(0.3, 0.9);
-    this.speed = this.rng.float(0.5, 2.0);
-    this.barH = Math.min(h * 0.15, 40);
+    this.targetValue = this.rng.float(p.targetRange[0], p.targetRange[1]);
+    this.speed = this.rng.float(p.speed[0], p.speed[1]);
+    this.barH = Math.min(h * (p.barHScale + this.rng.float(-0.02, 0.02)), 40);
     this.barY = y + (h - this.barH) / 2;
 
     // Unit-sized fill — we animate with scale, not geometry recreation

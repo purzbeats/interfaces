@@ -21,13 +21,21 @@ export class SeismographElement extends BaseElement {
   private liveWaveform: Float32Array | null = null;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { pointsDivisor: 2, spikeChance: [0.01, 0.04] as const, noiseScale: [0.15, 0.35] as const },
+      { pointsDivisor: 1, spikeChance: [0.04, 0.1] as const, noiseScale: [0.3, 0.5] as const },
+      { pointsDivisor: 4, spikeChance: [0.005, 0.015] as const, noiseScale: [0.08, 0.18] as const },
+      { pointsDivisor: 1.5, spikeChance: [0.02, 0.06] as const, noiseScale: [0.25, 0.45] as const },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 4;
     const { x, y, w, h } = this.px;
 
-    // ~1 vertex per 2px
-    this.numPoints = Math.max(32, Math.floor(w / 2));
-    this.spikeChance = this.rng.float(0.01, 0.04);
-    this.noiseScale = this.rng.float(0.15, 0.35);
+    this.numPoints = Math.max(32, Math.floor(w / p.pointsDivisor));
+    this.spikeChance = this.rng.float(p.spikeChance[0], p.spikeChance[1]);
+    this.noiseScale = this.rng.float(p.noiseScale[0], p.noiseScale[1]);
 
     // Seismograph line
     const positions = new Float32Array(this.numPoints * 3);

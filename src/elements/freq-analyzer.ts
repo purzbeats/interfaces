@@ -24,12 +24,25 @@ export class FreqAnalyzerElement extends BaseElement {
   private updateTimer: number = 0;
   private updateInterval: number = 0;
   private liveSpectrum: Float32Array | null = null;
+  private springK: number = 30;
+  private springDamping: number = 5;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { barCount: [12, 32] as const, springK: 30, damping: 5, peakFall: [0.1, 0.3] as const, updateInterval: [0.08, 0.25] as const },
+      { barCount: [32, 64] as const, springK: 50, damping: 3, peakFall: [0.3, 0.6] as const, updateInterval: [0.03, 0.1] as const },
+      { barCount: [6, 12] as const, springK: 15, damping: 7, peakFall: [0.05, 0.12] as const, updateInterval: [0.2, 0.5] as const },
+      { barCount: [20, 40] as const, springK: 70, damping: 2, peakFall: [0.5, 1.0] as const, updateInterval: [0.05, 0.15] as const },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.barCount = this.rng.int(12, 32);
-    this.updateInterval = this.rng.float(0.08, 0.25);
+    this.barCount = this.rng.int(p.barCount[0], p.barCount[1]);
+    this.updateInterval = this.rng.float(p.updateInterval[0], p.updateInterval[1]);
+    this.springK = p.springK + this.rng.float(-3, 3);
+    this.springDamping = p.damping + this.rng.float(-0.5, 0.5);
     const gap = Math.max(1, w * 0.01);
     const barW = (w - gap * (this.barCount + 1)) / this.barCount;
 
@@ -51,7 +64,7 @@ export class FreqAnalyzerElement extends BaseElement {
       this.barTargets.push(initial);
       this.barVelocities.push(0);
       this.peakValues.push(initial);
-      this.peakFallSpeeds.push(this.rng.float(0.1, 0.3));
+      this.peakFallSpeeds.push(this.rng.float(p.peakFall[0], p.peakFall[1]));
     }
 
     // Peak hold markers (one horizontal dash per bar)
@@ -116,9 +129,9 @@ export class FreqAnalyzerElement extends BaseElement {
 
     for (let i = 0; i < this.barCount; i++) {
       // Spring physics
-      const force = (this.barTargets[i] - this.barValues[i]) * 30;
+      const force = (this.barTargets[i] - this.barValues[i]) * this.springK;
       this.barVelocities[i] += force * dt;
-      this.barVelocities[i] *= Math.exp(-5 * dt);
+      this.barVelocities[i] *= Math.exp(-this.springDamping * dt);
       this.barValues[i] += this.barVelocities[i] * dt;
       this.barValues[i] = Math.max(0.01, Math.min(1.2, this.barValues[i]));
 

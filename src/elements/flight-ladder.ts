@@ -27,11 +27,20 @@ export class FlightLadderElement extends BaseElement {
   private renderAccum: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { altMin: 5000, altMax: 40000, spdMin: 200, spdMax: 600, driftTime: 3, springK: 2 },     // Standard
+      { altMin: 20000, altMax: 50000, spdMin: 400, spdMax: 800, driftTime: 1.5, springK: 4 },   // Dense/Intense
+      { altMin: 1000, altMax: 10000, spdMin: 100, spdMax: 300, driftTime: 6, springK: 1 },      // Minimal/Sparse
+      { altMin: 0, altMax: 50000, spdMin: 50, spdMax: 800, driftTime: 0.8, springK: 6 },        // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.altitude = this.rng.float(5000, 40000);
+    this.altitude = this.rng.float(p.altMin, p.altMax);
     this.altitudeTarget = this.altitude;
-    this.speed = this.rng.float(200, 600);
+    this.speed = this.rng.float(p.spdMin, p.spdMax);
     this.speedTarget = this.speed;
 
     const scale = Math.min(2, window.devicePixelRatio);

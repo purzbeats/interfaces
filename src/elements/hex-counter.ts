@@ -22,15 +22,26 @@ export class HexCounterElement extends BaseElement {
   private renderAccum: number = 0;
   private readonly RENDER_INTERVAL = 1 / 10;
   private label: string = '';
+  private glitchThreshold: number = 80;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { digitPicks: [4, 6, 8], speedMin: 20, speedMax: 200, glitchProb: 80, labels: ['ADDR', 'REG', 'PTR', 'HEX', '0x'] },     // Standard
+      { digitPicks: [8, 10, 12], speedMin: 200, speedMax: 800, glitchProb: 40, labels: ['ADDR', 'PTR', '0x'] },                  // Dense (many digits, fast)
+      { digitPicks: [2, 3, 4], speedMin: 5, speedMax: 40, glitchProb: 120, labels: ['REG', 'HEX'] },                             // Minimal (few digits, slow)
+      { digitPicks: [4, 6], speedMin: 50, speedMax: 150, glitchProb: 20, labels: ['FLUX', 'SYNC', 'HASH'] },                     // Exotic (frequent glitches)
+    ];
+    const p = presets[variant];
+    this.glitchThreshold = p.glitchProb;
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
 
     this.counter = this.rng.int(0, 0xFFFF);
-    this.speed = this.rng.float(20, 200);
-    this.digits = this.rng.pick([4, 6, 8]);
-    this.label = this.rng.pick(['ADDR', 'REG', 'PTR', 'HEX', '0x']);
+    this.speed = this.rng.float(p.speedMin, p.speedMax);
+    this.digits = this.rng.pick(p.digitPicks);
+    this.label = this.rng.pick(p.labels);
 
     const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
@@ -96,7 +107,7 @@ export class HexCounterElement extends BaseElement {
       const chars = hexStr.split('');
       for (let i = 0; i < chars.length; i++) {
         const hash = ((i * 2654435761 + val) >>> 0) & 0xFF;
-        if (hash < 80) {
+        if (hash < this.glitchThreshold) {
           chars[i] = String.fromCharCode(33 + (hash % 60));
         }
       }

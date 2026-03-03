@@ -20,9 +20,18 @@ export class DepthSounderElement extends BaseElement {
   private scrollRate: number = 0;
   private noisePhase: number = 0;
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { scrollRate: 14, noiseStep: 0.05, gridCount: 5, vGridCount: 8, pointDensity: 0.5 },     // Standard
+      { scrollRate: 35, noiseStep: 0.03, gridCount: 10, vGridCount: 16, pointDensity: 0.8 },    // Dense/Intense
+      { scrollRate: 6, noiseStep: 0.08, gridCount: 3, vGridCount: 4, pointDensity: 0.3 },       // Minimal/Sparse
+      { scrollRate: 50, noiseStep: 0.02, gridCount: 7, vGridCount: 12, pointDensity: 0.6 },     // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    this.numPoints = Math.max(64, Math.floor(w * 0.5));
-    this.scrollRate = this.rng.float(8, 20);
+    this.numPoints = Math.max(64, Math.floor(w * p.pointDensity));
+    this.scrollRate = p.scrollRate + this.rng.float(-2, 2);
     this.noisePhase = this.rng.float(0, 1000);
 
     // Init depths
@@ -43,13 +52,13 @@ export class DepthSounderElement extends BaseElement {
 
     // Depth grid (horizontal lines)
     const gridVerts: number[] = [];
-    const gridCount = 5;
+    const gridCount = p.gridCount;
     for (let i = 0; i <= gridCount; i++) {
       const gy = y + h * 0.1 + (h * 0.8) * (i / gridCount);
       gridVerts.push(x, gy, 0, x + w, gy, 0);
     }
     // Vertical grid
-    const vGridCount = 8;
+    const vGridCount = p.vGridCount;
     for (let i = 0; i <= vGridCount; i++) {
       const gx = x + w * (i / vGridCount);
       gridVerts.push(gx, y + h * 0.1, 0, gx, y + h * 0.9, 0);

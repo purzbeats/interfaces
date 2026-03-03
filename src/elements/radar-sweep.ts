@@ -17,17 +17,26 @@ export class RadarSweepElement extends BaseElement {
   private alertMode: boolean = false;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { ringCount: 5, blipCount: 12, speed: 2.5, segments: 64, decayJitter: 0 },      // Standard
+      { ringCount: 9, blipCount: 28, speed: 5.0, segments: 128, decayJitter: 0.02 },   // Dense/Intense
+      { ringCount: 3, blipCount: 5, speed: 1.2, segments: 32, decayJitter: -0.01 },    // Minimal/Sparse
+      { ringCount: 7, blipCount: 18, speed: 8.0, segments: 48, decayJitter: 0.01 },    // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const radius = Math.min(w, h) / 2 * 0.9;
-    this.speed = this.rng.float(1.5, 3.5);
+    this.speed = p.speed + this.rng.float(-0.3, 0.3);
 
     // Concentric rings + crosshairs
     const ringVerts: number[] = [];
-    const ringCount = this.rng.int(4, 8);
-    const segments = 64;
+    const ringCount = p.ringCount + this.rng.int(-1, 1);
+    const segments = p.segments;
     for (let r = 1; r <= ringCount; r++) {
       const rr = (radius / ringCount) * r;
       for (let i = 0; i < segments; i++) {
@@ -64,7 +73,7 @@ export class RadarSweepElement extends BaseElement {
     this.group.add(this.sweepLine);
 
     // Blips
-    const blipCount = this.rng.int(8, 20);
+    const blipCount = p.blipCount + this.rng.int(-2, 2);
     for (let i = 0; i < blipCount; i++) {
       this.blipData.push({
         angle: this.rng.float(0, Math.PI * 2),

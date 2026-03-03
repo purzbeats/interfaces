@@ -18,8 +18,17 @@ export class NetworkGraphElement extends BaseElement {
   private edges: Array<{ from: number; to: number }> = [];
   private packets: Array<{ edge: number; t: number; speed: number }> = [];
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { nodeCount: 12, edgesPerNode: 2, packetCount: 7, nodeSizeMul: 0.012, packetSpeedMax: 1.0 },    // Standard
+      { nodeCount: 24, edgesPerNode: 3, packetCount: 16, nodeSizeMul: 0.010, packetSpeedMax: 2.0 },   // Dense/Intense
+      { nodeCount: 5, edgesPerNode: 1, packetCount: 3, nodeSizeMul: 0.016, packetSpeedMax: 0.5 },     // Minimal/Sparse
+      { nodeCount: 18, edgesPerNode: 4, packetCount: 12, nodeSizeMul: 0.008, packetSpeedMax: 3.0 },   // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    const nodeCount = this.rng.int(8, 16);
+    const nodeCount = p.nodeCount + this.rng.int(-1, 1);
     const padding = Math.min(w, h) * 0.1;
 
     // Generate node positions
@@ -32,7 +41,7 @@ export class NetworkGraphElement extends BaseElement {
 
     // Generate edges (connect nearby nodes)
     for (let i = 0; i < nodeCount; i++) {
-      const connections = this.rng.int(1, 3);
+      const connections = this.rng.int(1, p.edgesPerNode);
       for (let c = 0; c < connections; c++) {
         let closest = -1;
         let closestDist = Infinity;
@@ -64,7 +73,7 @@ export class NetworkGraphElement extends BaseElement {
     nodeGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3));
     this.nodePoints = new THREE.Points(nodeGeo, new THREE.PointsMaterial({
       color: this.palette.secondary,
-      size: Math.max(4, Math.min(w, h) * 0.012),
+      size: Math.max(4, Math.min(w, h) * p.nodeSizeMul),
       transparent: true,
       opacity: 0,
       sizeAttenuation: false,
@@ -92,12 +101,12 @@ export class NetworkGraphElement extends BaseElement {
     this.group.add(this.edgeLines);
 
     // Packets
-    const packetCount = this.rng.int(4, 10);
+    const packetCount = p.packetCount + this.rng.int(-1, 1);
     for (let i = 0; i < packetCount; i++) {
       this.packets.push({
         edge: this.rng.int(0, this.edges.length - 1),
         t: this.rng.float(0, 1),
-        speed: this.rng.float(0.3, 1.0),
+        speed: this.rng.float(0.3, p.packetSpeedMax),
       });
     }
     const packetPos = new Float32Array(packetCount * 3);

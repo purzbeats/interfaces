@@ -18,12 +18,21 @@ export class GraphElement extends BaseElement {
   private barBaseWidth: number = 0;
 
   build(): void {
-    const { x, y, w, h } = this.px;
-    this.isBarGraph = this.rng.chance(0.4);
-    this.numPoints = this.rng.int(8, 32);
-    this.updateInterval = this.rng.float(0.3, 1.5);
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { numPoints: 20, barChance: 0.4, updateInterval: 0.9, valMin: 0.1, valMax: 0.9 },    // Standard
+      { numPoints: 48, barChance: 0.3, updateInterval: 0.3, valMin: 0.05, valMax: 1.0 },   // Dense/Intense
+      { numPoints: 8, barChance: 0.5, updateInterval: 2.0, valMin: 0.2, valMax: 0.7 },     // Minimal/Sparse
+      { numPoints: 32, barChance: 0.8, updateInterval: 0.15, valMin: 0.0, valMax: 1.0 },   // Exotic/Alt
+    ];
+    const p = presets[variant];
 
-    this.dataPoints = Array.from({ length: this.numPoints }, () => this.rng.float(0.1, 0.9));
+    const { x, y, w, h } = this.px;
+    this.isBarGraph = this.rng.chance(p.barChance);
+    this.numPoints = p.numPoints + this.rng.int(-2, 2);
+    this.updateInterval = p.updateInterval + this.rng.float(-0.05, 0.05);
+
+    this.dataPoints = Array.from({ length: this.numPoints }, () => this.rng.float(p.valMin, p.valMax));
     this.targetPoints = [...this.dataPoints];
 
     if (this.isBarGraph) {

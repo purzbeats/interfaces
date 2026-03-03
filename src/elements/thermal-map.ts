@@ -21,16 +21,28 @@ export class ThermalMapElement extends BaseElement {
   private heatGrid: number[] = [];
   private hotspots: { x: number; y: number; vx: number; vy: number }[] = [];
   private renderAccum: number = 0;
-  private readonly RENDER_INTERVAL = 1 / 12;
+  private RENDER_INTERVAL = 1 / 12;
+  private diffuseDecay: number = 0.995;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { cellSize: 10, hotspotMin: 2, hotspotMax: 4, diffuseDecay: 0.995, renderFps: 12 },   // Standard
+      { cellSize: 5, hotspotMin: 5, hotspotMax: 8, diffuseDecay: 0.998, renderFps: 18 },     // Dense
+      { cellSize: 18, hotspotMin: 1, hotspotMax: 2, diffuseDecay: 0.985, renderFps: 8 },     // Minimal
+      { cellSize: 8, hotspotMin: 3, hotspotMax: 6, diffuseDecay: 0.999, renderFps: 15 },     // Exotic (slow decay, persistent heat)
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    this.gridW = Math.max(8, Math.min(80, Math.floor(w / 10)));
-    this.gridH = Math.max(8, Math.min(60, Math.floor(h / 10)));
+    this.gridW = Math.max(8, Math.min(80, Math.floor(w / p.cellSize)));
+    this.gridH = Math.max(8, Math.min(60, Math.floor(h / p.cellSize)));
     this.heatGrid = new Array(this.gridW * this.gridH).fill(0);
+    this.RENDER_INTERVAL = 1 / p.renderFps;
+    this.diffuseDecay = p.diffuseDecay;
 
     // Multiple hotspots for better coverage
-    const hotspotCount = this.rng.int(2, 4);
+    const hotspotCount = this.rng.int(p.hotspotMin, p.hotspotMax);
     for (let i = 0; i < hotspotCount; i++) {
       this.hotspots.push({
         x: this.rng.float(0, this.gridW),
@@ -141,7 +153,7 @@ export class ThermalMapElement extends BaseElement {
         if (gx < this.gridW - 1) { sum += this.heatGrid[idx + 1]; count++; }
         if (gy > 0) { sum += this.heatGrid[idx - this.gridW]; count++; }
         if (gy < this.gridH - 1) { sum += this.heatGrid[idx + this.gridW]; count++; }
-        newGrid[idx] = (sum / count) * 0.995; // slower decay
+        newGrid[idx] = (sum / count) * this.diffuseDecay;
       }
     }
     this.heatGrid = newGrid;

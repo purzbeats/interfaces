@@ -20,12 +20,21 @@ export class TopologyMapElement extends BaseElement {
   private borderLines!: THREE.LineSegments;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { fieldRes: 24, contourMin: 5, contourMax: 8, driftMin: 0.3, driftMax: 0.8 },    // Standard
+      { fieldRes: 40, contourMin: 10, contourMax: 15, driftMin: 0.6, driftMax: 1.5 },   // Dense
+      { fieldRes: 14, contourMin: 3, contourMax: 4, driftMin: 0.1, driftMax: 0.3 },     // Minimal
+      { fieldRes: 30, contourMin: 6, contourMax: 12, driftMin: 1.0, driftMax: 2.5 },    // Exotic (fast drift)
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
-    this.fieldW = 24;
-    this.fieldH = Math.max(12, Math.round(24 * (h / w)));
-    this.contourLevels = this.rng.int(5, 8);
-    this.driftSpeed = this.rng.float(0.3, 0.8);
+    this.fieldW = p.fieldRes;
+    this.fieldH = Math.max(12, Math.round(p.fieldRes * (h / w)));
+    this.contourLevels = this.rng.int(p.contourMin, p.contourMax);
+    this.driftSpeed = this.rng.float(p.driftMin, p.driftMax);
     this.noiseField = new Array(this.fieldW * this.fieldH).fill(0);
 
     // Pre-allocate contour line objects

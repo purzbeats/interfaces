@@ -25,17 +25,30 @@ export class PhaseIndicatorElement extends BaseElement {
   private renderAccum: number = 0;
   private tickCount: number = 36;
   private label: string = '';
+  private springK: number = 12;
+  private springDamping: number = 3.5;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { tickCounts: [24, 36, 48] as const, springK: 12, damping: 3.5, labels: ['PHASE', 'ANGLE', 'BEARING', 'HEADING', 'AZM', 'VECTOR'], needleLen: 0.9 },
+      { tickCounts: [48, 60, 72] as const, springK: 25, damping: 2, labels: ['BEARING', 'HEADING', 'TRACK', 'AZM'], needleLen: 0.95 },
+      { tickCounts: [8, 12, 16] as const, springK: 6, damping: 6, labels: ['PHASE', 'SECTOR', 'QUAD'], needleLen: 0.8 },
+      { tickCounts: [36, 48, 60] as const, springK: 40, damping: 1.5, labels: ['VECTOR', 'SPIN', 'GYRO', 'ROTOR'], needleLen: 0.85 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const radius = Math.min(w, h) / 2 * 0.85;
     this.targetValue = this.rng.float(0, 1);
-    this.label = this.rng.pick(['PHASE', 'ANGLE', 'BEARING', 'HEADING', 'AZM', 'VECTOR']);
+    this.label = this.rng.pick(p.labels);
+    this.springK = p.springK + this.rng.float(-1, 1);
+    this.springDamping = p.damping + this.rng.float(-0.3, 0.3);
 
     // Tick marks around the ring
-    this.tickCount = this.rng.pick([24, 36, 48]);
+    this.tickCount = this.rng.pick(p.tickCounts as unknown as number[]);
     const tickVerts: number[] = [];
     for (let i = 0; i < this.tickCount; i++) {
       const a = (i / this.tickCount) * Math.PI * 2 - Math.PI / 2;
@@ -112,9 +125,9 @@ export class PhaseIndicatorElement extends BaseElement {
     }
 
     // Spring physics for needle
-    const force = (this.targetValue - this.value) * 12;
+    const force = (this.targetValue - this.value) * this.springK;
     this.velocity += force * dt;
-    this.velocity *= Math.exp(-3.5 * dt);
+    this.velocity *= Math.exp(-this.springDamping * dt);
     this.value += this.velocity * dt;
 
     // Update needle tip position (vertex-based, no rotation)

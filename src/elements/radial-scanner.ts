@@ -23,11 +23,21 @@ export class RadialScannerElement extends BaseElement {
   private segments: number = 48;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { segments: 48, blipCount: 14, pingInterval: 1.8, dotSize: 6, pingPoolSize: 4 },    // Standard
+      { segments: 96, blipCount: 30, pingInterval: 0.6, dotSize: 8, pingPoolSize: 6 },    // Dense/Intense
+      { segments: 24, blipCount: 5, pingInterval: 3.5, dotSize: 4, pingPoolSize: 2 },     // Minimal/Sparse
+      { segments: 64, blipCount: 20, pingInterval: 0.3, dotSize: 10, pingPoolSize: 8 },   // Exotic/Alt
+    ];
+    const pr = presets[variant];
+    this.segments = pr.segments;
+
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const maxR = Math.min(w, h) / 2 * 0.9;
-    this.pingInterval = this.rng.float(1.2, 2.5);
+    this.pingInterval = pr.pingInterval + this.rng.float(-0.1, 0.1);
 
     // Border ring
     const borderVerts: number[] = [];
@@ -65,13 +75,13 @@ export class RadialScannerElement extends BaseElement {
       color: this.palette.primary,
       transparent: true,
       opacity: 0,
-      size: 6,
+      size: pr.dotSize,
       sizeAttenuation: false,
     }));
     this.group.add(this.centerDot);
 
     // Static blips at random positions within the circle
-    this.blipCount = this.rng.int(8, 20);
+    this.blipCount = pr.blipCount + this.rng.int(-2, 2);
     const blipPositions = new Float32Array(this.blipCount * 3);
     const blipColors = new Float32Array(this.blipCount * 3);
     for (let i = 0; i < this.blipCount; i++) {
@@ -99,7 +109,7 @@ export class RadialScannerElement extends BaseElement {
     this.group.add(this.blipPoints);
 
     // Pre-create ping ring pool (reuse) — first one starts immediately
-    for (let p = 0; p < 4; p++) {
+    for (let p = 0; p < pr.pingPoolSize; p++) {
       const pingPos = new Float32Array((this.segments + 1) * 3);
       const pingGeo = new THREE.BufferGeometry();
       pingGeo.setAttribute('position', new THREE.BufferAttribute(pingPos, 3));

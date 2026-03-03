@@ -25,11 +25,28 @@ export class AudioMeterElement extends BaseElement {
   private updateInterval: number = 0;
   private liveRms: number = -1;
   private liveBands: Float32Array | null = null;
+  private springK: number = 30;
+  private springDamping: number = 5;
+  private peakDecayRate: number = 0.8;
+  private peakHoldTime: number = 0.5;
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { segCount: [12, 24] as const, springK: 30, damping: 5, peakDecay: 0.8, peakHold: 0.5, updateInterval: [0.1, 0.4] as const },
+      { segCount: [24, 40] as const, springK: 50, damping: 3, peakDecay: 1.5, peakHold: 0.2, updateInterval: [0.05, 0.15] as const },
+      { segCount: [6, 12] as const, springK: 15, damping: 7, peakDecay: 0.3, peakHold: 1.2, updateInterval: [0.3, 0.8] as const },
+      { segCount: [16, 28] as const, springK: 65, damping: 2, peakDecay: 2.0, peakHold: 0.1, updateInterval: [0.08, 0.25] as const },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.segmentCount = this.rng.int(12, 24);
-    this.updateInterval = this.rng.float(0.1, 0.4);
+    this.segmentCount = this.rng.int(p.segCount[0], p.segCount[1]);
+    this.updateInterval = this.rng.float(p.updateInterval[0], p.updateInterval[1]);
+    this.springK = p.springK + this.rng.float(-3, 3);
+    this.springDamping = p.damping + this.rng.float(-0.5, 0.5);
+    this.peakDecayRate = p.peakDecay + this.rng.float(-0.1, 0.1);
+    this.peakHoldTime = p.peakHold + this.rng.float(-0.05, 0.05);
 
     const colW = w * 0.35;
     const gap = w * 0.04;
@@ -104,20 +121,20 @@ export class AudioMeterElement extends BaseElement {
 
     // Spring physics per channel
     for (let ch = 0; ch < 2; ch++) {
-      const force = (this.targets[ch] - this.levels[ch]) * 30;
+      const force = (this.targets[ch] - this.levels[ch]) * this.springK;
       this.velocities[ch] += force * dt;
-      this.velocities[ch] *= Math.exp(-5 * dt);
+      this.velocities[ch] *= Math.exp(-this.springDamping * dt);
       this.levels[ch] += this.velocities[ch] * dt;
       this.levels[ch] = Math.max(0, Math.min(1.1, this.levels[ch]));
 
       // Update peak
       if (this.levels[ch] > this.peaks[ch]) {
         this.peaks[ch] = this.levels[ch];
-        this.peakHold[ch] = 0.5; // hold for 0.5s
+        this.peakHold[ch] = this.peakHoldTime;
       }
       this.peakHold[ch] -= dt;
       if (this.peakHold[ch] <= 0) {
-        this.peaks[ch] -= dt * 0.8; // slow fall
+        this.peaks[ch] -= dt * this.peakDecayRate;
       }
       this.peaks[ch] = Math.max(0, this.peaks[ch]);
 

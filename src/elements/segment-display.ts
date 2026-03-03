@@ -21,6 +21,8 @@ export class SegmentDisplayElement extends BaseElement {
   private maxValue: number = 0;
   private label: string = '';
   private labelLines!: THREE.LineSegments;
+  private cycleTime: number = 2;
+  private springK: number = 8;
 
   // Seven-segment map: segments 0-6 correspond to standard layout
   // Segment positions relative to digit bounds:
@@ -40,13 +42,24 @@ export class SegmentDisplayElement extends BaseElement {
   ];
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { digitPicks: null, cycleTime: 2, springK: 8, labels: ['COUNT', 'RATE', 'FREQ', 'LEVEL', 'LOAD', 'RPM', 'TEMP'] },  // Standard (auto from width)
+      { digitPicks: [5, 6], cycleTime: 0.8, springK: 15, labels: ['COUNT', 'FREQ', 'RPM'] },                                // Dense (more digits, fast)
+      { digitPicks: [2, 3], cycleTime: 4, springK: 3, labels: ['LEVEL', 'TEMP'] },                                           // Minimal (few digits, slow spring)
+      { digitPicks: [3, 4], cycleTime: 1.2, springK: 25, labels: ['FLUX', 'SYNC', 'VOLT'] },                                 // Exotic (stiff spring, snappy)
+    ];
+    const p = presets[variant];
+    this.cycleTime = p.cycleTime;
+    this.springK = p.springK;
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.digitCount = w > 100 ? 4 : 3;
+    this.digitCount = p.digitPicks ? this.rng.pick(p.digitPicks) : (w > 100 ? 4 : 3);
     this.maxValue = Math.pow(10, this.digitCount) - 1;
     this.targetValue = this.rng.float(0, this.maxValue);
     this.value = this.targetValue;
-    this.label = this.rng.pick(['COUNT', 'RATE', 'FREQ', 'LEVEL', 'LOAD', 'RPM', 'TEMP']);
+    this.label = this.rng.pick(p.labels);
 
     const padding = w * 0.05;
     const digitSpacing = w * 0.04;
@@ -129,13 +142,13 @@ export class SegmentDisplayElement extends BaseElement {
 
     // Cycle target
     this.cycleTimer += dt;
-    if (this.cycleTimer > 2) {
+    if (this.cycleTimer > this.cycleTime) {
       this.cycleTimer = 0;
       this.targetValue = this.rng.float(0, this.maxValue);
     }
 
     // Spring physics
-    const force = (this.targetValue - this.value) * 8;
+    const force = (this.targetValue - this.value) * this.springK;
     this.velocity += force * dt;
     this.velocity *= Math.exp(-3 * dt);
     this.value += this.velocity * dt;

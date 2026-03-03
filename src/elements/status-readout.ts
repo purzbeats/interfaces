@@ -25,14 +25,27 @@ export class StatusReadoutElement extends BaseElement {
   private switchTimer: number = 0;
   private renderAccum: number = 0;
   private isAlert: boolean = false;
+  private blinkRate: number = 4;
+  private glowScale: number = 1.0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { msgMin: 2, msgMax: 5, switchMin: 2, switchMax: 6, blinkRate: 4, glowScale: 1.0 },    // Standard
+      { msgMin: 5, msgMax: 8, switchMin: 0.8, switchMax: 2, blinkRate: 8, glowScale: 1.5 },   // Dense (rapid switching)
+      { msgMin: 1, msgMax: 2, switchMin: 5, switchMax: 12, blinkRate: 2, glowScale: 0.6 },    // Minimal
+      { msgMin: 3, msgMax: 6, switchMin: 1.5, switchMax: 4, blinkRate: 12, glowScale: 2.0 },  // Exotic (fast blink, strong glow)
+    ];
+    const p = presets[variant];
+    this.blinkRate = p.blinkRate;
+    this.glowScale = p.glowScale;
+
     const { x, y, w, h } = this.px;
-    const msgCount = this.rng.int(2, 5);
+    const msgCount = this.rng.int(p.msgMin, p.msgMax);
     for (let i = 0; i < msgCount; i++) {
       this.messages.push(this.rng.pick(STATUS_MESSAGES));
     }
-    this.switchInterval = this.rng.float(2, 6);
+    this.switchInterval = this.rng.float(p.switchMin, p.switchMax);
 
     const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
@@ -94,7 +107,7 @@ export class StatusReadoutElement extends BaseElement {
     // Status indicator dot (blinking) with glow — scale to font
     const dotR = Math.max(2, fontSize * 0.2);
     const dotX = dotR + 2;
-    const blink = Math.sin(this.blinkTimer * 4) > 0;
+    const blink = Math.sin(this.blinkTimer * this.blinkRate) > 0;
     const dotColor = this.isAlert ? alertHex : primaryHex;
     ctx.shadowColor = dotColor;
     ctx.shadowBlur = blink ? dotR * 1.5 : 0;
@@ -109,7 +122,7 @@ export class StatusReadoutElement extends BaseElement {
     const msg = this.messages[this.currentMsg];
     const msgIsAlert = msg.includes('WARNING') || msg.includes('ALERT') || this.isAlert;
     const msgColor = msgIsAlert ? alertHex : primaryHex;
-    drawGlowText(ctx, msg, textX, 6, msgColor, msgIsAlert ? 8 : 5);
+    drawGlowText(ctx, msg, textX, 6, msgColor, (msgIsAlert ? 8 : 5) * this.glowScale);
 
     // Timestamp with dim glow
     const minutes = Math.floor(time / 60);

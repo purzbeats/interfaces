@@ -23,14 +23,23 @@ export class Waveform3dElement extends BaseElement {
   private waveformHistory: Float32Array[] = [];
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { lineCount: [8, 15] as const, pointsDivisor: 3, freqRange: [2, 6] as const },
+      { lineCount: [15, 25] as const, pointsDivisor: 2, freqRange: [4, 10] as const },
+      { lineCount: [4, 8] as const, pointsDivisor: 5, freqRange: [1, 3] as const },
+      { lineCount: [10, 18] as const, pointsDivisor: 2.5, freqRange: [3, 12] as const },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
 
-    this.lineCount = this.rng.int(8, 15);
-    this.pointsPerLine = Math.max(40, Math.floor(w / 3));
+    this.lineCount = this.rng.int(p.lineCount[0], p.lineCount[1]);
+    this.pointsPerLine = Math.max(40, Math.floor(w / p.pointsDivisor));
 
     for (let i = 0; i < this.lineCount; i++) {
-      this.frequencies.push(this.rng.float(2, 6));
+      this.frequencies.push(this.rng.float(p.freqRange[0], p.freqRange[1]));
       this.phases.push(this.rng.float(0, Math.PI * 2));
 
       const positions = new Float32Array(this.pointsPerLine * 3);

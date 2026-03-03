@@ -27,6 +27,15 @@ export class StarFieldElement extends BaseElement {
   private nebulaY: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { farCount: 110, midCount: 55, nearCount: 22, farSpd: 0.12, midSpd: 0.35, nearSpd: 0.7, twinkleMin: 1.5, twinkleMax: 5, nebulaSizeMul: 0.4, farSize: 1.5, midSize: 2.5, nearSize: 3.5 },  // Standard
+      { farCount: 200, midCount: 100, nearCount: 50, farSpd: 0.25, midSpd: 0.6, nearSpd: 1.2, twinkleMin: 3, twinkleMax: 10, nebulaSizeMul: 0.6, farSize: 1.5, midSize: 3.0, nearSize: 4.5 },   // Dense/Intense
+      { farCount: 40, midCount: 15, nearCount: 5, farSpd: 0.05, midSpd: 0.15, nearSpd: 0.3, twinkleMin: 0.5, twinkleMax: 2, nebulaSizeMul: 0.25, farSize: 1.0, midSize: 2.0, nearSize: 3.0 },   // Minimal/Sparse
+      { farCount: 60, midCount: 80, nearCount: 40, farSpd: 0.4, midSpd: 0.1, nearSpd: 0.5, twinkleMin: 4, twinkleMax: 12, nebulaSizeMul: 0.7, farSize: 2.5, midSize: 1.5, nearSize: 5.0 },      // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
@@ -35,7 +44,7 @@ export class StarFieldElement extends BaseElement {
     // Nebula glow — soft blob
     this.nebulaX = cx + this.rng.float(-w * 0.2, w * 0.2);
     this.nebulaY = cy + this.rng.float(-h * 0.2, h * 0.2);
-    const nebulaSize = Math.min(w, h) * this.rng.float(0.3, 0.5);
+    const nebulaSize = Math.min(w, h) * (p.nebulaSizeMul + this.rng.float(-0.05, 0.05));
     const nebulaGeo = new THREE.PlaneGeometry(nebulaSize, nebulaSize);
     this.nebulaGlow = new THREE.Mesh(nebulaGeo, new THREE.MeshBasicMaterial({
       color: this.palette.secondary,
@@ -46,9 +55,9 @@ export class StarFieldElement extends BaseElement {
     this.group.add(this.nebulaGlow);
 
     const layerConfigs = [
-      { count: this.rng.int(80, 150), speed: 0.12, size: 1.5 },  // far
-      { count: this.rng.int(40, 70), speed: 0.35, size: 2.5 },    // mid
-      { count: this.rng.int(15, 30), speed: 0.7, size: 3.5 },     // near
+      { count: p.farCount + this.rng.int(-5, 5), speed: p.farSpd, size: p.farSize },   // far
+      { count: p.midCount + this.rng.int(-3, 3), speed: p.midSpd, size: p.midSize },   // mid
+      { count: p.nearCount + this.rng.int(-2, 2), speed: p.nearSpd, size: p.nearSize }, // near
     ];
 
     for (let l = 0; l < layerConfigs.length; l++) {
@@ -72,7 +81,7 @@ export class StarFieldElement extends BaseElement {
           vy: (dy / dist) * cfg.speed * this.rng.float(0.5, 1.5),
         });
         twinklePhases.push(this.rng.float(0, Math.PI * 2));
-        twinkleSpeeds.push(this.rng.float(1.5, 5));
+        twinkleSpeeds.push(this.rng.float(p.twinkleMin, p.twinkleMax));
         baseAlphas.push(this.rng.float(0.4, 1.0));
       }
 

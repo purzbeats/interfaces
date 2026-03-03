@@ -26,17 +26,29 @@ export class CoordGridElement extends BaseElement {
   private trail: number[] = [];
   private maxTrail: number = 60;
   private renderAccum: number = 0;
+  private renderInterval: number = 1 / 10;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { divPicks: [8, 10, 12, 15], trailLen: 60, wanderScale: 1.0, renderFps: 10 },    // Standard
+      { divPicks: [16, 20, 24], trailLen: 120, wanderScale: 1.8, renderFps: 15 },       // Dense
+      { divPicks: [4, 5, 6], trailLen: 25, wanderScale: 0.5, renderFps: 6 },            // Minimal
+      { divPicks: [6, 8, 10], trailLen: 200, wanderScale: 0.3, renderFps: 8 },          // Exotic (long slow trail)
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const minDim = Math.min(w, h);
     this.pointX = x + w / 2;
     this.pointY = y + h / 2;
-    this.pointVx = this.rng.float(-30, 30);
-    this.pointVy = this.rng.float(-30, 30);
+    this.pointVx = this.rng.float(-30, 30) * p.wanderScale;
+    this.pointVy = this.rng.float(-30, 30) * p.wanderScale;
+    this.maxTrail = p.trailLen;
+    this.renderInterval = 1 / p.renderFps;
 
-    // Grid lines — scale spacing to region size (aim for 8-15 divisions on shortest axis)
-    const divisions = this.rng.pick([8, 10, 12, 15]);
+    // Grid lines — scale spacing to region size
+    const divisions = this.rng.pick(p.divPicks);
     const gridSpacing = Math.max(10, Math.floor(minDim / divisions));
     const gridVerts: number[] = [];
     // Vertical lines
@@ -165,7 +177,7 @@ export class CoordGridElement extends BaseElement {
 
     // Render coordinate label
     this.renderAccum += dt;
-    if (this.renderAccum >= 1 / 10) {
+    if (this.renderAccum >= this.renderInterval) {
       this.renderAccum = 0;
       this.renderLabel();
     }

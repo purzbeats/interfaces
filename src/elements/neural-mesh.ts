@@ -48,11 +48,22 @@ export class NeuralMeshElement extends BaseElement {
   private fireTimer = 0;
   private fireInterval = 0.5;
   private alertBoostTimer = 0;
+  private pulseSpeedMin = 1.2;
+  private pulseSpeedMax = 2.5;
 
   private cx = 0;
   private cy = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { neuronCount: 20, connThreshMul: 0.30, fireInterval: 0.5, neuronSizeMul: 0.014, pulseSizeMul: 0.008, pulseSpeedMin: 1.2, pulseSpeedMax: 2.5 },    // Standard
+      { neuronCount: 40, connThreshMul: 0.40, fireInterval: 0.2, neuronSizeMul: 0.010, pulseSizeMul: 0.006, pulseSpeedMin: 2.0, pulseSpeedMax: 4.0 },    // Dense/Intense
+      { neuronCount: 8, connThreshMul: 0.25, fireInterval: 1.2, neuronSizeMul: 0.020, pulseSizeMul: 0.012, pulseSpeedMin: 0.8, pulseSpeedMax: 1.5 },     // Minimal/Sparse
+      { neuronCount: 30, connThreshMul: 0.50, fireInterval: 0.15, neuronSizeMul: 0.018, pulseSizeMul: 0.010, pulseSpeedMin: 3.0, pulseSpeedMax: 5.0 },   // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 4;
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
@@ -60,7 +71,7 @@ export class NeuralMeshElement extends BaseElement {
     const padding = Math.min(w, h) * 0.08;
 
     // ── Neurons ──
-    const neuronCount = this.rng.int(15, 25);
+    const neuronCount = p.neuronCount + this.rng.int(-2, 2);
     for (let i = 0; i < neuronCount; i++) {
       this.neurons.push({
         x: x + padding + this.rng.float(0, w - padding * 2),
@@ -72,7 +83,7 @@ export class NeuralMeshElement extends BaseElement {
     }
 
     // ── Edges — connect nearby neurons ──
-    const threshold = Math.min(w, h) * 0.30;
+    const threshold = Math.min(w, h) * p.connThreshMul;
     const thresh2 = threshold * threshold;
     for (let i = 0; i < neuronCount; i++) {
       for (let j = i + 1; j < neuronCount; j++) {
@@ -105,7 +116,7 @@ export class NeuralMeshElement extends BaseElement {
       vertexColors: true,
       transparent: true,
       opacity: 0,
-      size: Math.max(4, Math.min(w, h) * 0.014),
+      size: Math.max(4, Math.min(w, h) * p.neuronSizeMul),
       sizeAttenuation: false,
     }));
     this.group.add(this.neuronPoints);
@@ -151,7 +162,7 @@ export class NeuralMeshElement extends BaseElement {
       color: this.palette.secondary,
       transparent: true,
       opacity: 0,
-      size: Math.max(2.5, Math.min(w, h) * 0.008),
+      size: Math.max(2.5, Math.min(w, h) * p.pulseSizeMul),
       sizeAttenuation: false,
     }));
     this.group.add(this.pulsePoints);
@@ -182,9 +193,11 @@ export class NeuralMeshElement extends BaseElement {
     this.bgRings = new THREE.Line(ringGeo, this.bgRingMat);
     this.group.add(this.bgRings);
 
-    // Set initial fire interval
-    this.fireInterval = this.rng.float(0.3, 0.8);
+    // Set initial fire interval and pulse speed range
+    this.fireInterval = p.fireInterval + this.rng.float(-0.05, 0.05);
     this.fireTimer = this.rng.float(0, this.fireInterval);
+    this.pulseSpeedMin = p.pulseSpeedMin;
+    this.pulseSpeedMax = p.pulseSpeedMax;
   }
 
   /** Fire a neuron: brighten it and send pulses along its edges */
@@ -204,7 +217,7 @@ export class NeuralMeshElement extends BaseElement {
         if (!this.pulses[p].active) {
           this.pulses[p].edge = edgeIdx;
           this.pulses[p].progress = goingForward ? 0.0 : 1.0;
-          this.pulses[p].speed = (goingForward ? 1 : -1) * this.rng.float(1.2, 2.5);
+          this.pulses[p].speed = (goingForward ? 1 : -1) * this.rng.float(this.pulseSpeedMin, this.pulseSpeedMax);
           this.pulses[p].active = true;
           break;
         }

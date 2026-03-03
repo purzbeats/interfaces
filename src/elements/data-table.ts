@@ -23,11 +23,22 @@ export class DataTableElement extends BaseElement {
   private scrollSpeed: number = 0;
   private activeRow: number = 0;
   private changeTimer: number = 0;
+  private changeInterval: number = 2;
   private renderAccum: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { rowCount: 20, speedMin: 8, speedMax: 25, headerPicks: [0, 1, 2, 3], changeInterval: 2 },    // Standard
+      { rowCount: 40, speedMin: 20, speedMax: 50, headerPicks: [0, 1, 2, 3], changeInterval: 0.8 },  // Dense
+      { rowCount: 10, speedMin: 3, speedMax: 10, headerPicks: [0, 3], changeInterval: 4 },            // Minimal
+      { rowCount: 25, speedMin: 5, speedMax: 15, headerPicks: [1, 2], changeInterval: 1.5 },          // Exotic
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
+    this.changeInterval = p.changeInterval;
 
     const headerSets = [
       ['NODE', 'STATUS', 'LOAD', 'TEMP'],
@@ -35,12 +46,12 @@ export class DataTableElement extends BaseElement {
       ['PORT', 'PROTO', 'PKTS', 'ERR'],
       ['SECTOR', 'FREQ', 'PWR', 'LOCK'],
     ];
-    this.headers = this.rng.pick(headerSets);
-    this.scrollSpeed = this.rng.float(8, 25);
+    this.headers = headerSets[this.rng.pick(p.headerPicks)];
+    this.scrollSpeed = this.rng.float(p.speedMin, p.speedMax);
     this.activeRow = this.rng.int(0, 5);
 
     // Generate rows
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < p.rowCount; i++) {
       this.rows.push(this.generateRow());
     }
 
@@ -106,7 +117,7 @@ export class DataTableElement extends BaseElement {
 
     // Change some values periodically
     this.changeTimer += dt;
-    if (this.changeTimer > 2) {
+    if (this.changeTimer > this.changeInterval) {
       this.changeTimer = 0;
       const rowIdx = this.rng.int(0, this.rows.length - 1);
       this.rows[rowIdx] = this.generateRow();

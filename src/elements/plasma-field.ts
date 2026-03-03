@@ -45,11 +45,20 @@ export class PlasmaFieldElement extends BaseElement {
   private savedFreqs: number[] | null = null;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { scale: 0.25, compCount: 5, freqMax: 0.08, speedMax: 1.5, freqRMax: 0.06 },    // Standard
+      { scale: 0.35, compCount: 8, freqMax: 0.12, speedMax: 2.5, freqRMax: 0.10 },    // Dense/Intense
+      { scale: 0.15, compCount: 3, freqMax: 0.04, speedMax: 0.8, freqRMax: 0.03 },    // Minimal/Sparse
+      { scale: 0.30, compCount: 6, freqMax: 0.15, speedMax: 3.5, freqRMax: 0.12 },    // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
 
-    // Render at quarter resolution for performance
-    const scale = 0.25;
+    // Render at variable resolution for performance
+    const scale = p.scale;
     this.resW = Math.max(32, Math.floor(w * scale));
     this.resH = Math.max(24, Math.floor(h * scale));
 
@@ -70,16 +79,16 @@ export class PlasmaFieldElement extends BaseElement {
     this.mesh.position.set(x + w / 2, y + h / 2, 1);
     this.group.add(this.mesh);
 
-    // Generate 5 sine components with randomized parameters
-    const compCount = 5;
+    // Generate sine components with randomized parameters
+    const compCount = p.compCount;
     for (let i = 0; i < compCount; i++) {
       this.components.push({
-        freqX: this.rng.float(0.01, 0.08),
-        freqY: this.rng.float(0.01, 0.08),
-        freqR: this.rng.float(0.02, 0.06),
-        speedX: this.rng.float(0.3, 1.5) * (this.rng.chance(0.5) ? 1 : -1),
-        speedY: this.rng.float(0.3, 1.5) * (this.rng.chance(0.5) ? 1 : -1),
-        speedR: this.rng.float(0.2, 1.0) * (this.rng.chance(0.5) ? 1 : -1),
+        freqX: this.rng.float(0.01, p.freqMax),
+        freqY: this.rng.float(0.01, p.freqMax),
+        freqR: this.rng.float(0.02, p.freqRMax),
+        speedX: this.rng.float(0.3, p.speedMax) * (this.rng.chance(0.5) ? 1 : -1),
+        speedY: this.rng.float(0.3, p.speedMax) * (this.rng.chance(0.5) ? 1 : -1),
+        speedR: this.rng.float(0.2, p.speedMax * 0.67) * (this.rng.chance(0.5) ? 1 : -1),
         phase: this.rng.float(0, Math.PI * 2),
       });
     }

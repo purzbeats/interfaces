@@ -26,16 +26,28 @@ export class CipherWheelElement extends BaseElement {
   private renderAccum: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const DIGITS = '0123456789';
+    const HEX = '0123456789ABCDEF';
+    const RUNES = 'FUTHARKWNISJEPBMLTDOGXYZQV';
+    const presets = [
+      { ringMin: 3, ringMax: 5, speedMin: 0.4, speedMax: 1.5, charsPerRing: 6, baseChars: 12, charset: ALPHABET },
+      { ringMin: 5, ringMax: 7, speedMin: 1.0, speedMax: 3.0, charsPerRing: 8, baseChars: 16, charset: ALPHABET },
+      { ringMin: 2, ringMax: 3, speedMin: 0.15, speedMax: 0.5, charsPerRing: 4, baseChars: 8, charset: DIGITS + ALPHABET.slice(0, 6) },
+      { ringMin: 4, ringMax: 6, speedMin: 0.8, speedMax: 2.5, charsPerRing: 5, baseChars: 10, charset: HEX + RUNES.slice(0, 10) },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    this.ringCount = this.rng.int(3, 5);
+    this.ringCount = this.rng.int(p.ringMin, p.ringMax);
 
     for (let r = 0; r < this.ringCount; r++) {
       this.ringAngles.push(this.rng.float(0, Math.PI * 2));
-      this.ringSpeeds.push(this.rng.float(0.4, 1.5) * (this.rng.chance(0.5) ? 1 : -1));
+      this.ringSpeeds.push(this.rng.float(p.speedMin, p.speedMax) * (this.rng.chance(0.5) ? 1 : -1));
       const chars: string[] = [];
-      const count = 12 + r * 6;
+      const count = p.baseChars + r * p.charsPerRing;
       for (let i = 0; i < count; i++) {
-        chars.push(ALPHABET[this.rng.int(0, ALPHABET.length - 1)]);
+        chars.push(p.charset[this.rng.int(0, p.charset.length - 1)]);
       }
       this.ringChars.push(chars);
     }

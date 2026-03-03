@@ -37,14 +37,23 @@ export class PendulumWaveElement extends BaseElement {
   private time: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { countMin: 15, countMax: 25, tBaseMin: 1.5, tBaseMax: 2.5, incMin: 0.02, incMax: 0.04, ampScale: 0.3, bobSize: 0.015, damping: 0 },
+      { countMin: 30, countMax: 45, tBaseMin: 1.0, tBaseMax: 1.5, incMin: 0.01, incMax: 0.02, ampScale: 0.35, bobSize: 0.010, damping: 0 },
+      { countMin: 7, countMax: 12, tBaseMin: 2.5, tBaseMax: 4.0, incMin: 0.04, incMax: 0.08, ampScale: 0.25, bobSize: 0.025, damping: 0 },
+      { countMin: 20, countMax: 35, tBaseMin: 0.8, tBaseMax: 1.2, incMin: 0.005, incMax: 0.015, ampScale: 0.4, bobSize: 0.012, damping: 0 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 4;
     const { x, y, w, h } = this.px;
 
-    this.pendulumCount = this.rng.int(15, 25);
-    this.tBase = this.rng.float(1.5, 2.5);
-    this.increment = this.rng.float(0.02, 0.04);
+    this.pendulumCount = this.rng.int(p.countMin, p.countMax);
+    this.tBase = this.rng.float(p.tBaseMin, p.tBaseMax);
+    this.increment = this.rng.float(p.incMin, p.incMax);
     this.lengthsIncrease = this.rng.chance(0.5);
-    this.baseAmplitude = h * 0.3;
+    this.baseAmplitude = h * p.ampScale;
 
     const beamY = y + h * 0.08;
     const beamLeft = x + w * 0.06;
@@ -99,7 +108,7 @@ export class PendulumWaveElement extends BaseElement {
       color: this.palette.primary,
       transparent: true,
       opacity: 0,
-      size: Math.max(3, Math.min(w, h) * 0.015),
+      size: Math.max(3, Math.min(w, h) * p.bobSize),
       sizeAttenuation: false,
     }));
     this.group.add(this.bobs);

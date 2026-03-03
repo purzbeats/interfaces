@@ -20,19 +20,34 @@ export class PressureGaugeElement extends BaseElement {
   private needleVelocity: number = 0;
   private updateTimer: number = 0;
   private updateInterval: number = 0;
+  private springK: number = 20;
+  private springDamping: number = 5;
+  private dangerThreshold: number = 0.8;
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { tickCount: 10, segments: 64, dangerThreshold: 0.8, springK: 20, damping: 5, updateInterval: [1.0, 3.0] as const },
+      { tickCount: 20, segments: 96, dangerThreshold: 0.65, springK: 35, damping: 3, updateInterval: [0.4, 1.2] as const },
+      { tickCount: 6, segments: 32, dangerThreshold: 0.9, springK: 10, damping: 8, updateInterval: [2.0, 5.0] as const },
+      { tickCount: 15, segments: 48, dangerThreshold: 0.5, springK: 50, damping: 2, updateInterval: [0.6, 2.0] as const },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const radius = Math.min(w, h) / 2 * 0.85;
     this.needleValue = this.rng.float(0.2, 0.6);
     this.needleTarget = this.needleValue;
-    this.updateInterval = this.rng.float(1.0, 3.0);
+    this.updateInterval = this.rng.float(p.updateInterval[0], p.updateInterval[1]);
+    this.springK = p.springK + this.rng.float(-2, 2);
+    this.springDamping = p.damping + this.rng.float(-0.5, 0.5);
+    this.dangerThreshold = p.dangerThreshold;
 
     // 270° arc (from 135° to 405° i.e. -45° to 225° in standard)
     const arcStart = Math.PI * 0.75; // 135°
     const arcEnd = Math.PI * 2.25; // 405°
-    const segments = 64;
+    const segments = p.segments + this.rng.int(-4, 4);
     const arcVerts: number[] = [];
     for (let i = 0; i < segments; i++) {
       const a1 = arcStart + (arcEnd - arcStart) * (i / segments);
@@ -51,8 +66,8 @@ export class PressureGaugeElement extends BaseElement {
     }));
     this.group.add(this.arcLines);
 
-    // Danger zone (last 20% of arc)
-    const dangerStart = arcStart + (arcEnd - arcStart) * 0.8;
+    // Danger zone (last portion of arc)
+    const dangerStart = arcStart + (arcEnd - arcStart) * p.dangerThreshold;
     const dangerVerts: number[] = [];
     for (let i = 0; i < 16; i++) {
       const a1 = dangerStart + (arcEnd - dangerStart) * (i / 16);
@@ -73,7 +88,7 @@ export class PressureGaugeElement extends BaseElement {
 
     // Tick marks
     const tickVerts: number[] = [];
-    const tickCount = 10;
+    const tickCount = p.tickCount + this.rng.int(-1, 1);
     for (let i = 0; i <= tickCount; i++) {
       const t = i / tickCount;
       const a = arcStart + (arcEnd - arcStart) * t;
@@ -120,9 +135,9 @@ export class PressureGaugeElement extends BaseElement {
     }
 
     // Spring physics for needle
-    const force = (this.needleTarget - this.needleValue) * 20;
+    const force = (this.needleTarget - this.needleValue) * this.springK;
     this.needleVelocity += force * dt;
-    this.needleVelocity *= Math.exp(-5 * dt);
+    this.needleVelocity *= Math.exp(-this.springDamping * dt);
     this.needleValue += this.needleVelocity * dt;
     this.needleValue = Math.max(0, Math.min(1.05, this.needleValue));
 
@@ -136,7 +151,7 @@ export class PressureGaugeElement extends BaseElement {
     pos.needsUpdate = true;
 
     // Color needle based on danger zone
-    const inDanger = this.needleValue > 0.8;
+    const inDanger = this.needleValue > this.dangerThreshold;
     (this.needle.material as THREE.LineBasicMaterial).color.copy(
       inDanger ? this.palette.alert : this.palette.primary
     );

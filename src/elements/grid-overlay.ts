@@ -11,10 +11,19 @@ export class GridOverlayElement extends BaseElement {
   private crosshair!: THREE.LineSegments;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { colMin: 4, colMax: 10, rowMin: 4, rowMax: 8, crosshairScale: 0.15 },   // Standard
+      { colMin: 10, colMax: 15, rowMin: 8, rowMax: 12, crosshairScale: 0.08 },  // Dense
+      { colMin: 3, colMax: 5, rowMin: 3, rowMax: 4, crosshairScale: 0.25 },     // Minimal
+      { colMin: 6, colMax: 12, rowMin: 3, rowMax: 6, crosshairScale: 0.2 },     // Exotic (wide cells)
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    const cols = this.rng.int(4, 10);
-    const rows = this.rng.int(4, 8);
+    const cols = this.rng.int(p.colMin, p.colMax);
+    const rows = this.rng.int(p.rowMin, p.rowMax);
 
     const verts: number[] = [];
     for (let c = 0; c <= cols; c++) {
@@ -37,7 +46,7 @@ export class GridOverlayElement extends BaseElement {
 
     // Center crosshair
     const cx = x + w / 2, cy = y + h / 2;
-    const cs = Math.min(w, h) * 0.15;
+    const cs = Math.min(w, h) * p.crosshairScale;
     const crossVerts = new Float32Array([
       cx - cs, cy, 1, cx + cs, cy, 1,
       cx, cy - cs, 1, cx, cy + cs, 1,

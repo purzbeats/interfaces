@@ -23,6 +23,15 @@ export class PowerGridElement extends BaseElement {
   private loadTimer: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { levels: 4, branchFactor: 3, flowCount: 25, flowSpeedMax: 1.2, juncSizeMul: 0.012 },    // Standard
+      { levels: 5, branchFactor: 3, flowCount: 50, flowSpeedMax: 2.5, juncSizeMul: 0.010 },    // Dense/Intense
+      { levels: 3, branchFactor: 2, flowCount: 10, flowSpeedMax: 0.6, juncSizeMul: 0.016 },    // Minimal/Sparse
+      { levels: 6, branchFactor: 2, flowCount: 40, flowSpeedMax: 3.0, juncSizeMul: 0.008 },    // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
 
@@ -31,9 +40,9 @@ export class PowerGridElement extends BaseElement {
     const rootY = y + h * 0.92;
     this.junctions.push({ x: rootX, y: rootY, load: 1, loadTarget: 1 });
 
-    // Build tree: 4 levels of branching
-    const levels = 4;
-    const branchFactor = this.rng.int(2, 3);
+    // Build tree: variable levels of branching
+    const levels = p.levels;
+    const branchFactor = p.branchFactor;
     let currentLevel = [0];
     const levelJunctions: number[][] = [[0]];
 
@@ -105,18 +114,18 @@ export class PowerGridElement extends BaseElement {
     juncGeo.setAttribute('position', new THREE.BufferAttribute(juncPos, 3));
     this.junctionPoints = new THREE.Points(juncGeo, new THREE.PointsMaterial({
       color: this.palette.secondary,
-      size: Math.max(4, Math.min(w, h) * 0.012),
+      size: Math.max(4, Math.min(w, h) * p.juncSizeMul),
       transparent: true, opacity: 0, sizeAttenuation: false,
     }));
     this.group.add(this.junctionPoints);
 
     // Flow particles — more of them
-    const flowCount = this.rng.int(15, 35);
+    const flowCount = p.flowCount + this.rng.int(-2, 2);
     for (let i = 0; i < flowCount; i++) {
       this.flows.push({
         path: this.rng.int(0, this.paths.length - 1),
         t: this.rng.float(0, 1),
-        speed: this.rng.float(0.4, 1.2),
+        speed: this.rng.float(0.4, p.flowSpeedMax),
       });
     }
     const flowPos = new Float32Array(flowCount * 3);

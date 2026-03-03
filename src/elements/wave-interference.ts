@@ -19,22 +19,34 @@ export class WaveInterferenceElement extends BaseElement {
   private spawnTimer: number = 0;
   private spawnInterval: number = 0;
   private nextRing: number[] = [0, 0];
+  private ringSegments: number = 48;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { ringCount: 8, segments: 48, expandSpeed: [40, 100] as const, spawnInterval: [0.3, 0.7] as const, driftSpeed: 5 },
+      { ringCount: 14, segments: 72, expandSpeed: [80, 180] as const, spawnInterval: [0.15, 0.35] as const, driftSpeed: 10 },
+      { ringCount: 4, segments: 24, expandSpeed: [20, 50] as const, spawnInterval: [0.6, 1.2] as const, driftSpeed: 3 },
+      { ringCount: 10, segments: 36, expandSpeed: [120, 250] as const, spawnInterval: [0.1, 0.25] as const, driftSpeed: 15 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     this.maxRadius = Math.max(w, h) * 0.6;
-    this.expandSpeed = this.rng.float(40, 100);
-    this.spawnInterval = this.rng.float(0.3, 0.7);
+    this.expandSpeed = this.rng.float(p.expandSpeed[0], p.expandSpeed[1]);
+    this.spawnInterval = this.rng.float(p.spawnInterval[0], p.spawnInterval[1]);
+    this.ringSegments = p.segments + this.rng.int(-4, 4);
 
     // Two source positions
+    const drift = p.driftSpeed + this.rng.float(-1, 1);
     this.sourcePos = [
-      { x: x + w * 0.35, y: y + h * 0.5, vx: this.rng.float(-5, 5), vy: this.rng.float(-5, 5) },
-      { x: x + w * 0.65, y: y + h * 0.5, vx: this.rng.float(-5, 5), vy: this.rng.float(-5, 5) },
+      { x: x + w * 0.35, y: y + h * 0.5, vx: this.rng.float(-drift, drift), vy: this.rng.float(-drift, drift) },
+      { x: x + w * 0.65, y: y + h * 0.5, vx: this.rng.float(-drift, drift), vy: this.rng.float(-drift, drift) },
     ];
 
-    const ringCount = 8;
-    const segments = 48;
+    const ringCount = p.ringCount + this.rng.int(-1, 1);
+    const segments = this.ringSegments;
     const colors = [this.palette.primary, this.palette.secondary];
 
     for (let s = 0; s < 2; s++) {
@@ -77,7 +89,7 @@ export class WaveInterferenceElement extends BaseElement {
     }
 
     // Expand rings
-    const segments = 48;
+    const segments = this.ringSegments;
     for (let s = 0; s < 2; s++) {
       const src = this.sourcePos[s];
       for (let r = 0; r < this.sourceRings[s].length; r++) {

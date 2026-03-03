@@ -26,15 +26,33 @@ export class RingGaugeElement extends BaseElement {
   private segments: number = 64;
   private cycleTimer: number = 0;
   private renderAccum: number = 0;
+  private springK: number = 15;
+  private springDamping: number = 3;
+  private warningThreshold: number = 0.7;
+  private alertThreshold: number = 0.9;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { tickCount: 12, arcThickness: 0.7, segments: 64, springK: 15, damping: 3, warningThreshold: 0.7, alertThreshold: 0.9 },
+      { tickCount: 24, arcThickness: 0.55, segments: 96, springK: 30, damping: 2, warningThreshold: 0.6, alertThreshold: 0.8 },
+      { tickCount: 6, arcThickness: 0.82, segments: 32, springK: 8, damping: 5, warningThreshold: 0.85, alertThreshold: 0.95 },
+      { tickCount: 16, arcThickness: 0.6, segments: 48, springK: 45, damping: 1.5, warningThreshold: 0.5, alertThreshold: 0.75 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     const outerR = Math.min(w, h) / 2 * 0.85;
-    const innerR = outerR * 0.7;
+    const innerR = outerR * (p.arcThickness + this.rng.float(-0.03, 0.03));
     const midR = (outerR + innerR) / 2;
     this.targetValue = this.rng.float(0.3, 0.95);
+    this.segments = p.segments + this.rng.int(-4, 4);
+    this.springK = p.springK + this.rng.float(-2, 2);
+    this.springDamping = p.damping + this.rng.float(-0.3, 0.3);
+    this.warningThreshold = p.warningThreshold;
+    this.alertThreshold = p.alertThreshold;
 
     const labels = ['AT FIELD', 'PWR LVL', 'SYNC', 'SHIELD', 'CHARGE', 'OUTPUT', 'SIGNAL', 'CORE'];
     this.label = this.rng.pick(labels);
@@ -67,7 +85,7 @@ export class RingGaugeElement extends BaseElement {
     this.group.add(this.fillRing);
 
     // Tick marks
-    const tickCount = 12;
+    const tickCount = p.tickCount + this.rng.int(-1, 1);
     const tickVerts: number[] = [];
     for (let i = 0; i < tickCount; i++) {
       const a = (i / tickCount) * Math.PI * 2 - Math.PI / 2;
@@ -121,9 +139,9 @@ export class RingGaugeElement extends BaseElement {
     }
 
     // Spring physics for value
-    const force = (this.targetValue - this.value) * 15;
+    const force = (this.targetValue - this.value) * this.springK;
     this.velocity += force * dt;
-    this.velocity *= Math.exp(-3 * dt);
+    this.velocity *= Math.exp(-this.springDamping * dt);
     this.value += this.velocity * dt;
     this.value = Math.max(0, Math.min(1.1, this.value));
 
@@ -137,8 +155,8 @@ export class RingGaugeElement extends BaseElement {
     fillPos.needsUpdate = true;
 
     // Color shifts at high values
-    const fillColor = this.value > 0.9 ? this.palette.alert
-      : this.value > 0.7 ? this.palette.secondary
+    const fillColor = this.value > this.alertThreshold ? this.palette.alert
+      : this.value > this.warningThreshold ? this.palette.secondary
       : this.palette.primary;
     (this.fillRing.material as THREE.LineBasicMaterial).color.copy(fillColor);
     (this.fillRing.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;

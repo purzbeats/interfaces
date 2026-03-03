@@ -18,12 +18,22 @@ export class ConcentricRingsElement extends BaseElement {
   private segments: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { ringMin: 5, ringMax: 10, speedMin: 0.3, speedMax: 0.8, segments: 64, fadeExp: 1.0 },
+      { ringMin: 12, ringMax: 20, speedMin: 0.6, speedMax: 1.5, segments: 96, fadeExp: 0.7 },
+      { ringMin: 3, ringMax: 5, speedMin: 0.15, speedMax: 0.35, segments: 48, fadeExp: 1.5 },
+      { ringMin: 8, ringMax: 15, speedMin: 1.0, speedMax: 2.0, segments: 64, fadeExp: 0.5 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
-    this.maxRings = this.rng.int(5, 10);
-    this.rippleSpeed = this.rng.float(0.3, 0.8);
-    this.segments = 64;
+    this.maxRings = this.rng.int(p.ringMin, p.ringMax);
+    this.rippleSpeed = this.rng.float(p.speedMin, p.speedMax);
+    this.segments = p.segments;
+    (this as any)._fadeExp = p.fadeExp;
 
     for (let i = 0; i < this.maxRings; i++) {
       const positions = new Float32Array((this.segments + 1) * 3);
@@ -66,7 +76,7 @@ export class ConcentricRingsElement extends BaseElement {
 
       // Ease out the expansion — starts fast, slows down
       const easedRadius = maxR * (1 - Math.pow(1 - phase, 2.5));
-      const fadeOut = 1 - phase; // fade as it expands
+      const fadeOut = Math.pow(1 - phase, (this as any)._fadeExp); // fade as it expands
 
       const positions = this.ringMeshes[i].geometry.getAttribute('position') as THREE.BufferAttribute;
       for (let s = 0; s <= this.segments; s++) {

@@ -24,12 +24,27 @@ export class ThreatMeterElement extends BaseElement {
   private cycleTimer: number = 0;
   private alertTimer: number = 0;
   private renderAccum: number = 0;
+  private springK: number = 20;
+  private springDamping: number = 4;
+  private zoneBreaks: [number, number] = [0.4, 0.7];
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { segCount: [12, 24] as const, springK: 20, damping: 4, sweepCycle: 2.5, zoneBreaks: [0.4, 0.7] as [number, number] },
+      { segCount: [24, 40] as const, springK: 35, damping: 2.5, sweepCycle: 1.2, zoneBreaks: [0.3, 0.55] as [number, number] },
+      { segCount: [6, 12] as const, springK: 10, damping: 6, sweepCycle: 4.0, zoneBreaks: [0.5, 0.8] as [number, number] },
+      { segCount: [16, 30] as const, springK: 50, damping: 1.5, sweepCycle: 1.8, zoneBreaks: [0.25, 0.5] as [number, number] },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.segCount = this.rng.int(12, 24);
+    this.segCount = this.rng.int(p.segCount[0], p.segCount[1]);
     this.targetValue = this.rng.float(0.2, 0.7);
+    this.springK = p.springK + this.rng.float(-2, 2);
+    this.springDamping = p.damping + this.rng.float(-0.3, 0.3);
+    this.zoneBreaks = p.zoneBreaks;
 
     const gap = Math.max(2, Math.floor(Math.min(w, h) * 0.005));
     const segH = (h - gap * (this.segCount + 1)) / this.segCount;
@@ -97,9 +112,9 @@ export class ThreatMeterElement extends BaseElement {
     }
 
     // Spring physics
-    const force = (this.targetValue - this.value) * 20;
+    const force = (this.targetValue - this.value) * this.springK;
     this.velocity += force * dt;
-    this.velocity *= Math.exp(-4 * dt);
+    this.velocity *= Math.exp(-this.springDamping * dt);
     this.value += this.velocity * dt;
     this.value = Math.max(0, Math.min(1.1, this.value));
 
@@ -111,9 +126,9 @@ export class ThreatMeterElement extends BaseElement {
       const mat = this.segments[i].material as THREE.MeshBasicMaterial;
 
       // Color zones: green -> yellow -> red
-      if (fraction < 0.4) {
+      if (fraction < this.zoneBreaks[0]) {
         mat.color.copy(this.palette.primary);
-      } else if (fraction < 0.7) {
+      } else if (fraction < this.zoneBreaks[1]) {
         mat.color.copy(this.palette.secondary);
       } else {
         mat.color.copy(this.alertTimer > 0 ? this.palette.alert : this.palette.alert);

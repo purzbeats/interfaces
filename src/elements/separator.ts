@@ -31,13 +31,22 @@ export class SeparatorElement extends BaseElement {
   private hazardBgMat: THREE.MeshBasicMaterial | null = null;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { styleWeights: [0, 1, 2, 3, 4], tickMin: 5, tickMax: 15, cornerScale: 0.15, stripeScale: 0.4 },
+      { styleWeights: [1, 1, 3, 3, 4], tickMin: 12, tickMax: 30, cornerScale: 0.08, stripeScale: 0.2 },
+      { styleWeights: [0, 0, 2, 2, 0], tickMin: 3, tickMax: 7, cornerScale: 0.25, stripeScale: 0.6 },
+      { styleWeights: [2, 3, 4, 4, 3], tickMin: 8, tickMax: 20, cornerScale: 0.1, stripeScale: 0.3 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
     const verts: number[] = [];
-    const style = this.rng.int(0, 4);
+    const style = p.styleWeights[this.rng.int(0, p.styleWeights.length - 1)];
 
     switch (style) {
       case 0: { // Corner brackets
-        const cs = Math.min(w, h) * 0.15;
+        const cs = Math.min(w, h) * p.cornerScale;
         verts.push(x, y + cs, 0, x, y, 0, x, y, 0, x + cs, y, 0);
         verts.push(x + w - cs, y, 0, x + w, y, 0, x + w, y, 0, x + w, y + cs, 0);
         verts.push(x + w, y + h - cs, 0, x + w, y + h, 0, x + w, y + h, 0, x + w - cs, y + h, 0);
@@ -46,7 +55,7 @@ export class SeparatorElement extends BaseElement {
       }
       case 1: { // Horizontal lines with ticks
         verts.push(x, y + h / 2, 0, x + w, y + h / 2, 0);
-        const tickCount = this.rng.int(5, 15);
+        const tickCount = this.rng.int(p.tickMin, p.tickMax);
         for (let i = 0; i <= tickCount; i++) {
           const tx = x + (w / tickCount) * i;
           const tickH = (i % 5 === 0) ? h * 0.3 : h * 0.15;
@@ -88,7 +97,7 @@ export class SeparatorElement extends BaseElement {
         this.group.add(this.hazardBg);
 
         // Diagonal stripes: extend well beyond bounds for drift headroom
-        const stripe = Math.min(w, h) * 0.4;
+        const stripe = Math.min(w, h) * p.stripeScale;
         this.hazardStripeSpacing = stripe;
         const extra = w + h; // enough headroom for drift
         const stripeVerts: number[] = [];

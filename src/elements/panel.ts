@@ -14,16 +14,25 @@ export class PanelElement extends BaseElement {
   private cornerSize: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { cornerMin: 0.02, cornerMax: 0.06, headerChance: 0.6, fillOpacity: 0.3, headerRatio: 0.08 },
+      { cornerMin: 0.005, cornerMax: 0.02, headerChance: 0.9, fillOpacity: 0.45, headerRatio: 0.12 },
+      { cornerMin: 0.06, cornerMax: 0.12, headerChance: 0.2, fillOpacity: 0.15, headerRatio: 0.05 },
+      { cornerMin: 0.10, cornerMax: 0.18, headerChance: 0.5, fillOpacity: 0.5, headerRatio: 0.15 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    this.hasHeader = this.rng.chance(0.6);
-    this.cornerSize = Math.min(w, h) * this.rng.float(0.02, 0.06);
+    this.hasHeader = this.rng.chance(p.headerChance);
+    this.cornerSize = Math.min(w, h) * this.rng.float(p.cornerMin, p.cornerMax);
 
     // Background fill
     const fillGeo = new THREE.PlaneGeometry(w, h);
     const fillMat = new THREE.MeshBasicMaterial({
       color: this.palette.bg,
       transparent: true,
-      opacity: 0.3,
+      opacity: p.fillOpacity,
     });
     this.fillMesh = new THREE.Mesh(fillGeo, fillMat);
     this.fillMesh.position.set(x + w / 2, y + h / 2, 0);
@@ -41,7 +50,7 @@ export class PanelElement extends BaseElement {
 
     // Header bar
     if (this.hasHeader) {
-      const headerH = Math.min(h * 0.08, 12);
+      const headerH = Math.min(h * p.headerRatio, 12 + (p.headerRatio - 0.08) * 60);
       const headerGeo = new THREE.PlaneGeometry(w - 2, headerH);
       const headerMat = new THREE.MeshBasicMaterial({
         color: this.palette.primary,

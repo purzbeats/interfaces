@@ -19,18 +19,27 @@ export class ParticleFieldElement extends BaseElement {
   private maxConnections: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { count: 70, speedRange: 30, sizeMul: 0.005, connMul: 0.17, maxConnMul: 4 },      // Standard
+      { count: 150, speedRange: 50, sizeMul: 0.008, connMul: 0.25, maxConnMul: 5 },     // Dense/Intense
+      { count: 25, speedRange: 15, sizeMul: 0.004, connMul: 0.10, maxConnMul: 3 },      // Minimal/Sparse
+      { count: 100, speedRange: 60, sizeMul: 0.012, connMul: 0.30, maxConnMul: 6 },     // Exotic/Alt
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    const count = this.rng.int(50, 100);
-    this.connectionThreshold = Math.min(w, h) * this.rng.float(0.12, 0.22);
-    this.maxConnections = count * 4;
+    const count = p.count + this.rng.int(-5, 5);
+    this.connectionThreshold = Math.min(w, h) * (p.connMul + this.rng.float(-0.02, 0.02));
+    this.maxConnections = count * p.maxConnMul;
 
     // Initialize particles
     for (let i = 0; i < count; i++) {
       this.particles.push({
         x: x + this.rng.float(0, w),
         y: y + this.rng.float(0, h),
-        vx: this.rng.float(-30, 30),
-        vy: this.rng.float(-30, 30),
+        vx: this.rng.float(-p.speedRange, p.speedRange),
+        vy: this.rng.float(-p.speedRange, p.speedRange),
       });
     }
 
@@ -42,7 +51,7 @@ export class ParticleFieldElement extends BaseElement {
       color: this.palette.primary,
       transparent: true,
       opacity: 0,
-      size: Math.max(3, Math.min(w, h) * 0.005),
+      size: Math.max(3, Math.min(w, h) * p.sizeMul),
       sizeAttenuation: false,
     }));
     this.group.add(this.pointsMesh);

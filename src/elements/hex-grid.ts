@@ -18,13 +18,22 @@ export class HexGridElement extends BaseElement {
   private activationSpeed: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { hexSizeMin: 0.04, hexSizeMax: 0.08, actSpeed: [2, 6], fillMin: 0.05, fillMax: 0.4, delayFactor: 0.15 },   // Standard
+      { hexSizeMin: 0.025, hexSizeMax: 0.045, actSpeed: [5, 10], fillMin: 0.15, fillMax: 0.7, delayFactor: 0.08 }, // Dense
+      { hexSizeMin: 0.07, hexSizeMax: 0.12, actSpeed: [1, 3], fillMin: 0.02, fillMax: 0.2, delayFactor: 0.25 },    // Minimal
+      { hexSizeMin: 0.03, hexSizeMax: 0.06, actSpeed: [0.5, 2], fillMin: 0.3, fillMax: 0.9, delayFactor: 0.04 },   // Exotic
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    const hexR = Math.min(w, h) * this.rng.float(0.04, 0.08);
+    const hexR = Math.min(w, h) * this.rng.float(p.hexSizeMin, p.hexSizeMax);
     const hexW = hexR * Math.sqrt(3);
     const hexH = hexR * 2;
     const cols = Math.floor(w / hexW);
     const rows = Math.floor(h / (hexH * 0.75));
-    this.activationSpeed = this.rng.float(2, 6);
+    this.activationSpeed = this.rng.float(p.actSpeed[0], p.actSpeed[1]);
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
@@ -78,8 +87,8 @@ export class HexGridElement extends BaseElement {
 
         // Staggered activation + random brightness targets
         const dist = Math.sqrt((col - cols / 2) ** 2 + (row - rows / 2) ** 2);
-        this.cellActivation.push(-dist * 0.15); // negative = delay
-        this.cellTargetBright.push(this.rng.float(0.05, 0.4));
+        this.cellActivation.push(-dist * p.delayFactor); // negative = delay
+        this.cellTargetBright.push(this.rng.float(p.fillMin, p.fillMax));
       }
     }
   }

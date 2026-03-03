@@ -21,7 +21,7 @@ export class HarmonographElement extends BaseElement {
   private frameLine!: THREE.LineSegments;
   private frameMat!: THREE.LineBasicMaterial;
 
-  private readonly MAX_POINTS = 4000;
+  private maxPoints: number = 4000;
   private positions!: Float32Array;
   private head: number = 0;
   private traceTime: number = 0;
@@ -47,23 +47,44 @@ export class HarmonographElement extends BaseElement {
 
   // Cycle management
   private cycleAge: number = 0;
-  private readonly CYCLE_DURATION = 8; // seconds before reset
+  private cycleDuration: number = 8;
   private fadeOutStart: number = 0;
+  private dampRange: [number, number] = [0.02, 0.06];
+  private dampRRange: [number, number] = [0.01, 0.03];
+  private ampRScale: [number, number] = [0.05, 0.2];
+  private freqRRange: [number, number] = [0.3, 1.2];
+  private baseFreqRange: [number, number] = [1.5, 3.0];
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presetList = [
+      { maxPoints: 4000, cycleDuration: 8, dampRange: [0.02, 0.06] as [number, number], dampRRange: [0.01, 0.03] as [number, number], ampRScale: [0.05, 0.2] as [number, number], freqRRange: [0.3, 1.2] as [number, number], baseFreqRange: [1.5, 3.0] as [number, number] },
+      { maxPoints: 8000, cycleDuration: 6, dampRange: [0.01, 0.03] as [number, number], dampRRange: [0.005, 0.015] as [number, number], ampRScale: [0.1, 0.3] as [number, number], freqRRange: [0.8, 2.5] as [number, number], baseFreqRange: [2.5, 5.0] as [number, number] },
+      { maxPoints: 2000, cycleDuration: 12, dampRange: [0.05, 0.1] as [number, number], dampRRange: [0.03, 0.06] as [number, number], ampRScale: [0.02, 0.08] as [number, number], freqRRange: [0.1, 0.5] as [number, number], baseFreqRange: [1.0, 2.0] as [number, number] },
+      { maxPoints: 6000, cycleDuration: 10, dampRange: [0.005, 0.02] as [number, number], dampRRange: [0.003, 0.01] as [number, number], ampRScale: [0.15, 0.35] as [number, number], freqRRange: [1.5, 4.0] as [number, number], baseFreqRange: [3.0, 6.0] as [number, number] },
+    ];
+    const pr = presetList[variant];
+    this.maxPoints = pr.maxPoints;
+    this.cycleDuration = pr.cycleDuration;
+    this.dampRange = pr.dampRange;
+    this.dampRRange = pr.dampRRange;
+    this.ampRScale = pr.ampRScale;
+    this.freqRRange = pr.freqRRange;
+    this.baseFreqRange = pr.baseFreqRange;
+
     this.glitchAmount = 4;
     const { x, y, w, h } = this.px;
 
     this.cx = x + w / 2;
     this.cy = y + h / 2;
     const radius = Math.min(w, h) * 0.42;
-    this.fadeOutStart = this.CYCLE_DURATION - 2;
+    this.fadeOutStart = this.cycleDuration - 2;
 
     // Randomize pendulum params
     this.randomizeParams(radius);
 
     // Main trace line
-    this.positions = new Float32Array(this.MAX_POINTS * 3);
+    this.positions = new Float32Array(this.maxPoints * 3);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
     geo.setDrawRange(0, 0);
@@ -132,22 +153,22 @@ export class HarmonographElement extends BaseElement {
       [7, 8], [2, 5], [3, 7], [4, 7], [5, 8], [6, 7],
     ];
     const [a, b] = this.rng.pick(ratios);
-    const baseFreq = this.rng.float(1.5, 3.0);
+    const baseFreq = this.rng.float(this.baseFreqRange[0], this.baseFreqRange[1]);
 
     this.freqX = baseFreq * a;
     this.freqY = baseFreq * b;
     this.phaseX = this.rng.float(0, Math.PI * 2);
     this.phaseY = this.rng.float(0, Math.PI * 2);
-    this.dampX = this.rng.float(0.02, 0.06);
-    this.dampY = this.rng.float(0.02, 0.06);
+    this.dampX = this.rng.float(this.dampRange[0], this.dampRange[1]);
+    this.dampY = this.rng.float(this.dampRange[0], this.dampRange[1]);
     this.ampX = radius * this.rng.float(0.7, 1.0);
     this.ampY = radius * this.rng.float(0.7, 1.0);
 
     // Third rotary pendulum adds wobble
-    this.freqR = this.rng.float(0.3, 1.2);
+    this.freqR = this.rng.float(this.freqRRange[0], this.freqRRange[1]);
     this.phaseR = this.rng.float(0, Math.PI * 2);
-    this.dampR = this.rng.float(0.01, 0.03);
-    this.ampR = radius * this.rng.float(0.05, 0.2);
+    this.dampR = this.rng.float(this.dampRRange[0], this.dampRRange[1]);
+    this.ampR = radius * this.rng.float(this.ampRScale[0], this.ampRScale[1]);
 
     // Reset trace state
     this.head = 0;
@@ -173,7 +194,7 @@ export class HarmonographElement extends BaseElement {
     this.cycleAge += dt;
 
     // Reset cycle when done
-    if (this.cycleAge >= this.CYCLE_DURATION) {
+    if (this.cycleAge >= this.cycleDuration) {
       const radius = Math.min(this.px.w, this.px.h) * 0.42;
       this.randomizeParams(radius);
       // Clear buffer
@@ -197,8 +218,8 @@ export class HarmonographElement extends BaseElement {
       this.positions[idx + 2] = 1;
 
       this.head++;
-      if (this.head >= this.MAX_POINTS) {
-        this.head = this.MAX_POINTS - 1;
+      if (this.head >= this.maxPoints) {
+        this.head = this.maxPoints - 1;
         break;
       }
     }
@@ -206,7 +227,7 @@ export class HarmonographElement extends BaseElement {
     // Fade out near end of cycle
     let cycleFade = 1;
     if (this.cycleAge > this.fadeOutStart) {
-      cycleFade = 1 - (this.cycleAge - this.fadeOutStart) / (this.CYCLE_DURATION - this.fadeOutStart);
+      cycleFade = 1 - (this.cycleAge - this.fadeOutStart) / (this.cycleDuration - this.fadeOutStart);
     }
 
     // Update draw range — recent portion is bright, older is dim

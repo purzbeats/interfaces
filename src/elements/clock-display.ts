@@ -26,11 +26,24 @@ export class ClockDisplayElement extends BaseElement {
   private label: string = '';
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { timeMax: 86400, scales: [1, 1, 1, 10, 60], labels: ['MISSION TIME', 'ELAPSED', 'T+', 'SYSTEM CLOCK', 'UTC'], fontScale: 0.45, blinkRate: 0.5, sweepOpacity: 0.6, format: 'full' as const },
+      { timeMax: 86400, scales: [10, 60, 60, 100], labels: ['FAST CLOCK', 'ACCEL TIME', 'WARP T+'], fontScale: 0.55, blinkRate: 0.25, sweepOpacity: 0.9, format: 'full' as const },
+      { timeMax: 3600, scales: [1, 1], labels: ['ELAPSED', 'T+', 'TIMER'], fontScale: 0.35, blinkRate: 1.0, sweepOpacity: 0.3, format: 'mmss' as const },
+      { timeMax: 86400 * 7, scales: [1, 10, 1], labels: ['EPOCH', 'STARDATE', 'SOL'], fontScale: 0.50, blinkRate: 0.15, sweepOpacity: 0.5, format: 'compact' as const },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    this.missionTime = this.rng.float(0, 86400); // random start within 24h
-    this.timeScale = this.rng.pick([1, 1, 1, 10, 60]);
-    this.label = this.rng.pick(['MISSION TIME', 'ELAPSED', 'T+', 'SYSTEM CLOCK', 'UTC']);
+    this.missionTime = this.rng.float(0, p.timeMax);
+    this.timeScale = this.rng.pick(p.scales);
+    this.label = this.rng.pick(p.labels);
+    (this as any)._fontScale = p.fontScale + this.rng.float(-0.03, 0.03);
+    (this as any)._blinkRate = p.blinkRate;
+    (this as any)._sweepOpacity = p.sweepOpacity;
+    (this as any)._format = p.format;
 
     const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
@@ -85,7 +98,7 @@ export class ClockDisplayElement extends BaseElement {
 
     // Blink colon
     this.colonTimer += dt;
-    if (this.colonTimer >= 0.5) {
+    if (this.colonTimer >= (this as any)._blinkRate) {
       this.colonTimer = 0;
       this.colonVisible = !this.colonVisible;
     }
@@ -95,7 +108,7 @@ export class ClockDisplayElement extends BaseElement {
     const sweepPos = this.sweepLine.geometry.getAttribute('position') as THREE.BufferAttribute;
     sweepPos.setX(1, x + w * secFrac);
     sweepPos.needsUpdate = true;
-    (this.sweepLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.6;
+    (this.sweepLine.material as THREE.LineBasicMaterial).opacity = opacity * (this as any)._sweepOpacity;
 
     // Render canvas at reduced rate
     this.renderAccum += dt;
@@ -119,13 +132,22 @@ export class ClockDisplayElement extends BaseElement {
     const ms = Math.floor((t % 1) * 1000);
 
     const colon = this.colonVisible || this.glitchTimer > 0 ? ':' : ' ';
-    const timeStr = `${String(hours).padStart(2, '0')}${colon}${String(mins).padStart(2, '0')}${colon}${String(secs).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+    const fmt = (this as any)._format;
+    let timeStr: string;
+    if (fmt === 'mmss') {
+      timeStr = `${String(mins).padStart(2, '0')}${colon}${String(secs).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+    } else if (fmt === 'compact') {
+      timeStr = `${String(hours).padStart(2, '0')}${colon}${String(mins).padStart(2, '0')}${colon}${String(secs).padStart(2, '0')}`;
+    } else {
+      timeStr = `${String(hours).padStart(2, '0')}${colon}${String(mins).padStart(2, '0')}${colon}${String(secs).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+    }
 
     const primaryHex = '#' + this.palette.primary.getHexString();
     const dimHex = '#' + this.palette.dim.getHexString();
 
     // Time display with phosphor glow — constrain to both height and width
-    const heightSize = Math.floor(canvas.height * 0.45);
+    const fScale = (this as any)._fontScale;
+    const heightSize = Math.floor(canvas.height * fScale);
     const widthSize = Math.floor(canvas.width / (timeStr.length * 0.65));
     const bigSize = Math.max(8, Math.min(heightSize, widthSize));
     ctx.font = `bold ${bigSize}px monospace`;

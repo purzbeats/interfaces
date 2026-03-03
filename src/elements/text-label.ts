@@ -29,12 +29,25 @@ export class TextLabelElement extends BaseElement {
   private isRevealed: boolean = false;
   private renderAccum: number = 0;
   private dirty: boolean = true;
+  private blinkMult: number = 1.0;
+  private jitterAmt: number = 0.5;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { revealMin: 15, revealMax: 40, blinkMult: 1.0, jitterAmt: 0.5 },    // Standard
+      { revealMin: 60, revealMax: 120, blinkMult: 1.5, jitterAmt: 1.2 },   // Dense (fast reveal, more jitter)
+      { revealMin: 5, revealMax: 12, blinkMult: 0.5, jitterAmt: 0.15 },    // Minimal (slow, smooth)
+      { revealMin: 25, revealMax: 50, blinkMult: 3.0, jitterAmt: 2.0 },    // Exotic (rapid blink, heavy jitter)
+    ];
+    const p = presets[variant];
+    this.blinkMult = p.blinkMult;
+    this.jitterAmt = p.jitterAmt;
+
     this.glitchAmount = 6;
     const { x, y, w, h } = this.px;
     this.text = this.rng.pick(LABELS);
-    this.revealSpeed = this.rng.float(15, 40);
+    this.revealSpeed = this.rng.float(p.revealMin, p.revealMax);
 
     // Higher-res canvas for crisp text
     const scale = Math.min(2, window.devicePixelRatio);
@@ -71,7 +84,7 @@ export class TextLabelElement extends BaseElement {
     // Dirty flag: only re-render when text changes or cursor blinks
     this.cursorBlink += dt;
     const newIndex = Math.floor(this.revealIndex);
-    const cursorState = Math.sin(this.cursorBlink * 6) > 0;
+    const cursorState = Math.sin(this.cursorBlink * 6 * this.blinkMult) > 0;
 
     // Emit keystroke sound when a new character is revealed
     if (newIndex !== prevIndex && newIndex <= this.text.length) {
@@ -119,7 +132,7 @@ export class TextLabelElement extends BaseElement {
     if (isGlitching) {
       drawGlowText(ctx, displayText, 6, canvas.height / 2, primaryHex, 12);
     } else {
-      drawJitteredText(ctx, displayText, 6, canvas.height / 2, primaryHex, this.cursorBlink, 0.5, 6);
+      drawJitteredText(ctx, displayText, 6, canvas.height / 2, primaryHex, this.cursorBlink, this.jitterAmt, 6);
     }
 
     // Blinking cursor

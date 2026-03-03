@@ -22,14 +22,23 @@ export class OscilloscopeElement extends BaseElement {
   private freqDrift: number = 0;
   private liveWaveform: Float32Array | null = null;
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { numPoints: 256, traceCount: [3, 6] as const, freqX: [1, 4] as const, freqY: [1, 4] as const, drift: [0.05, 0.2] as const },
+      { numPoints: 512, traceCount: [5, 8] as const, freqX: [2, 7] as const, freqY: [2, 7] as const, drift: [0.15, 0.4] as const },
+      { numPoints: 128, traceCount: [2, 3] as const, freqX: [1, 2] as const, freqY: [1, 2] as const, drift: [0.02, 0.08] as const },
+      { numPoints: 384, traceCount: [4, 7] as const, freqX: [3, 8] as const, freqY: [1, 6] as const, drift: [0.2, 0.5] as const },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
-    this.numPoints = 256;
-    this.traceCount = this.rng.int(3, 6);
-    this.freqX = this.rng.float(1, 4);
-    this.freqY = this.rng.float(1, 4);
+    this.numPoints = p.numPoints;
+    this.traceCount = this.rng.int(p.traceCount[0], p.traceCount[1]);
+    this.freqX = this.rng.float(p.freqX[0], p.freqX[1]);
+    this.freqY = this.rng.float(p.freqY[0], p.freqY[1]);
     this.phaseShift = this.rng.float(0, Math.PI);
-    this.freqDrift = this.rng.float(0.05, 0.2);
+    this.freqDrift = this.rng.float(p.drift[0], p.drift[1]);
 
     for (let t = 0; t < this.traceCount; t++) {
       const positions = new Float32Array(this.numPoints * 3);

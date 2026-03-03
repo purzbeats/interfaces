@@ -21,16 +21,25 @@ export class WarpTunnelElement extends BaseElement {
   private expandSpeed: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { spawnMin: 0.3, spawnMax: 0.8, expandMin: 80, expandMax: 200, rayMin: 12, rayMax: 24, ringPoolSize: 8 },
+      { spawnMin: 0.1, spawnMax: 0.3, expandMin: 200, expandMax: 400, rayMin: 24, rayMax: 48, ringPoolSize: 14 },
+      { spawnMin: 0.8, spawnMax: 1.5, expandMin: 40, expandMax: 80, rayMin: 6, rayMax: 12, ringPoolSize: 5 },
+      { spawnMin: 0.05, spawnMax: 0.15, expandMin: 300, expandMax: 600, rayMin: 8, rayMax: 16, ringPoolSize: 12 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 5;
     const { x, y, w, h } = this.px;
     const cx = x + w / 2;
     const cy = y + h / 2;
     this.maxRadius = Math.sqrt(w * w + h * h) / 2;
-    this.spawnInterval = this.rng.float(0.3, 0.8);
-    this.expandSpeed = this.rng.float(80, 200);
+    this.spawnInterval = this.rng.float(p.spawnMin, p.spawnMax);
+    this.expandSpeed = this.rng.float(p.expandMin, p.expandMax);
 
     // Radial lines from center
-    const rayCount = this.rng.int(12, 24);
+    const rayCount = this.rng.int(p.rayMin, p.rayMax);
     const rayVerts: number[] = [];
     for (let i = 0; i < rayCount; i++) {
       const a = (i / rayCount) * Math.PI * 2;
@@ -47,7 +56,7 @@ export class WarpTunnelElement extends BaseElement {
     this.group.add(this.radialLines);
 
     // Ring pool
-    const ringCount = 8;
+    const ringCount = p.ringPoolSize;
     const segments = 48;
     for (let r = 0; r < ringCount; r++) {
       const verts = new Float32Array((segments + 1) * 3);

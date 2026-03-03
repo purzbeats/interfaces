@@ -21,11 +21,29 @@ export class DataCascadeElement extends BaseElement {
   private drops: number[] = [];
   private speeds: number[] = [];
   private chars: string = 'アイウエオカキクケコサシスセソタチツテト0123456789ABCDEF';
+  private trailLength: number = 6;
+  private fadeAlpha: number = 0.12;
+  private speedMin: number = 4;
+  private speedMax: number = 18;
   private renderAccum: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { sizeDivisor: 50, speedMin: 4, speedMax: 18, fadeAlpha: 0.12, trailLen: 6, charSet: 'アイウエオカキクケコサシスセソタチツテト0123456789ABCDEF' },           // Standard
+      { sizeDivisor: 70, speedMin: 12, speedMax: 35, fadeAlpha: 0.06, trailLen: 10, charSet: 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ0123456789ABCDEF' }, // Dense
+      { sizeDivisor: 30, speedMin: 2, speedMax: 8, fadeAlpha: 0.2, trailLen: 3, charSet: '01ABCDEF' },                                                              // Minimal
+      { sizeDivisor: 45, speedMin: 1, speedMax: 6, fadeAlpha: 0.04, trailLen: 12, charSet: '.:;|/\\[]{}()<>*#@!?$%&~^' },                                            // Exotic
+    ];
+    const p = presets[variant];
+    this.chars = p.charSet;
+    this.trailLength = p.trailLen;
+    this.fadeAlpha = p.fadeAlpha;
+    this.speedMin = p.speedMin;
+    this.speedMax = p.speedMax;
+
     const { x, y, w, h } = this.px;
-    const charSize = Math.max(10, Math.floor(Math.min(w, h) / 50));
+    const charSize = Math.max(10, Math.floor(Math.min(w, h) / p.sizeDivisor));
     this.columns = Math.max(3, Math.floor(w / charSize));
     this.rows = Math.max(3, Math.floor(h / charSize));
 
@@ -39,7 +57,7 @@ export class DataCascadeElement extends BaseElement {
 
     for (let c = 0; c < this.columns; c++) {
       this.drops.push(this.rng.float(-this.rows, 0));
-      this.speeds.push(this.rng.float(4, 18));
+      this.speeds.push(this.rng.float(p.speedMin, p.speedMax));
     }
 
     const geo = new THREE.PlaneGeometry(w, h);
@@ -76,7 +94,7 @@ export class DataCascadeElement extends BaseElement {
       this.drops[c] += dt * this.speeds[c];
       if (this.drops[c] > this.rows + 5) {
         this.drops[c] = this.rng.float(-8, -2);
-        this.speeds[c] = this.rng.float(4, 18);
+        this.speeds[c] = this.rng.float(this.speedMin, this.speedMax);
       }
     }
 
@@ -100,7 +118,7 @@ export class DataCascadeElement extends BaseElement {
     const charH = canvas.height / this.rows;
 
     // Fade existing content (trail effect)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+    ctx.fillStyle = `rgba(0, 0, 0, ${this.fadeAlpha})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.font = `${Math.floor(charH * 0.85)}px monospace`;
@@ -121,7 +139,7 @@ export class DataCascadeElement extends BaseElement {
       ctx.fillText(ch, c * charW + charW / 2, headRow * charH + charH / 2);
 
       // Trail — dimmer characters behind the head
-      for (let t = 1; t < 6; t++) {
+      for (let t = 1; t < this.trailLength; t++) {
         const trailRow = headRow - t;
         if (trailRow < 0 || trailRow >= this.rows) continue;
         const trailCh = this.chars[Math.floor(Math.random() * this.chars.length)];

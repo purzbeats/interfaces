@@ -27,11 +27,24 @@ export class SpectrogramElement extends BaseElement {
   private renderAccum: number = 0;
   private readonly RENDER_INTERVAL = 1 / 12;
   private liveSpectrum: Float32Array | null = null;
+  private springK: number = 8;
+  private springDamping: number = 4;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { bandsDivisor: 8, rowsDivisor: 4, springK: 8, damping: 4 },
+      { bandsDivisor: 4, rowsDivisor: 2, springK: 15, damping: 3 },
+      { bandsDivisor: 16, rowsDivisor: 8, springK: 4, damping: 6 },
+      { bandsDivisor: 6, rowsDivisor: 3, springK: 20, damping: 2 },
+    ];
+    const p = presets[variant];
+
     const { x, y, w, h } = this.px;
-    this.freqBands = Math.max(16, Math.min(128, Math.floor(w / 8)));
-    this.scrollRows = Math.max(32, Math.min(200, Math.floor(h / 4)));
+    this.freqBands = Math.max(16, Math.min(128, Math.floor(w / p.bandsDivisor)));
+    this.scrollRows = Math.max(32, Math.min(200, Math.floor(h / p.rowsDivisor)));
+    this.springK = p.springK + this.rng.float(-1, 1);
+    this.springDamping = p.damping + this.rng.float(-0.3, 0.3);
 
     this.bandValues = new Array(this.freqBands).fill(0);
     this.bandTargets = new Array(this.freqBands).fill(0);
@@ -135,9 +148,9 @@ export class SpectrogramElement extends BaseElement {
 
     // Spring animate band values
     for (let i = 0; i < this.freqBands; i++) {
-      const force = (this.bandTargets[i] - this.bandValues[i]) * 8;
+      const force = (this.bandTargets[i] - this.bandValues[i]) * this.springK;
       this.bandVelocities[i] += force * dt;
-      this.bandVelocities[i] *= Math.exp(-4 * dt);
+      this.bandVelocities[i] *= Math.exp(-this.springDamping * dt);
       this.bandValues[i] += this.bandVelocities[i] * dt;
     }
 

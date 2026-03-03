@@ -22,17 +22,27 @@ export class BinaryStreamElement extends BaseElement {
   private scrollSpeed: number = 0;
   private isHex: boolean = false;
   private renderAccum: number = 0;
-  private readonly RENDER_INTERVAL = 1 / 15;
+  private RENDER_INTERVAL = 1 / 15;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { cw: 8, ch: 14, hexChance: 0.4, speedMin: 8, speedMax: 25, renderFps: 15 },    // Standard
+      { cw: 5, ch: 10, hexChance: 0.6, speedMin: 20, speedMax: 50, renderFps: 24 },    // Dense
+      { cw: 12, ch: 20, hexChance: 0.2, speedMin: 3, speedMax: 10, renderFps: 8 },     // Minimal
+      { cw: 6, ch: 12, hexChance: 0.8, speedMin: 5, speedMax: 15, renderFps: 12 },     // Exotic (mostly hex, moderate)
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 3;
     const { x, y, w, h } = this.px;
-    const charW = 8;
-    const charH = 14;
+    const charW = p.cw;
+    const charH = p.ch;
     this.columns = Math.max(4, Math.floor(w / charW));
     this.rows = Math.max(1, Math.floor(h / charH));
-    this.isHex = this.rng.chance(0.4);
-    this.scrollSpeed = this.rng.float(8, 25);
+    this.isHex = this.rng.chance(p.hexChance);
+    this.scrollSpeed = this.rng.float(p.speedMin, p.speedMax);
+    this.RENDER_INTERVAL = 1 / p.renderFps;
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.columns * charW;

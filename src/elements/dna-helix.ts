@@ -34,14 +34,23 @@ export class DnaHelixElement extends BaseElement {
   private alertFlashPhase: number = 0;
 
   build(): void {
+    const variant = this.rng.int(0, 3);
+    const presets = [
+      { pointScale: 0.15, radiusScale: 0.25, rotMin: 1.2, rotMax: 2.5, scrollMin: 15, scrollMax: 35, bobSize: 0.008 },
+      { pointScale: 0.25, radiusScale: 0.20, rotMin: 2.5, rotMax: 4.5, scrollMin: 30, scrollMax: 60, bobSize: 0.005 },
+      { pointScale: 0.08, radiusScale: 0.30, rotMin: 0.5, rotMax: 1.0, scrollMin: 8, scrollMax: 15, bobSize: 0.012 },
+      { pointScale: 0.20, radiusScale: 0.15, rotMin: 3.0, rotMax: 5.0, scrollMin: 50, scrollMax: 80, bobSize: 0.006 },
+    ];
+    const p = presets[variant];
+
     this.glitchAmount = 4;
     const { x, y, w, h } = this.px;
 
-    this.numPoints = Math.max(40, Math.min(60, Math.floor(h * 0.15)));
+    this.numPoints = Math.max(40, Math.min(80, Math.floor(h * p.pointScale)));
     this.numPairs = this.numPoints;
-    this.helixRadius = w * 0.25;
-    this.rotationSpeed = this.rng.float(1.2, 2.5);
-    this.scrollSpeed = this.rng.float(15, 35);
+    this.helixRadius = w * p.radiusScale;
+    this.rotationSpeed = this.rng.float(p.rotMin, p.rotMax);
+    this.scrollSpeed = this.rng.float(p.scrollMin, p.scrollMax);
 
     // Assign random base pair types
     for (let i = 0; i < this.numPairs; i++) {
@@ -95,7 +104,7 @@ export class DnaHelixElement extends BaseElement {
       vertexColors: true,
       transparent: true,
       opacity: 0,
-      size: Math.max(2, Math.min(w, h) * 0.008),
+      size: Math.max(2, Math.min(w, h) * p.bobSize),
       sizeAttenuation: false,
     }));
     this.group.add(this.bobPoints);
