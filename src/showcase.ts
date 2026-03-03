@@ -414,9 +414,9 @@ export class ShowcaseMode {
     this.wrapper.add(this.element.group);
     this.ctx.scene.add(this.wrapper);
 
-    // Immediately activate
+    // Immediately activate — skip boot animation in showcase
     this.element.group.visible = true;
-    this.element.stateMachine.transition('activating');
+    this.element.stateMachine.transition('active');
 
     this.updateOverlay();
   }

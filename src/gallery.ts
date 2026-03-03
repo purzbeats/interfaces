@@ -706,9 +706,9 @@ export class GalleryMode {
       wrapper.add(element.group);
       this.ctx.scene.add(wrapper);
 
-      // Immediately activate
+      // Immediately activate — skip boot animation in gallery
       element.group.visible = true;
-      element.stateMachine.transition('activating');
+      element.stateMachine.transition('active');
 
       this.elements.push(element);
       this.wrappers.push(wrapper);
