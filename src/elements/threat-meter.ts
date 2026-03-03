@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class ThreatMeterElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'threat-meter',
-    meta: { shape: 'linear', roles: ['gauge'], moods: ['tactical'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['gauge'], moods: ['tactical'], bandAffinity: 'bass', audioSensitivity: 1.2, sizes: ['works-small'] },
   };
   private segments: THREE.Mesh[] = [];
   private borderLines!: THREE.LineSegments;

@@ -16,7 +16,7 @@ const LABELS = [
 export class TextLabelElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'text-label',
-    meta: { shape: 'linear', roles: ['text'], moods: ['ambient', 'tactical'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['text'], moods: ['ambient', 'tactical'], bandAffinity: 'bass', audioSensitivity: 0.6, sizes: ['works-small'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

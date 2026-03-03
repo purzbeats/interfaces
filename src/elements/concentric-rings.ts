@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class ConcentricRingsElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'concentric-rings',
-    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient'], sizes: ['needs-medium'] },
+    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient'], bandAffinity: 'bass', sizes: ['needs-medium'] },
   };
   private ringMeshes: THREE.Line[] = [];
   private ringPhases: number[] = [];

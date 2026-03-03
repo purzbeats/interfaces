@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class HexTunnelElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'hex-tunnel',
-    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient', 'tactical'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient', 'tactical'], bandAffinity: 'sub', sizes: ['needs-medium', 'needs-large'] },
   };
   private rings: THREE.Line[] = [];
   private ringPhases: number[] = [];

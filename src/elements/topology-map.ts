@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class TopologyMapElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'topology-map',
-    meta: { shape: 'rectangular', roles: ['scanner', 'decorative'], moods: ['tactical', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['scanner', 'decorative'], moods: ['tactical', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private contourLines: THREE.LineSegments[] = [];
   private noiseField: number[] = [];

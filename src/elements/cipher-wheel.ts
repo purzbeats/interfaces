@@ -13,7 +13,7 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 export class CipherWheelElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'cipher-wheel',
-    meta: { shape: 'radial', roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

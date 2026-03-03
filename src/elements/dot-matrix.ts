@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class DotMatrixElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'dot-matrix',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], bandAffinity: 'high', sizes: ['needs-medium'] },
   };
   private dotMesh!: THREE.Points;
   private cols: number = 0;

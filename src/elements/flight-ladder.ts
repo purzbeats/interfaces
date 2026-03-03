@@ -10,7 +10,7 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
 export class FlightLadderElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'flight-ladder',
-    meta: { shape: 'linear', roles: ['gauge', 'text'], moods: ['tactical'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'linear', roles: ['gauge', 'text'], moods: ['tactical'], bandAffinity: 'mid', sizes: ['works-small', 'needs-medium'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

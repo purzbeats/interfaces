@@ -29,7 +29,7 @@ const BOOT_LINES = [
 export class BootSequenceElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'boot-sequence',
-    meta: { shape: 'rectangular', roles: ['text', 'data-display'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['text', 'data-display'], moods: ['diagnostic', 'ambient'], bandAffinity: 'bass', audioSensitivity: 0.6, sizes: ['needs-medium', 'needs-large'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

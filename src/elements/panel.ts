@@ -5,7 +5,7 @@ import type { ElementMeta } from './tags';
 export class PanelElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'panel',
-    meta: { shape: 'rectangular', roles: ['structural'], moods: ['ambient'], sizes: ['works-small', 'needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['structural'], moods: ['ambient'], bandAffinity: 'bass', sizes: ['works-small', 'needs-medium', 'needs-large'] },
   };
   private borderLines!: THREE.LineSegments;
   private fillMesh!: THREE.Mesh;

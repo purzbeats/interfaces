@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class MemoryMapElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'memory-map',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

@@ -10,7 +10,7 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
 export class UptimeCounterElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'uptime-counter',
-    meta: { shape: 'linear', roles: ['text', 'data-display'], moods: ['diagnostic', 'ambient'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['text', 'data-display'], moods: ['diagnostic', 'ambient'], bandAffinity: 'bass', audioSensitivity: 0.6, sizes: ['works-small'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

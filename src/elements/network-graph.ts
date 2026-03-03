@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class NetworkGraphElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'network-graph',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private nodePoints!: THREE.Points;
   private edgeLines!: THREE.LineSegments;

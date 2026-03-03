@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class DepthSounderElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'depth-sounder',
-    meta: { shape: 'rectangular', roles: ['data-display', 'scanner'], moods: ['tactical'], sizes: ['needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'scanner'], moods: ['tactical'], bandAffinity: 'sub', sizes: ['needs-medium'] },
   };
   private terrainLine!: THREE.Line;
   private gridLines!: THREE.LineSegments;

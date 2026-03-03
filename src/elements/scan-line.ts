@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class ScanLineElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'scan-line',
-    meta: { shape: 'linear', roles: ['scanner', 'decorative'], moods: ['ambient', 'tactical'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'linear', roles: ['scanner', 'decorative'], moods: ['ambient', 'tactical'], bandAffinity: 'high', sizes: ['works-small', 'needs-medium'] },
   };
   private scanLine!: THREE.Line;
   private trailMesh!: THREE.Mesh;

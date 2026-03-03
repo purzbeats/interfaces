@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class VoltageArcElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'voltage-arc',
-    meta: { shape: 'linear', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'linear', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], bandAffinity: 'sub', sizes: ['works-small', 'needs-medium'] },
   };
   private arcLines!: THREE.LineSegments;
   private electrodeLines!: THREE.LineSegments;

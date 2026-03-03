@@ -10,7 +10,7 @@ import type { AudioFrame } from '../audio/audio-reactive';
 export class SeismographElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'seismograph',
-    meta: { shape: 'linear', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'linear', roles: ['data-display', 'gauge'], moods: ['diagnostic'], bandAffinity: 'bass', audioSensitivity: 0.5, sizes: ['works-small', 'needs-medium'] },
   };
   private line!: THREE.Line;
   private numPoints: number = 0;

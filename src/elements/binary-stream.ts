@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class BinaryStreamElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'binary-stream',
-    meta: { shape: 'linear', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], bandAffinity: 'mid', sizes: ['works-small'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

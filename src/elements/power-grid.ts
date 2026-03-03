@@ -10,7 +10,7 @@ import type { ElementMeta } from './tags';
 export class PowerGridElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'power-grid',
-    meta: { shape: 'rectangular', roles: ['data-display', 'structural'], moods: ['diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'structural'], moods: ['diagnostic'], bandAffinity: 'bass', sizes: ['needs-medium', 'needs-large'] },
   };
   private treeLines!: THREE.LineSegments;
   private busLines!: THREE.LineSegments;

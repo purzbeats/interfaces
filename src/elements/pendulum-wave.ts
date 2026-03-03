@@ -10,7 +10,7 @@ import type { ElementMeta } from './tags';
 export class PendulumWaveElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'pendulum-wave',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private supportBeam!: THREE.LineSegments;
   private strings!: THREE.LineSegments;

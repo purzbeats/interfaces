@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class CoordGridElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'coord-grid',
-    meta: { shape: 'rectangular', roles: ['scanner', 'data-display'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['scanner', 'data-display'], moods: ['tactical'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private gridLines!: THREE.LineSegments;
   private pathLine!: THREE.Line;

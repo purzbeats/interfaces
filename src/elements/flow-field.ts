@@ -12,7 +12,7 @@ import type { ElementMeta } from './tags';
 export class FlowFieldElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'flow-field',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient', 'diagnostic'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private pointsMesh!: THREE.Points;
   private trailMesh!: THREE.Points;

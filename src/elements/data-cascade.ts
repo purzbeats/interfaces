@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class DataCascadeElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'data-cascade',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

@@ -12,7 +12,7 @@ import type { ElementMeta } from './tags';
 export class HarmonographElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'harmonograph',
-    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient', 'diagnostic'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private line!: THREE.Line;
   private lineMat!: THREE.LineBasicMaterial;

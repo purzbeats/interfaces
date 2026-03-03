@@ -30,7 +30,7 @@ interface Pulse {
 export class NeuralMeshElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'neural-mesh',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private neuronPoints!: THREE.Points;
   private neuronColors!: Float32Array;
@@ -353,16 +353,25 @@ export class NeuralMeshElement extends BaseElement {
 
   onIntensity(level: number): void {
     super.onIntensity(level);
-    if (level === 0) return;
-    // Fire neurons proportional to level
-    const fireCount = level;
+    if (level === 0) {
+      this.fireInterval = this.rng.float(0.3, 0.8);
+      return;
+    }
+    // Scale fire rate continuously with level
+    this.fireInterval = Math.max(0.05, 0.5 / level);
+    // Lower cascade threshold at high levels
+    const fireCount = level + (level >= 3 ? level : 0);
     for (let i = 0; i < fireCount; i++) {
       const idx = this.rng.int(0, this.neurons.length - 1);
       this.neurons[idx].cooldown = 0;
       this.fireNeuron(idx);
     }
+    if (level >= 4) {
+      for (const n of this.neurons) {
+        n.cooldown *= 0.3;
+      }
+    }
     if (level >= 5) {
-      // Cascade all — fire everything
       for (let i = 0; i < this.neurons.length; i++) {
         this.neurons[i].cooldown = 0;
         this.fireNeuron(i);

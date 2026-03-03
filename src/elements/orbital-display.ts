@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class OrbitalDisplayElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'orbital-display',
-    meta: { shape: 'radial', roles: ['data-display', 'decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['data-display', 'decorative'], moods: ['ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private orbitLines: THREE.Line[] = [];
   private particlePoints!: THREE.Points;

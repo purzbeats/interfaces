@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class PhaseIndicatorElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'phase-indicator',
-    meta: { shape: 'radial', roles: ['gauge'], moods: ['tactical', 'diagnostic'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'radial', roles: ['gauge'], moods: ['tactical', 'diagnostic'], bandAffinity: 'mid', sizes: ['works-small', 'needs-medium'] },
   };
   private tickRing!: THREE.LineSegments;
   private needle!: THREE.Line;

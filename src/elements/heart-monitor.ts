@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class HeartMonitorElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'heart-monitor',
-    meta: { shape: 'linear', roles: ['data-display', 'gauge'], moods: ['diagnostic', 'tactical'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'linear', roles: ['data-display', 'gauge'], moods: ['diagnostic', 'tactical'], bandAffinity: 'mid', sizes: ['works-small', 'needs-medium'] },
   };
   private line!: THREE.Line;
   private dot!: THREE.Points;
@@ -131,7 +131,13 @@ export class HeartMonitorElement extends BaseElement {
 
   onIntensity(level: number): void {
     super.onIntensity(level);
-    if (level === 0) return;
+    if (level === 0) {
+      this.bpm = this.rng.float(60, 120);
+      return;
+    }
+    // BPM scales subtly with intensity level
+    this.bpm = 60 + level * 20;
+    this.speed = this.rng.float(80, 160) * (1 + level * 0.1);
     if (level >= 5) {
       this.flatline = true;
       (this.line.material as THREE.LineBasicMaterial).color.copy(this.palette.alert);

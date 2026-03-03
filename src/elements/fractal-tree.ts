@@ -26,7 +26,7 @@ interface BranchSegment {
 export class FractalTreeElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'fractal-tree',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private linesMesh!: THREE.LineSegments;
   private lineMat!: THREE.LineBasicMaterial;

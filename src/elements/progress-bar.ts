@@ -5,7 +5,7 @@ import type { ElementMeta } from './tags';
 export class ProgressBarElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'progress-bar',
-    meta: { shape: 'linear', roles: ['gauge'], moods: ['diagnostic'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['gauge'], moods: ['diagnostic'], bandAffinity: 'bass', sizes: ['works-small'] },
   };
   private fillMesh!: THREE.Mesh;
   private borderLines!: THREE.LineSegments;

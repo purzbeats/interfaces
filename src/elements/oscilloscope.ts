@@ -10,7 +10,7 @@ import type { AudioFrame } from '../audio/audio-reactive';
 export class OscilloscopeElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'oscilloscope',
-    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], bandAffinity: 'bass', audioSensitivity: 0.5, sizes: ['needs-medium'] },
   };
   private traces: THREE.Line[] = [];
   private borderLines!: THREE.LineSegments;

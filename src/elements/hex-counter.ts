@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class HexCounterElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'hex-counter',
-    meta: { shape: 'linear', roles: ['text', 'data-display'], moods: ['diagnostic', 'tactical'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['text', 'data-display'], moods: ['diagnostic', 'tactical'], bandAffinity: 'bass', audioSensitivity: 0.6, sizes: ['works-small'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

@@ -10,7 +10,7 @@ import type { AudioFrame } from '../audio/audio-reactive';
 export class FreqAnalyzerElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'freq-analyzer',
-    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], bandAffinity: 'bass', audioSensitivity: 0.5, sizes: ['works-small', 'needs-medium'] },
   };
   private bars: THREE.Mesh[] = [];
   private peakLines!: THREE.LineSegments;

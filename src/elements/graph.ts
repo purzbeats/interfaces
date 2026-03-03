@@ -5,7 +5,7 @@ import type { ElementMeta } from './tags';
 export class GraphElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'graph',
-    meta: { shape: 'rectangular', roles: ['data-display'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display'], moods: ['diagnostic'], bandAffinity: 'mid', sizes: ['needs-medium'] },
   };
   private line!: THREE.Line;
   private bars: THREE.Mesh[] = [];

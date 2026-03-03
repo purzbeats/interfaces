@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class WarpTunnelElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'warp-tunnel',
-    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['decorative'], moods: ['ambient'], bandAffinity: 'sub', sizes: ['needs-medium', 'needs-large'] },
   };
   private radialLines!: THREE.LineSegments;
   private rings: THREE.Line[] = [];

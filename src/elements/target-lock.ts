@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class TargetLockElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'target-lock',
-    meta: { shape: 'radial', roles: ['scanner', 'gauge'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['scanner', 'gauge'], moods: ['tactical'], bandAffinity: 'bass', sizes: ['needs-medium', 'needs-large'] },
   };
   private outerRing!: THREE.Line;
   private innerRing!: THREE.Line;
@@ -232,9 +232,15 @@ export class TargetLockElement extends BaseElement {
   onIntensity(level: number): void {
     super.onIntensity(level);
     if (level === 0) return;
-    const kick = level * (level >= 3 ? 30 : 10);
+    // Wander amplitude scales with level
+    const kick = level * (level >= 3 ? 40 : 15);
     this.targetVx += this.rng.float(-1, 1) * kick;
     this.targetVy += this.rng.float(-1, 1) * kick;
+    // Velocity burst at high levels makes target harder to track
+    if (level >= 3) {
+      this.targetVx *= 1 + level * 0.15;
+      this.targetVy *= 1 + level * 0.15;
+    }
   }
 
   onAction(action: string): void {

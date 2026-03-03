@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class ParticleFieldElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'particle-field',
-    meta: { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient'], bandAffinity: 'high', audioSensitivity: 1.5, sizes: ['needs-medium', 'needs-large'] },
   };
   private pointsMesh!: THREE.Points;
   private linesMesh!: THREE.LineSegments;
@@ -137,7 +137,13 @@ export class ParticleFieldElement extends BaseElement {
 
   onIntensity(level: number): void {
     super.onIntensity(level);
-    if (level === 0) return;
+    if (level === 0) {
+      this.connectionThreshold = Math.min(this.px.w, this.px.h) * 0.17;
+      return;
+    }
+    // Increase connection distance with level
+    this.connectionThreshold = Math.min(this.px.w, this.px.h) * (0.17 + level * 0.02);
+    // Increase particle speed with level
     const kick = level * (level >= 3 ? 30 : 10);
     for (const p of this.particles) {
       p.vx += this.rng.float(-1, 1) * kick;

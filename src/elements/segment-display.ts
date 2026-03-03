@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class SegmentDisplayElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'segment-display',
-    meta: { shape: 'rectangular', roles: ['text', 'gauge'], moods: ['tactical'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['text', 'gauge'], moods: ['tactical'], bandAffinity: 'bass', audioSensitivity: 0.6, sizes: ['works-small', 'needs-medium'] },
   };
   private digitSegments: THREE.LineSegments[] = [];
   private borderLines!: THREE.LineSegments;

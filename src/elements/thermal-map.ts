@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class ThermalMapElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'thermal-map',
-    meta: { shape: 'rectangular', roles: ['data-display', 'scanner'], moods: ['tactical', 'diagnostic'], sizes: ['needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'scanner'], moods: ['tactical', 'diagnostic'], bandAffinity: 'mid', sizes: ['needs-medium'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

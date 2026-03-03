@@ -5,7 +5,7 @@ import type { ElementMeta } from './tags';
 export class GridOverlayElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'grid-overlay',
-    meta: { shape: 'rectangular', roles: ['scanner'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['scanner'], moods: ['tactical'], bandAffinity: 'high', sizes: ['needs-medium', 'needs-large'] },
   };
   private lines!: THREE.LineSegments;
   private crosshair!: THREE.LineSegments;

@@ -10,7 +10,7 @@ import type { ElementMeta } from './tags';
 export class BoidsSwarmElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'boids-swarm',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['tactical', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private boidCount: number = 0;
   private posX!: Float32Array;
@@ -402,8 +402,19 @@ export class BoidsSwarmElement extends BaseElement {
 
   onIntensity(level: number): void {
     super.onIntensity(level);
-    if (level === 0) return;
+    if (level === 0) {
+      const scale = Math.min(this.px.w, this.px.h) / 200;
+      this.separationRadius = 20 * scale;
+      this.cohesionRadius = 60 * scale;
+      this.maxSpeed = Math.min(this.px.w, this.px.h) * 0.6;
+      return;
+    }
     const { x, y, w, h } = this.px;
+    // Modulate separation/cohesion weights with level
+    const scale = Math.min(w, h) / 200;
+    this.separationRadius = 20 * scale * (1 + level * 0.15);
+    this.cohesionRadius = 60 * scale * (1 - level * 0.08);
+    this.maxSpeed = Math.min(w, h) * 0.6 * (1 + level * 0.15);
     // Scatter boids proportional to level
     const cx = x + w / 2;
     const cy = y + h / 2;
@@ -416,7 +427,6 @@ export class BoidsSwarmElement extends BaseElement {
       this.velY[i] += (dy / dist) * this.maxSpeed * force;
     }
     if (level >= 5) {
-      // Spawn predator
       this.predatorActive = true;
       this.predatorTimer = 0.8;
       this.predatorX = x + this.rng.float(w * 0.2, w * 0.8);

@@ -21,7 +21,7 @@ interface SineComponent {
 export class PlasmaFieldElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'plasma-field',
-    meta: { shape: 'rectangular', roles: ['decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['decorative'], moods: ['ambient'], bandAffinity: 'high', audioSensitivity: 1.5, sizes: ['needs-medium', 'needs-large'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
@@ -261,13 +261,13 @@ export class PlasmaFieldElement extends BaseElement {
   onIntensity(level: number): void {
     super.onIntensity(level);
     if (level === 0) return;
-    // Brightness impulse (decays naturally in update)
-    this.brightnessBoost = Math.max(this.brightnessBoost, level * 0.12);
-    // Speed boost via alertPulseTimer (decays naturally in update)
+    // Color cycle speed and brightness scale with level
+    this.speedMultiplier = 1 + level * 0.5;
+    this.brightnessBoost = Math.max(this.brightnessBoost, level * 0.15);
     if (level >= 5) {
       this.alertPulseTimer = 1.5;
     } else if (level >= 3) {
-      this.alertPulseTimer = Math.max(this.alertPulseTimer, 0.6);
+      this.alertPulseTimer = Math.max(this.alertPulseTimer, 0.4);
     }
   }
 

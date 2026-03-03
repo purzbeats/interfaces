@@ -12,7 +12,7 @@ const STATUS_MESSAGES = [
 export class StatusReadoutElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'status-readout',
-    meta: { shape: 'linear', roles: ['text'], moods: ['tactical', 'diagnostic'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['text'], moods: ['tactical', 'diagnostic'], bandAffinity: 'bass', audioSensitivity: 0.6, sizes: ['works-small'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

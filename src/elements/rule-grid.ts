@@ -12,7 +12,7 @@ import { applyScanlines } from '../animation/retro-text';
 export class RuleGridElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'rule-grid',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

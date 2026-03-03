@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class PressureGaugeElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'pressure-gauge',
-    meta: { shape: 'radial', roles: ['gauge'], moods: ['diagnostic', 'tactical'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'radial', roles: ['gauge'], moods: ['diagnostic', 'tactical'], bandAffinity: 'bass', audioSensitivity: 1.2, sizes: ['works-small', 'needs-medium'] },
   };
   private arcLines!: THREE.LineSegments;
   private dangerArc!: THREE.LineSegments;

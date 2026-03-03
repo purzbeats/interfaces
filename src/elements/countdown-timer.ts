@@ -10,7 +10,7 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
 export class CountdownTimerElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'countdown-timer',
-    meta: { shape: 'rectangular', roles: ['text', 'gauge'], moods: ['tactical'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['text', 'gauge'], moods: ['tactical'], bandAffinity: 'bass', audioSensitivity: 0.6, sizes: ['works-small', 'needs-medium'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

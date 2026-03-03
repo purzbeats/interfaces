@@ -10,7 +10,7 @@ import type { AudioFrame } from '../audio/audio-reactive';
 export class Waveform3dElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'waveform-3d',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], bandAffinity: 'bass', audioSensitivity: 0.5, sizes: ['needs-medium', 'needs-large'] },
   };
   private lines: THREE.Line[] = [];
   private borderLines!: THREE.LineSegments;

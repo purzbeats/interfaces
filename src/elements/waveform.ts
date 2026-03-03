@@ -6,7 +6,7 @@ import type { AudioFrame } from '../audio/audio-reactive';
 export class WaveformElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'waveform',
-    meta: { shape: 'linear', roles: ['data-display'], moods: ['diagnostic'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['data-display'], moods: ['diagnostic'], bandAffinity: 'bass', audioSensitivity: 0.5, sizes: ['works-small'] },
   };
   private line!: THREE.Line;
   private numPoints: number = 0;
@@ -115,6 +115,19 @@ export class WaveformElement extends BaseElement {
         (child.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
       }
     });
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) {
+      this.amplitude = this.rng.float(0.3, 0.45);
+      this.noiseFreq = this.rng.float(5, 20);
+      return;
+    }
+    // Boost amplitude proportional to level
+    this.amplitude = 0.35 + level * 0.04;
+    // Inject noise/jaggedness proportional to level
+    this.noiseFreq = 10 + level * 5;
   }
 
   onAction(action: string): void {

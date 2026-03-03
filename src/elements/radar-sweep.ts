@@ -6,7 +6,7 @@ import { glitchOffset } from '../animation/fx';
 export class RadarSweepElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'radar-sweep',
-    meta: { shape: 'radial', roles: ['scanner'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['scanner'], moods: ['tactical'], bandAffinity: 'bass', sizes: ['needs-medium', 'needs-large'] },
   };
   private sweepLine!: THREE.Line;
   private ringLines!: THREE.LineSegments;
@@ -147,7 +147,24 @@ export class RadarSweepElement extends BaseElement {
   onIntensity(level: number): void {
     super.onIntensity(level);
     if (level === 0) { this.alertMode = false; return; }
-    // Absolute speed boost (not cumulative)
+    // Scale sweep speed with intensity
+    this.speed = this.rng.float(1.5, 3.5) * (1 + level * 0.3);
+    // Spawn extra blips at higher levels
+    if (level >= 2) {
+      const extra = Math.min(3, level - 1);
+      const radius = Math.min(this.px.w, this.px.h) / 2 * 0.9;
+      for (let i = 0; i < extra; i++) {
+        if (this.blipData.length < 30) {
+          this.blipData.push({
+            angle: this.rng.float(0, Math.PI * 2),
+            radius: this.rng.float(0.2, 0.9) * radius,
+            brightness: 1,
+          });
+        }
+      }
+    }
+    // Alert color at level 3+
+    if (level >= 3) { this.alertMode = true; }
     if (level >= 5) { this.alertMode = true; }
   }
 }

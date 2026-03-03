@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class HexGridElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'hex-grid',
-    meta: { shape: 'radial', roles: ['decorative', 'scanner'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['decorative', 'scanner'], moods: ['tactical'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private cells: THREE.LineSegments[] = [];
   private fills: THREE.Mesh[] = [];

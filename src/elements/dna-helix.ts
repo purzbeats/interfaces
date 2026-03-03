@@ -11,7 +11,7 @@ import type { ElementMeta } from './tags';
 export class DnaHelixElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'dna-helix',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private strand1!: THREE.Line;
   private strand2!: THREE.Line;

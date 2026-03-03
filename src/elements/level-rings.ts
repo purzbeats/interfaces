@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class LevelRingsElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'level-rings',
-    meta: { shape: 'radial', roles: ['gauge', 'data-display'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+    meta: { shape: 'radial', roles: ['gauge', 'data-display'], moods: ['diagnostic'], bandAffinity: 'bass', sizes: ['needs-medium'] },
   };
   private bgRings: THREE.Line[] = [];
   private fillRings: THREE.Line[] = [];

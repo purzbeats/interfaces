@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class SignalBarsElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'signal-bars',
-    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], bandAffinity: 'bass', sizes: ['works-small', 'needs-medium'] },
   };
   private bars: THREE.Mesh[] = [];
   private barValues: number[] = [];

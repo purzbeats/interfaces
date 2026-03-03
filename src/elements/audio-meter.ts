@@ -10,7 +10,7 @@ import type { AudioFrame } from '../audio/audio-reactive';
 export class AudioMeterElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'audio-meter',
-    meta: { shape: 'rectangular', roles: ['gauge', 'data-display'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['gauge', 'data-display'], moods: ['diagnostic'], bandAffinity: 'bass', audioSensitivity: 0.5, sizes: ['works-small', 'needs-medium'] },
   };
   private bars: THREE.Mesh[][] = [[], []];
   private levels: number[] = [0, 0];

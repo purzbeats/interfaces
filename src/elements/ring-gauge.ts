@@ -10,7 +10,7 @@ import { drawGlowText } from '../animation/retro-text';
 export class RingGaugeElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'ring-gauge',
-    meta: { shape: 'radial', roles: ['gauge'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+    meta: { shape: 'radial', roles: ['gauge'], moods: ['diagnostic'], bandAffinity: 'bass', sizes: ['needs-medium'] },
   };
   private bgRing!: THREE.Line;
   private fillRing!: THREE.Line;

@@ -5,7 +5,7 @@ import type { ElementMeta } from './tags';
 export class ScrollingNumbersElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'scrolling-numbers',
-    meta: { shape: 'rectangular', roles: ['data-display', 'text'], moods: ['tactical', 'diagnostic'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'text'], moods: ['tactical', 'diagnostic'], bandAffinity: 'mid', sizes: ['works-small', 'needs-medium'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

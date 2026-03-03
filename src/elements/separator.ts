@@ -15,7 +15,7 @@ export function setDividerThickness(v: number): void { _dividerThickness = v; }
 export class SeparatorElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'separator',
-    meta: { shape: 'linear', roles: ['structural'], moods: ['ambient'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['structural'], moods: ['ambient'], bandAffinity: 'bass', sizes: ['works-small'] },
   };
   private lines!: LineSegments2;
   private mat!: LineMaterial;

@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class CrossScopeElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'cross-scope',
-    meta: { shape: 'radial', roles: ['data-display'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+    meta: { shape: 'radial', roles: ['data-display'], moods: ['diagnostic'], bandAffinity: 'bass', sizes: ['needs-medium'] },
   };
   private hLine!: THREE.Line;
   private vLine!: THREE.Line;

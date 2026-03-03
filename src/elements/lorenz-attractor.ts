@@ -10,7 +10,7 @@ import type { ElementMeta } from './tags';
 export class LorenzAttractorElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'lorenz-attractor',
-    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'decorative'], moods: ['diagnostic', 'ambient'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private traces: THREE.Line[] = [];
   private traceMaterials: THREE.LineBasicMaterial[] = [];

@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class WaveInterferenceElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'wave-interference',
-    meta: { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private sourceRings: THREE.Line[][] = [[], []];
   private sourcePos: Array<{ x: number; y: number; vx: number; vy: number }> = [];

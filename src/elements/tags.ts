@@ -3,11 +3,16 @@ export type RoleTag = 'structural' | 'gauge' | 'scanner' | 'data-display' | 'tex
 export type MoodTag = 'tactical' | 'diagnostic' | 'ambient';
 export type SizeTag = 'works-small' | 'needs-medium' | 'needs-large';
 
+export type AudioBand = 'sub' | 'bass' | 'mid' | 'high';
+export const BAND_INDEX: Record<AudioBand, number> = { sub: 0, bass: 1, mid: 2, high: 3 };
+
 export interface ElementMeta {
   shape: ShapeTag;
   roles: RoleTag[];
   moods: MoodTag[];
   sizes: SizeTag[];
+  bandAffinity?: AudioBand;
+  audioSensitivity?: number;
 }
 
 /* ---------- delegates to auto-built registry ---------- */

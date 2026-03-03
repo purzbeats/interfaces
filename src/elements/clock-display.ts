@@ -10,7 +10,7 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
 export class ClockDisplayElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'clock-display',
-    meta: { shape: 'linear', roles: ['text', 'data-display'], moods: ['tactical', 'diagnostic'], sizes: ['works-small'] },
+    meta: { shape: 'linear', roles: ['text', 'data-display'], moods: ['tactical', 'diagnostic'], bandAffinity: 'bass', audioSensitivity: 0.6, sizes: ['works-small'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

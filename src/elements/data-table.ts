@@ -10,7 +10,7 @@ import { applyScanlines, drawGlowText } from '../animation/retro-text';
 export class DataTableElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'data-table',
-    meta: { shape: 'rectangular', roles: ['data-display', 'text'], moods: ['diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'text'], moods: ['diagnostic'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;

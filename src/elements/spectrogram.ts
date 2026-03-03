@@ -10,7 +10,7 @@ import type { AudioFrame } from '../audio/audio-reactive';
 export class SpectrogramElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'spectrogram',
-    meta: { shape: 'rectangular', roles: ['data-display'], moods: ['diagnostic'], sizes: ['needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display'], moods: ['diagnostic'], bandAffinity: 'bass', audioSensitivity: 0.5, sizes: ['needs-medium'] },
   };
   private canvas!: HTMLCanvasElement;
   private canvasCtx!: CanvasRenderingContext2D;

@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class RadialScannerElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'radial-scanner',
-    meta: { shape: 'radial', roles: ['scanner'], moods: ['tactical'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'radial', roles: ['scanner'], moods: ['tactical'], bandAffinity: 'bass', sizes: ['needs-medium', 'needs-large'] },
   };
   private crosshairs!: THREE.LineSegments;
   private blipPoints!: THREE.Points;

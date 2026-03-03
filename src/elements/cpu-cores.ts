@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class CpuCoresElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'cpu-cores',
-    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], sizes: ['works-small', 'needs-medium'] },
+    meta: { shape: 'rectangular', roles: ['data-display', 'gauge'], moods: ['diagnostic'], bandAffinity: 'mid', sizes: ['works-small', 'needs-medium'] },
   };
   private cores: THREE.Mesh[] = [];
   private coreLoads: number[] = [];

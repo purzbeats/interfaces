@@ -9,7 +9,7 @@ import type { ElementMeta } from './tags';
 export class StarFieldElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'star-field',
-    meta: { shape: 'rectangular', roles: ['decorative'], moods: ['ambient'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['decorative'], moods: ['ambient'], bandAffinity: 'high', audioSensitivity: 1.5, sizes: ['needs-medium', 'needs-large'] },
   };
   private layers: THREE.Points[] = [];
   private layerData: Array<{
@@ -216,8 +216,27 @@ export class StarFieldElement extends BaseElement {
   onIntensity(level: number): void {
     super.onIntensity(level);
     if (level === 0) return;
+    // Scale twinkle speed with level
+    for (const data of this.layerData) {
+      for (let i = 0; i < data.twinkleSpeeds.length; i++) {
+        data.twinkleSpeeds[i] = this.rng.float(1.5, 5) * (1 + level * 0.4);
+      }
+    }
+    // Shooting star probability scales with level
+    if (level >= 2 && this.shoots.length < 4) {
+      const count = Math.min(level - 1, 4 - this.shoots.length);
+      for (let i = 0; i < count; i++) {
+        this.shoots.push({
+          x: this.px.x + this.rng.float(0, this.px.w * 0.7),
+          y: this.px.y + this.px.h - this.rng.float(0, this.px.h * 0.3),
+          vx: this.rng.float(150, 400),
+          vy: this.rng.float(-500, -200),
+          life: this.rng.float(0.3, 0.6),
+        });
+      }
+    }
     if (level >= 5) {
-      // Hyperspace — burst of shooting stars (one-shot, no permanent velocity mutation)
+      // Hyperspace — burst of shooting stars
       for (let i = 0; i < 4; i++) {
         this.shoots.push({
           x: this.px.x + this.rng.float(0, this.px.w),

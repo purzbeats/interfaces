@@ -29,7 +29,7 @@ interface ActiveTetromino {
 export class GridDistortionElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'grid-distortion',
-    meta: { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['decorative', 'data-display'], moods: ['ambient', 'diagnostic'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
   private gridLines!: THREE.LineSegments;
   private borderLines!: THREE.LineSegments;
