@@ -63,6 +63,8 @@ export function createGUI(
     pbFolder.add({ pausePlay: playback.onPause }, 'pausePlay').name('Pause / Play (Space)');
     pbFolder.add({ restart: playback.onRestart }, 'restart').name('Restart (Backspace)');
     pbFolder.add({ loop: true }, 'loop').name('Continuous (L)').onChange(playback.onLoopToggle);
+    pbFolder.add(config, 'rollingSwap').name('Rolling Swap');
+    pbFolder.add(config, 'rollingInterval', 2, 15, 0.5).name('Swap Interval (s)');
   }
 
   // Audio

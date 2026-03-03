@@ -346,3 +346,56 @@ export function compose(
 
   return { template, regions: allRegions };
 }
+
+/**
+ * Pick a single element type for a region, reusing the same scoring logic as compose().
+ * Used by rolling swap to replace one element at a time.
+ */
+export function pickElementForRegion(
+  region: Region,
+  currentTypes: Set<string>,
+  excludeType: string,
+  rng: SeededRandom,
+  canvasAspect?: number
+): string {
+  if (canvasAspect && canvasAspect > 0) screenAspect = canvasAspect;
+
+  const candidates = allElementNames();
+  if (candidates.length === 0) return 'panel';
+
+  const regionShape = classifyRegion(region);
+  const regionSize = classifyRegionSize(region);
+  const regionTier = region.tier ?? 'widget';
+  const dominantMood = pickDominantMood(rng);
+
+  // Build a lightweight placement context from currentTypes
+  const ctx: PlacementContext = {
+    typeCounts: {},
+    roleCounts: {},
+    placements: [],
+  };
+  for (const t of currentTypes) {
+    ctx.typeCounts[t] = (ctx.typeCounts[t] ?? 0) + 1;
+    const meta = getMeta(t);
+    if (meta) {
+      for (const role of meta.roles) {
+        ctx.roleCounts[role] = (ctx.roleCounts[role] ?? 0) + 1;
+      }
+    }
+  }
+
+  const adjustedWeights: number[] = candidates.map(name => {
+    if (name === excludeType) return 0;
+    const base = 0.5; // default baseline weight
+    const fit = shapeFitness(name, regionShape);
+    const size = sizeFitness(name, regionSize);
+    const mood = moodBoost(name, dominantMood);
+    const div = diversityMultiplier(name, region, ctx);
+    const tierAff = tierAffinityMultiplier(name, regionTier);
+    return base * fit * size * mood * div * tierAff;
+  });
+
+  const total = adjustedWeights.reduce((a, b) => a + b, 0);
+  if (total <= 0) return 'panel';
+  return candidates[rng.weighted(adjustedWeights)];
+}

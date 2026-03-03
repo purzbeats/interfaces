@@ -23,6 +23,8 @@ export function loadConfig(): Partial<Config> {
     if (data.audioReactive && typeof data.audioReactive === 'object') {
       result.audioReactive = data.audioReactive;
     }
+    if (typeof data.rollingSwap === 'boolean') result.rollingSwap = data.rollingSwap;
+    if (typeof data.rollingInterval === 'number') result.rollingInterval = data.rollingInterval;
     return result;
   } catch {
     return {};
@@ -40,6 +42,8 @@ export function saveConfig(config: Config): void {
       postfx: config.postfx,
       timeline: config.timeline,
       audioReactive: config.audioReactive,
+      rollingSwap: config.rollingSwap,
+      rollingInterval: config.rollingInterval,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {

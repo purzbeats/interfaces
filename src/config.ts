@@ -80,6 +80,8 @@ export interface Config {
     flicker: boolean;
     jiggle: boolean;
   };
+  rollingSwap: boolean;
+  rollingInterval: number;
   export: {
     fps: number;
     duration: number;
@@ -124,6 +126,8 @@ export const DEFAULT_CONFIG: Config = {
     flicker: true,
     jiggle: true,
   },
+  rollingSwap: true,
+  rollingInterval: 5,
   export: {
     fps: 60,
     duration: 30,

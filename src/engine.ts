@@ -4,7 +4,7 @@ import { GalleryMode } from './gallery';
 import { SeededRandom } from './random';
 import { createRenderer, resizeRenderer, type RendererContext } from './renderer/setup';
 import { getPalette, type Palette } from './color/palettes';
-import { compose } from './layout/compositor';
+import { compose, pickElementForRegion } from './layout/compositor';
 import { createElement, createElementDeferred } from './elements/registry';
 import { BaseElement } from './elements/base-element';
 import { generateTimeline, type Timeline } from './animation/timeline';
@@ -19,11 +19,20 @@ import { TouchManager } from './touch/touch-manager';
 import { ShakeDetector } from './touch/shake-detector';
 import { loadConfig, saveConfig, updateURL } from './persistence';
 import { setDividerBrightness, setDividerThickness } from './elements/separator';
+import { getMeta, BAND_INDEX } from './elements/tags';
 import { showToast } from './gui/toast';
 import { toggleHelp, isHelpVisible } from './gui/help-overlay';
-import { fadeTransition } from './gui/transition';
 import type { Region } from './layout/region';
 import * as THREE from 'three';
+
+interface Composition {
+  elements: BaseElement[];
+  elementMap: Map<string, BaseElement>;
+  regionMap: Map<string, Region>;
+  elementTypeMap: Map<string, string>;
+  wrapperMap: Map<string, THREE.Group>;
+  regions: Region[];
+}
 
 export class Engine {
   config: Config;
@@ -33,17 +42,13 @@ export class Engine {
   private recorder!: VideoRecorder;
   private audio: AudioSynth = new AudioSynth();
   audioReactive: AudioReactive = new AudioReactive();
-  private elements: BaseElement[] = [];
-  private elementMap: Map<string, BaseElement> = new Map();
-  private regionMap: Map<string, Region> = new Map();
-  private elementTypeMap: Map<string, string> = new Map();
-  private wrapperMap: Map<string, THREE.Group> = new Map();
+  private current: Composition | null = null;
+  private outgoing: Composition | null = null;
+  private retiringElements: { el: BaseElement; wrapper: THREE.Group }[] = [];
   private timeline!: Timeline;
   private palette!: Palette;
   private elapsed: number = 0;
   private disposed: boolean = false;
-  private loopDwell: number = 0;
-  private readonly LOOP_DWELL_TIME = 1.5; // seconds of darkness between compositions
   private pendingBuild: { element: BaseElement; wrapper: THREE.Group }[] = [];
   private readonly BUILD_BATCH_SIZE = 3;
   private showcase!: ShowcaseMode;
@@ -54,12 +59,17 @@ export class Engine {
   private touchManager: TouchManager | null = null;
   private shakeDetector: ShakeDetector | null = null;
   private touchTargetId: string | null = null;
+  private generationCounter: number = 0;
+  private rollingTimer: number = 0;
+  private swapCounter: number = 0;
 
   /** Current intensity level (0 = baseline, 1–5 = active). */
   currentIntensity: number = 0;
   private intensityKeyDownTime: number = 0;
-  /** Smooth intensity envelope for audio-reactive decay. */
-  private intensityEnvelope: number = 0;
+  /** Per-band smooth intensity envelopes [sub, bass, mid, high]. */
+  private bandEnvelopes: Float32Array = new Float32Array(4);
+  /** Cached per-element intensity level — avoids redundant onIntensity calls. */
+  private elementIntensityCache: Map<string, number> = new Map();
 
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
@@ -97,6 +107,17 @@ export class Engine {
     }
   }
 
+  /** Helper: create the audio emitter callback for element audio events. */
+  private makeEmitAudio(): (event: string, param?: number) => void {
+    return (event: string, param?: number) => {
+      switch (event) {
+        case 'keystroke': this.audio.keystroke(param); break;
+        case 'dataChirp': this.audio.dataChirp(); break;
+        case 'seekSound': this.audio.blip(param ?? 200); break;
+      }
+    };
+  }
+
   init(): void {
     setDividerBrightness(this.config.dividerBrightness);
     setDividerThickness(this.config.dividerThickness);
@@ -125,14 +146,11 @@ export class Engine {
       this.generate(this.config.seed);
     }, () => !!this.mobileToolbar);
 
-    // Wire audio-reactive → intensity system (envelope-based, no hard cutoff)
+    // Wire audio-reactive → intensity system (per-band envelopes)
     this.audioReactive.onKick = (level) => {
-      this.intensityEnvelope = level;
-      BaseElement.audioFlickerEnabled = this.config.audioReactive.flicker;
-      BaseElement.audioJiggleEnabled = this.config.audioReactive.jiggle;
-      BaseElement.intensityFromAudio = true;
-      this.broadcastIntensity(level);
-      BaseElement.intensityFromAudio = false;
+      // Kick detected — boost bass and sub envelopes
+      this.bandEnvelopes[1] = Math.max(this.bandEnvelopes[1], level);
+      this.bandEnvelopes[0] = Math.max(this.bandEnvelopes[0], level * 0.7);
     };
 
     this.gui = createGUI(
@@ -170,12 +188,12 @@ export class Engine {
           onElementTarget: (elementId) => {
             // Fade old element, light new one
             if (this.touchTargetId && this.touchTargetId !== elementId) {
-              const old = this.elementMap.get(this.touchTargetId);
+              const old = this.current?.elementMap.get(this.touchTargetId);
               if (old) old.onIntensity(0);
             }
             this.touchTargetId = elementId;
             if (elementId) {
-              const el = this.elementMap.get(elementId);
+              const el = this.current?.elementMap.get(elementId);
               if (el) {
                 el.onIntensity(this.currentIntensity || 1);
                 this.audio.blip(200 + Math.random() * 200);
@@ -253,78 +271,116 @@ export class Engine {
     this.setupEvents();
   }
 
-  generate(seed: number): void {
-    this.config.seed = seed;
-    this.elapsed = 0;
-
-    // Tear down existing elements
-    for (const el of this.elements) {
-      const wrapper = this.wrapperMap.get(el.id);
-      if (wrapper) {
-        this.ctx.scene.remove(wrapper);
-      } else {
-        this.ctx.scene.remove(el.group);
-      }
-      el.dispose();
-    }
-    this.elements = [];
-    this.elementMap.clear();
-    this.regionMap.clear();
-    this.elementTypeMap.clear();
-    this.wrapperMap.clear();
-
+  /**
+   * Build a new composition: layout + create elements (deferred or immediate).
+   * Does NOT add wrappers to the scene — caller is responsible.
+   */
+  private buildComposition(seed: number, deferred: boolean): Composition {
     const rng = new SeededRandom(seed);
     this.palette = getPalette(this.config.palette);
     this.ctx.scene.background = this.palette.bg;
 
-    // Layout
     const layoutRng = rng.fork();
     const canvasAspect = this.config.width / this.config.height;
     const { regions } = compose(this.config.template, layoutRng, canvasAspect);
 
-    // Audio emitter — routes element audio events to the synth
-    const emitAudio = (event: string, param?: number) => {
-      switch (event) {
-        case 'keystroke': this.audio.keystroke(param); break;
-        case 'dataChirp': this.audio.dataChirp(); break;
-        case 'seekSound': this.audio.blip(param ?? 200); break;
-      }
+    const emitAudio = this.makeEmitAudio();
+
+    const comp: Composition = {
+      elements: [],
+      elementMap: new Map(),
+      regionMap: new Map(),
+      elementTypeMap: new Map(),
+      wrapperMap: new Map(),
+      regions,
     };
 
-    // Create elements with wrapper groups
+    const genPrefix = `g${this.generationCounter}_`;
     const elementRng = rng.fork();
     for (const region of regions) {
+      // Prefix region IDs to avoid collisions during crossfade
+      region.id = genPrefix + region.id;
+
       const elRng = elementRng.fork();
       const elementType = region.elementType ?? 'panel';
-      const element = createElement(
-        elementType,
-        region,
-        this.palette,
-        elRng,
-        this.config.width,
-        this.config.height,
-        emitAudio
-      );
-      this.elements.push(element);
-      this.elementMap.set(element.id, element);
-      this.regionMap.set(region.id, region);
-      this.elementTypeMap.set(element.id, elementType);
+      const element = deferred
+        ? createElementDeferred(elementType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio)
+        : createElement(elementType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
 
-      // Wrapper group architecture: scene → wrapper → element.group
+      comp.elements.push(element);
+      comp.elementMap.set(element.id, element);
+      comp.regionMap.set(region.id, region);
+      comp.elementTypeMap.set(element.id, elementType);
+
       const wrapper = new THREE.Group();
-      wrapper.add(element.group);
+      if (!deferred) {
+        wrapper.add(element.group);
+      }
       if (region.isDivider) {
         wrapper.renderOrder = 10;
       }
-      this.wrapperMap.set(element.id, wrapper);
-      this.ctx.scene.add(wrapper);
+      comp.wrapperMap.set(element.id, wrapper);
+
+      if (deferred) {
+        this.pendingBuild.push({ element, wrapper });
+      }
     }
 
-    // Generate timeline (preserve loop state across regenerations)
+    if (deferred) {
+      // Reverse so we can pop() from the end (O(1))
+      this.pendingBuild.reverse();
+    }
+
+    return comp;
+  }
+
+  generate(seed: number): void {
+    this.config.seed = seed;
+    this.elapsed = 0;
+    this.elementIntensityCache.clear();
+    this.generationCounter++;
+    this.pendingBuild = [];
+    this.rollingTimer = 0;
+
+    // If there's already an outgoing composition, tear it down immediately
+    if (this.outgoing) {
+      this.teardownComposition(this.outgoing);
+      this.outgoing = null;
+    }
+
+    // Move current → outgoing for crossfade
+    if (this.current) {
+      this.outgoing = this.current;
+      // Deactivate all outgoing elements so they fade out
+      for (const el of this.outgoing.elements) {
+        if (el.stateMachine.state !== 'idle') {
+          el.onAction('deactivate');
+        }
+      }
+    }
+
+    // Build new composition (deferred — staggered build in update())
+    this.current = this.buildComposition(seed, true);
+
+    // Generate timeline
     const wasLooping = this.timeline?.loop ?? true;
+    const rng = new SeededRandom(seed);
+    rng.fork(); // skip layout rng
+    rng.fork(); // skip element rng
     const timelineRng = rng.fork();
-    const elementIds = this.elements.map((e) => e.id);
-    this.timeline = generateTimeline(elementIds, this.config.timeline, timelineRng);
+    const elementIds = this.current.elements.map((e) => e.id);
+
+    if (this.config.rollingSwap) {
+      // Boot-only timeline: just stagger-activate, no cooldown
+      this.timeline = generateTimeline(elementIds, {
+        ...this.config.timeline,
+        mainDuration: 0,
+        alertDuration: 0,
+        cooldownDuration: 0,
+      }, timelineRng);
+    } else {
+      this.timeline = generateTimeline(elementIds, this.config.timeline, timelineRng);
+    }
     this.timeline.loop = wasLooping;
 
     // Persist state
@@ -332,15 +388,10 @@ export class Engine {
     updateURL(this.config);
   }
 
-  /** Phase 1 of staged loading: teardown + layout + construct (no build). */
-  private prepareNext(): void {
-    this.config.seed = Math.floor(Math.random() * 100000);
-    const seed = this.config.seed;
-    this.elapsed = 0;
-
-    // Tear down existing elements
-    for (const el of this.elements) {
-      const wrapper = this.wrapperMap.get(el.id);
+  /** Remove all wrappers from scene and dispose all elements in a composition. */
+  private teardownComposition(comp: Composition): void {
+    for (const el of comp.elements) {
+      const wrapper = comp.wrapperMap.get(el.id);
       if (wrapper) {
         this.ctx.scene.remove(wrapper);
       } else {
@@ -348,73 +399,219 @@ export class Engine {
       }
       el.dispose();
     }
-    this.elements = [];
-    this.elementMap.clear();
-    this.regionMap.clear();
-    this.elementTypeMap.clear();
-    this.wrapperMap.clear();
-    this.pendingBuild = [];
+  }
 
-    const rng = new SeededRandom(seed);
-    this.palette = getPalette(this.config.palette);
-    this.ctx.scene.background = this.palette.bg;
+  // --- Rolling swap mutation system ---
 
-    // Layout
-    const layoutRng = rng.fork();
+  /** Get non-divider elements eligible for mutation. */
+  private getSwappable(): BaseElement[] {
+    if (!this.current) return [];
+    return this.current.elements.filter(
+      (el) => !this.current!.regionMap.get(el.id)?.isDivider
+    );
+  }
+
+  /** Retire an element: deactivate it, move to retiring list, remove from current composition. */
+  private retireElement(el: BaseElement): void {
+    if (!this.current) return;
+    const wrapper = this.current.wrapperMap.get(el.id);
+    if (el.stateMachine.state !== 'idle') {
+      el.onAction('deactivate');
+    }
+    if (wrapper) {
+      this.retiringElements.push({ el, wrapper });
+    }
+    const idx = this.current.elements.indexOf(el);
+    if (idx !== -1) this.current.elements.splice(idx, 1);
+    this.current.elementMap.delete(el.id);
+    this.current.elementTypeMap.delete(el.id);
+    this.current.wrapperMap.delete(el.id);
+    this.current.regionMap.delete(el.id);
+  }
+
+  /** Spawn a new element into the current composition for a given region. */
+  private spawnElement(region: Region, excludeType: string, rng: SeededRandom): void {
+    if (!this.current) return;
+
+    const currentTypes = new Set<string>();
+    for (const t of this.current.elementTypeMap.values()) currentTypes.add(t);
+
     const canvasAspect = this.config.width / this.config.height;
-    const { regions } = compose(this.config.template, layoutRng, canvasAspect);
+    const newType = pickElementForRegion(region, currentTypes, excludeType, rng, canvasAspect);
 
-    // Audio emitter
-    const emitAudio = (event: string, param?: number) => {
-      switch (event) {
-        case 'keystroke': this.audio.keystroke(param); break;
-        case 'dataChirp': this.audio.dataChirp(); break;
-        case 'seekSound': this.audio.blip(param ?? 200); break;
+    const emitAudio = this.makeEmitAudio();
+    const elRng = rng.fork();
+    const newEl = createElement(newType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
+
+    const newWrapper = new THREE.Group();
+    newWrapper.add(newEl.group);
+    if (region.isDivider) newWrapper.renderOrder = 10;
+    this.ctx.scene.add(newWrapper);
+    newEl.onAction('activate');
+
+    this.current.elements.push(newEl);
+    this.current.elementMap.set(newEl.id, newEl);
+    this.current.elementTypeMap.set(newEl.id, newType);
+    this.current.wrapperMap.set(newEl.id, newWrapper);
+    this.current.regionMap.set(region.id, region);
+
+    this.audio.blip(200 + Math.random() * 200);
+  }
+
+  /** Classify tier from region area. */
+  private tierFromArea(area: number): 'hero' | 'panel' | 'widget' {
+    if (area >= 0.06) return 'hero';
+    if (area >= 0.03) return 'panel';
+    return 'widget';
+  }
+
+  /** Pick and execute a random rolling mutation. */
+  private rollingMutate(): void {
+    if (!this.current) return;
+    const swappable = this.getSwappable();
+    if (swappable.length === 0) return;
+
+    const rng = new SeededRandom(Date.now());
+    const roll = rng.float(0, 1);
+
+    if (roll < 0.55) {
+      // Simple swap: replace 1 element
+      this.mutateSwap(1, rng, swappable);
+    } else if (roll < 0.75) {
+      // Multi-swap: replace 2–3 elements at once
+      this.mutateSwap(Math.min(rng.int(2, 3), swappable.length), rng, swappable);
+    } else if (roll < 0.90) {
+      // Split: 1 element → 2–3 smaller elements
+      this.mutateSplit(rng, swappable);
+    } else {
+      // Merge: 2 adjacent elements → 1 larger element
+      this.mutateMerge(rng, swappable);
+    }
+  }
+
+  /** Swap N elements for new ones of different types. */
+  private mutateSwap(count: number, rng: SeededRandom, swappable: BaseElement[]): void {
+    const shuffled = [...swappable];
+    rng.shuffle(shuffled);
+    const toSwap = shuffled.slice(0, count);
+
+    for (const oldEl of toSwap) {
+      const region = this.current!.regionMap.get(oldEl.id);
+      if (!region) continue;
+      const oldType = this.current!.elementTypeMap.get(oldEl.id) ?? 'panel';
+      this.retireElement(oldEl);
+      this.spawnElement(region, oldType, rng);
+    }
+  }
+
+  /** Split one element's region into 2–3 sub-regions with new elements. */
+  private mutateSplit(rng: SeededRandom, swappable: BaseElement[]): void {
+    // Prefer larger elements for splitting
+    const sorted = [...swappable].sort((a, b) => {
+      const aArea = a.region.width * a.region.height;
+      const bArea = b.region.width * b.region.height;
+      return bArea - aArea;
+    });
+
+    // Pick from the larger half
+    const candidates = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2)));
+    const oldEl = rng.pick(candidates);
+    const region = this.current!.regionMap.get(oldEl.id);
+    if (!region) { this.mutateSwap(1, rng, swappable); return; }
+
+    // Don't split regions that are already tiny
+    const area = region.width * region.height;
+    if (area < 0.02) { this.mutateSwap(1, rng, swappable); return; }
+
+    const splitCount = area > 0.08 ? rng.int(2, 3) : 2;
+    const oldType = this.current!.elementTypeMap.get(oldEl.id) ?? 'panel';
+
+    // Split along the longer pixel dimension
+    const pixelAspect = (region.width / region.height) * (this.config.width / this.config.height);
+    const splitHorizontal = pixelAspect > 1;
+
+    const subRegions: Region[] = [];
+    for (let i = 0; i < splitCount; i++) {
+      const id = `g${this.generationCounter}_s${this.swapCounter++}`;
+      const subArea = area / splitCount;
+      if (splitHorizontal) {
+        subRegions.push({
+          id,
+          x: region.x + (region.width / splitCount) * i,
+          y: region.y,
+          width: region.width / splitCount,
+          height: region.height,
+          padding: region.padding,
+          tier: this.tierFromArea(subArea),
+        });
+      } else {
+        subRegions.push({
+          id,
+          x: region.x,
+          y: region.y + (region.height / splitCount) * i,
+          width: region.width,
+          height: region.height / splitCount,
+          padding: region.padding,
+          tier: this.tierFromArea(subArea),
+        });
       }
-    };
-
-    // Create elements WITHOUT calling build()
-    const elementRng = rng.fork();
-    for (const region of regions) {
-      const elRng = elementRng.fork();
-      const elementType = region.elementType ?? 'panel';
-      const element = createElementDeferred(
-        elementType,
-        region,
-        this.palette,
-        elRng,
-        this.config.width,
-        this.config.height,
-        emitAudio
-      );
-      this.elements.push(element);
-      this.elementMap.set(element.id, element);
-      this.regionMap.set(region.id, region);
-      this.elementTypeMap.set(element.id, elementType);
-
-      const wrapper = new THREE.Group();
-      if (region.isDivider) {
-        wrapper.renderOrder = 10;
-      }
-      this.wrapperMap.set(element.id, wrapper);
-
-      // Queue for staggered build
-      this.pendingBuild.push({ element, wrapper });
     }
 
-    // Reverse so we can pop() from the end (O(1)) instead of shift() from the front (O(n))
-    this.pendingBuild.reverse();
+    this.retireElement(oldEl);
+    for (const sub of subRegions) {
+      this.spawnElement(sub, oldType, rng);
+    }
+  }
 
-    // Generate timeline (preserve loop state)
-    const wasLooping = this.timeline?.loop ?? true;
-    const timelineRng = rng.fork();
-    const elementIds = this.elements.map((e) => e.id);
-    this.timeline = generateTimeline(elementIds, this.config.timeline, timelineRng);
-    this.timeline.loop = wasLooping;
+  /** Merge 2 adjacent elements into one larger element. */
+  private mutateMerge(rng: SeededRandom, swappable: BaseElement[]): void {
+    if (swappable.length < 2) { this.mutateSwap(1, rng, swappable); return; }
 
-    // Persist state
-    saveConfig(this.config);
-    updateURL(this.config);
+    // Find adjacent pairs
+    const EDGE_TOL = 0.02;
+    const pairs: [BaseElement, BaseElement][] = [];
+    for (let i = 0; i < swappable.length; i++) {
+      for (let j = i + 1; j < swappable.length; j++) {
+        const a = swappable[i].region;
+        const b = swappable[j].region;
+        const aR = a.x + a.width, bR = b.x + b.width;
+        const aB = a.y + a.height, bB = b.y + b.height;
+        const vOverlap = a.y < bB - EDGE_TOL && b.y < aB - EDGE_TOL;
+        const hOverlap = a.x < bR - EDGE_TOL && b.x < aR - EDGE_TOL;
+        if (vOverlap && (Math.abs(aR - b.x) < EDGE_TOL || Math.abs(bR - a.x) < EDGE_TOL)) {
+          pairs.push([swappable[i], swappable[j]]);
+        } else if (hOverlap && (Math.abs(aB - b.y) < EDGE_TOL || Math.abs(bB - a.y) < EDGE_TOL)) {
+          pairs.push([swappable[i], swappable[j]]);
+        }
+      }
+    }
+
+    if (pairs.length === 0) { this.mutateSwap(1, rng, swappable); return; }
+
+    const [elA, elB] = rng.pick(pairs);
+    const rA = elA.region;
+    const rB = elB.region;
+
+    // Bounding-box merge
+    const x = Math.min(rA.x, rB.x);
+    const y = Math.min(rA.y, rB.y);
+    const right = Math.max(rA.x + rA.width, rB.x + rB.width);
+    const bottom = Math.max(rA.y + rA.height, rB.y + rB.height);
+    const mergedArea = (right - x) * (bottom - y);
+
+    const mergedRegion: Region = {
+      id: `g${this.generationCounter}_m${this.swapCounter++}`,
+      x,
+      y,
+      width: right - x,
+      height: bottom - y,
+      padding: rA.padding,
+      tier: this.tierFromArea(mergedArea),
+    };
+
+    this.retireElement(elA);
+    this.retireElement(elB);
+    this.spawnElement(mergedRegion, '', rng);
   }
 
   update(dt: number): void {
@@ -432,33 +629,66 @@ export class Engine {
 
     this.elapsed += dt;
 
-    // Audio-reactive runs regardless of build/dwell phase
+    // Audio-reactive runs regardless of build phase
     this.audioReactive.update(dt);
 
-    // Envelope decay: smooth intensity falloff between kicks
-    if (this.audioReactive.isActive && this.intensityEnvelope > 0) {
-      this.intensityEnvelope *= Math.exp(-6 * dt); // ~170ms half-life
-      // Between kicks, track RMS as a subtle baseline
+    // Per-band envelope tracking and per-element intensity routing
+    if (this.audioReactive.isActive && this.current) {
       const frame = this.audioReactive.frame;
-      const rmsBase = frame ? frame.rms * 2 : 0;
-      const envLevel = Math.max(rmsBase, this.intensityEnvelope);
+      const decay = Math.exp(-4 * dt); // ~170ms half-life
+
+      // Update each band envelope: follow energy up instantly, decay down
+      for (let b = 0; b < 4; b++) {
+        const bandEnergy = frame ? frame.bands[b] * 5 : 0; // scale 0-1 → 0-5
+        // Decay toward zero
+        this.bandEnvelopes[b] *= decay;
+        // Follow energy upward instantly; floor at 50% of current energy
+        this.bandEnvelopes[b] = Math.max(this.bandEnvelopes[b], bandEnergy, bandEnergy * 0.5);
+      }
+
       // Sync config flags so base-element gates pulse/glitch
       BaseElement.audioFlickerEnabled = this.config.audioReactive.flicker;
       BaseElement.audioJiggleEnabled = this.config.audioReactive.jiggle;
       BaseElement.intensityFromAudio = true;
-      if (envLevel < 0.1) {
-        if (this.currentIntensity !== 0) this.broadcastIntensity(0);
-        this.intensityEnvelope = 0;
-      } else {
-        const rounded = Math.min(5, Math.max(1, Math.round(envLevel)));
-        if (rounded !== this.currentIntensity) {
-          this.broadcastIntensity(rounded);
+
+      // Per-element intensity routing
+      let anyActive = false;
+      for (const el of this.current.elements) {
+        if (!el.group.visible || el.stateMachine.state === 'idle') continue;
+
+        // Look up element's band affinity and sensitivity from registration meta
+        const elementType = this.current.elementTypeMap.get(el.id);
+        const meta = elementType ? getMeta(elementType) : undefined;
+        const bandIdx = BAND_INDEX[meta?.bandAffinity ?? 'bass'];
+        const sensitivity = meta?.audioSensitivity ?? 1.0;
+
+        const envelope = this.bandEnvelopes[bandIdx];
+        // Map to 0-5: envelope is already in 0-5 range, apply sensitivity and mild curve
+        const scaled = envelope * sensitivity;
+        const level = Math.round(Math.min(5, scaled));
+
+        if (level > 0) anyActive = true;
+
+        // Only call onIntensity when level actually changes
+        const cached = this.elementIntensityCache.get(el.id);
+        if (cached !== level) {
+          this.elementIntensityCache.set(el.id, level);
+          el.onIntensity(level);
         }
       }
+
+      // Track a global current intensity for external queries
+      if (!anyActive && this.currentIntensity !== 0) {
+        this.currentIntensity = 0;
+      } else if (anyActive) {
+        // Use bass envelope as representative global intensity
+        this.currentIntensity = Math.round(Math.min(5, Math.max(1, this.bandEnvelopes[1])));
+      }
+
       BaseElement.intensityFromAudio = false;
     }
 
-    // Phase 2: staggered build — pop a batch each frame
+    // Phase A: Staggered build — pop a batch each frame
     if (this.pendingBuild.length > 0) {
       const count = Math.min(this.BUILD_BATCH_SIZE, this.pendingBuild.length);
       for (let i = 0; i < count; i++) {
@@ -467,26 +697,53 @@ export class Engine {
         item.wrapper.add(item.element.group);
         this.ctx.scene.add(item.wrapper);
       }
-      // Still building — render scene (elements stay invisible until timeline activates them)
+      // Don't return early — keep ticking outgoing composition so it animates during build
+    }
+
+    // Phase C: Outgoing lifecycle — tick outgoing elements, dispose when all idle
+    if (this.outgoing) {
+      let allIdle = true;
+      for (const el of this.outgoing.elements) {
+        el.tick(dt, this.elapsed);
+        if (el.stateMachine.state !== 'idle') {
+          allIdle = false;
+        }
+      }
+      if (allIdle) {
+        this.teardownComposition(this.outgoing);
+        this.outgoing = null;
+      }
+    }
+
+    // Phase F: Retiring elements (from rolling swaps)
+    for (let i = this.retiringElements.length - 1; i >= 0; i--) {
+      const { el, wrapper } = this.retiringElements[i];
+      el.tick(dt, this.elapsed);
+      if (el.stateMachine.state === 'idle') {
+        this.ctx.scene.remove(wrapper);
+        el.dispose();
+        this.retiringElements.splice(i, 1);
+      }
+    }
+
+    // Skip timeline/element updates if still building
+    if (this.pendingBuild.length > 0) {
       this.pipeline.update(this.elapsed, this.config);
       return;
     }
 
-    // Loop dwell: waiting in darkness before next composition
-    if (this.loopDwell > 0) {
-      this.loopDwell -= dt;
-      if (this.loopDwell <= 0) {
-        // Dwell finished — kick off staged build (Phase 1)
-        this.prepareNext();
-      }
-      // Still in dwell period — just render the empty scene
+    if (!this.current) {
       this.pipeline.update(this.elapsed, this.config);
       return;
     }
 
     // Advance timeline
     this.timeline.update(dt, (cue) => {
-      const element = this.elementMap.get(cue.elementId);
+      // When rolling swap is active, suppress deactivation/cooldown cues
+      if (this.config.rollingSwap && (cue.action === 'deactivate' || cue.action === 'alert')) {
+        return;
+      }
+      const element = this.current?.elementMap.get(cue.elementId);
       if (element) {
         element.onAction(cue.action);
         // Sound feedback
@@ -510,20 +767,45 @@ export class Engine {
       }
     });
 
-    // Check if timeline finished and loop is enabled
-    if (this.timeline.finished && this.timeline.loop) {
-      this.loopDwell = this.LOOP_DWELL_TIME;
+    // Phase D: Loop cycling — crossfade instead of blackout
+    if (this.timeline.finished && this.timeline.loop && !this.config.rollingSwap) {
+      const newSeed = Math.floor(Math.random() * 100000);
+      this.config.seed = newSeed;
+      this.generate(newSeed);
+      // Don't process further this frame — next frame picks up new state
+      this.pipeline.update(this.elapsed, this.config);
+      return;
     }
 
-    // Update elements
-    for (const el of this.elements) {
+    // Phase E: Rolling swap — start once elements are built and some are active
+    if (
+      this.config.rollingSwap &&
+      !this.timeline.paused &&
+      this.pendingBuild.length === 0 &&
+      this.outgoing === null
+    ) {
+      // Only start swapping once at least one element has been activated by the timeline
+      const hasActiveElements = this.current.elements.some(
+        (el) => el.stateMachine.state === 'active' || el.stateMachine.state === 'activating'
+      );
+      if (hasActiveElements) {
+        this.rollingTimer += dt;
+        if (this.rollingTimer >= this.config.rollingInterval) {
+          this.rollingTimer = 0;
+          this.rollingMutate();
+        }
+      }
+    }
+
+    // Update current elements
+    for (const el of this.current.elements) {
       el.tick(dt, this.elapsed);
     }
 
     // Pass real audio data to elements when audio-reactive is active
     const audioFrame = this.audioReactive.frame;
     if (audioFrame) {
-      for (const el of this.elements) {
+      for (const el of this.current.elements) {
         if (!el.group.visible || el.stateMachine.state === 'idle') continue;
         el.tickAudio(audioFrame);
       }
@@ -554,9 +836,11 @@ export class Engine {
     this.timeline.reset();
     this.timeline.paused = false;
     // Force all elements to idle, then let timeline re-activate them
-    for (const el of this.elements) {
-      el.stateMachine.forceIdle();
-      el.group.visible = false;
+    if (this.current) {
+      for (const el of this.current.elements) {
+        el.stateMachine.forceIdle();
+        el.group.visible = false;
+      }
     }
   }
 
@@ -571,7 +855,8 @@ export class Engine {
   /** Broadcast intensity level to all visible, active elements. */
   broadcastIntensity(level: number): void {
     this.currentIntensity = level;
-    for (const el of this.elements) {
+    if (!this.current) return;
+    for (const el of this.current.elements) {
       if (!el.group.visible) continue;
       if (el.stateMachine.state === 'idle') continue;
       el.onIntensity(level);
@@ -584,7 +869,8 @@ export class Engine {
 
   /** Hit-test normalized coordinates against element regions. Returns element ID or null. */
   hitTestElement(nx: number, ny: number): string | null {
-    for (const el of this.elements) {
+    if (!this.current) return null;
+    for (const el of this.current.elements) {
       if (!el.group.visible || el.stateMachine.state === 'idle') continue;
       const r = el.region;
       if (nx >= r.x && nx <= r.x + r.width && ny >= r.y && ny <= r.y + r.height) {
@@ -621,10 +907,11 @@ export class Engine {
     // Click/touch on an element → intensity 5 one-shot on that element
     const canvas = this.ctx.renderer.domElement;
     const handleTap = (clientX: number, clientY: number) => {
+      if (!this.current) return;
       const rect = canvas.getBoundingClientRect();
       const nx = (clientX - rect.left) / rect.width;
       const ny = 1 - (clientY - rect.top) / rect.height; // flip Y: CSS top-down → GL bottom-up
-      for (const el of this.elements) {
+      for (const el of this.current.elements) {
         if (!el.group.visible || el.stateMachine.state === 'idle') continue;
         const r = el.region;
         if (nx >= r.x && nx <= r.x + r.width && ny >= r.y && ny <= r.y + r.height) {
@@ -675,7 +962,7 @@ export class Engine {
           if (!e.ctrlKey && !e.metaKey) {
             this.config.seed = Math.floor(Math.random() * 100000);
             showToast(`Seed: ${this.config.seed}`);
-            fadeTransition(() => this.generate(this.config.seed));
+            this.generate(this.config.seed);
           }
           break;
         case 's':
@@ -785,7 +1072,17 @@ export class Engine {
 
   dispose(): void {
     this.disposed = true;
-    for (const el of this.elements) {
+    if (this.current) {
+      for (const el of this.current.elements) {
+        el.dispose();
+      }
+    }
+    if (this.outgoing) {
+      for (const el of this.outgoing.elements) {
+        el.dispose();
+      }
+    }
+    for (const { el } of this.retiringElements) {
       el.dispose();
     }
     this.showcase.dispose();
