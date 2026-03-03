@@ -209,6 +209,30 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'harmonograph': 1, 'plasma-field': 1, 'star-field': 1,
     },
   },
+  'biolab': {
+    name: 'biolab',
+    layoutPattern: 'culture-plate',
+    createRegions: () => [
+      createRegion('specimen', 0.08, 0.0, 0.52, 0.58, 0.005),
+      createRegion('instruments-right', 0.60, 0.0, 0.40, 0.58, 0.005),
+      createRegion('instruments-bottom', 0.0, 0.58, 1.0, 0.42, 0.005),
+    ],
+    bspOptions: { maxDepth: 2, splitVariance: 0.25, minWidth: 0.10, minHeight: 0.10 },
+    elementWeights: {
+      // New biotech elements (high)
+      'cell-division': 3, 'petri-dish': 3, 'bio-reactor': 3,
+      'capillary-network': 2, 'spore-bloom': 2, 'gel-electrophoresis': 2,
+      'pulse-membrane': 2, 'enzyme-cascade': 2,
+      // Existing organic elements (medium)
+      'dna-helix': 3, 'fractal-tree': 2, 'flow-field': 2,
+      'neural-mesh': 2, 'boids-swarm': 2, 'heart-monitor': 2,
+      'plasma-field': 1, 'network-graph': 1,
+      // Lab-fitting general elements (low)
+      'concentric-rings': 1, 'ring-gauge': 1, 'thermal-map': 1,
+      'waveform': 1, 'graph': 1, 'oscilloscope': 1,
+      'progress-bar': 1, 'data-table': 1, 'text-label': 1,
+    },
+  },
 };
 
 export function getTemplate(name: string, rng: SeededRandom): TemplateConfig {

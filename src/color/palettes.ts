@@ -28,6 +28,7 @@ export const PALETTES: Record<string, Palette> = {
   'ice-blue': p('ice-blue', '#04080c', '#44aaff', '#2288dd', '#0d2233', '#ff5555'),
   'synthwave': p('synthwave', '#0d0020', '#ff66ff', '#6644ff', '#1a0033', '#00ffaa'),
   'backrooms': p('backrooms', '#1a1708', '#d4c36a', '#a89640', '#3d3518', '#cc4444'),
+  'bioluminescent': p('bioluminescent', '#040d0d', '#00e5a0', '#0099cc', '#0a3333', '#ff3366'),
 };
 
 export function getPalette(name: string): Palette {

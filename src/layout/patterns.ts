@@ -339,6 +339,40 @@ function radialSanctum(rng: SeededRandom): Region[] {
   ];
 }
 
+// --- Pattern L: "culture-plate" ---
+// Asymmetric microscope-view layout: off-center hero "specimen field" with
+// stacked right-side panels, bottom panels, and scattered widgets forming
+// an L-shaped instrument cluster.
+function culturePlate(rng: SeededRandom): Region[] {
+  const leftStripW = jitter(0.08, rng, 0.015, 0.05, 0.12);
+  const heroRightX = jitter(0.60, rng, 0.02, 0.54, 0.66);
+  const heroBottomY = jitter(0.58, rng, 0.02, 0.52, 0.64);
+  // Right side panel splits
+  const rPanel0Y = jitter(0.30, rng, 0.02, 0.24, 0.36);
+  const rPanel1Y = jitter(0.65, rng, 0.02, 0.58, 0.72);
+  // Bottom row splits
+  const bSplitX1 = jitter(0.35, rng, 0.02, 0.28, 0.42);
+  const bSplitX2 = jitter(0.65, rng, 0.02, 0.58, 0.72);
+
+  return [
+    // Left strip widget
+    createTieredRegion('widget-5', 'widget', 0, 0, leftStripW, heroBottomY),
+    // Hero: main specimen view (upper-left, ~52% x 58%)
+    createTieredRegion('hero-0', 'hero', leftStripW, 0, heroRightX - leftStripW, heroBottomY),
+    // Right stacked: top widget + 2 panels
+    createTieredRegion('widget-0', 'widget', heroRightX, 0, 1 - heroRightX, rPanel0Y),
+    createTieredRegion('panel-0', 'panel', heroRightX, rPanel0Y, 1 - heroRightX, rPanel1Y - rPanel0Y),
+    createTieredRegion('panel-1', 'panel', heroRightX, rPanel1Y, 1 - heroRightX, heroBottomY - rPanel1Y),
+    // Bottom row: panel + 2 widgets
+    createTieredRegion('panel-2', 'panel', 0, heroBottomY, bSplitX1, 1 - heroBottomY),
+    createTieredRegion('widget-3', 'widget', bSplitX1, heroBottomY, bSplitX2 - bSplitX1, 1 - heroBottomY),
+    createTieredRegion('widget-4', 'widget', bSplitX2, heroBottomY, 1 - bSplitX2, 1 - heroBottomY),
+    // Corner widgets
+    createTieredRegion('widget-1', 'widget', heroRightX, heroBottomY - 0.06, (1 - heroRightX) * 0.5, 0.06),
+    createTieredRegion('widget-2', 'widget', heroRightX + (1 - heroRightX) * 0.5, heroBottomY - 0.06, (1 - heroRightX) * 0.5, 0.06),
+  ];
+}
+
 // --- Pattern registry ---
 
 export const PATTERNS: Record<string, LayoutPattern> = {
@@ -353,6 +387,7 @@ export const PATTERNS: Record<string, LayoutPattern> = {
   'watchtower':         { name: 'watchtower',          generate: watchtower },
   'picture-in-picture': { name: 'picture-in-picture',  generate: pictureInPicture },
   'radial-sanctum':     { name: 'radial-sanctum',      generate: radialSanctum },
+  'culture-plate':      { name: 'culture-plate',       generate: culturePlate },
 };
 
 export function getPattern(name: string): LayoutPattern | undefined {
