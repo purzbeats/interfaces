@@ -5,6 +5,7 @@ import { type BSPOptions } from './grid';
 export interface TemplateConfig {
   name: string;
   layoutPattern?: string;
+  dominantMood?: 'tactical' | 'diagnostic' | 'ambient';
   createRegions: (rng: SeededRandom) => Region[];
   bspOptions: Partial<BSPOptions>;
   elementWeights?: Record<string, number>;
@@ -297,6 +298,46 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'boids-swarm': 1, 'flow-field': 1, 'plasma-field': 1,
     },
   },
+  'ops-hud': {
+    name: 'ops-hud',
+    dominantMood: 'tactical',
+    createRegions: () => [
+      createRegion('full', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    tagWeights: {
+      'gauge': 3, 'scanner': 3, 'data-display': 2, 'text': 2,
+      'decorative': -2,
+    },
+    elementWeights: {
+      // Realistic instruments (boosted)
+      'radar-sweep': 3, 'ring-gauge': 3, 'cross-scope': 3,
+      'radial-scanner': 3, 'target-lock': 2, 'flight-ladder': 3,
+      'pressure-gauge': 3, 'segment-display': 3, 'clock-display': 2,
+      'countdown-timer': 2, 'status-readout': 2, 'text-label': 2,
+      'signal-bars': 2, 'progress-bar': 2, 'threat-meter': 2,
+      'coord-grid': 2, 'data-table': 2, 'cpu-cores': 2,
+      'audio-meter': 2, 'heart-monitor': 2, 'oscilloscope': 2,
+      'freq-analyzer': 2, 'uptime-counter': 2, 'power-grid': 2,
+      'satellite-track': 2, 'depth-sounder': 2, 'thermal-map': 2,
+      'memory-map': 2, 'network-graph': 2,
+      graph: 2, waveform: 2, 'pulse-wave': 2, 'spectrogram': 2,
+      'scan-line': 1, 'phase-indicator': 1, 'level-rings': 1,
+      // Abstract/decorative (zeroed out)
+      'watching-eye': 0, 'spiral-vortex': 0, 'clock-melt': 0,
+      'iris-aperture': 0, 'breathing-grid': 0, 'infinite-hallway': 0,
+      'static-channel': 0, 'corrupted-text': 0, 'face-brackets': 0,
+      'warp-tunnel': 0, 'hex-tunnel': 0, 'star-field': 0,
+      'plasma-field': 0, 'lorenz-attractor': 0, 'dna-helix': 0,
+      'fractal-tree': 0, 'pendulum-wave': 0, 'harmonograph': 0,
+      'boids-swarm': 0, 'flow-field': 0, 'neural-mesh': 0,
+      'grid-distortion': 0, 'rule-grid': 0, 'wave-interference': 0,
+      'voltage-arc': 0, 'dot-matrix': 0, 'particle-field': 0,
+      'cell-division': 0, 'petri-dish': 0, 'bio-reactor': 0,
+      'capillary-network': 0, 'spore-bloom': 0, 'gel-electrophoresis': 0,
+      'pulse-membrane': 0, 'enzyme-cascade': 0,
+    },
+  },
 };
 
 const HEX_TEMPLATES = new Set(['hive', 'honeycomb', 'hexwall']);
@@ -305,6 +346,8 @@ export function isHexTemplate(name: string): boolean {
   return HEX_TEMPLATES.has(name);
 }
 
+const OPS_HUD_PATTERNS = ['ops-center', 'bridge', 'split-ops'];
+
 export function getTemplate(name: string, rng: SeededRandom, hexLayout?: boolean): TemplateConfig {
   if (name === 'auto') {
     const keys = Object.keys(TEMPLATES).filter(k =>
@@ -312,7 +355,12 @@ export function getTemplate(name: string, rng: SeededRandom, hexLayout?: boolean
     );
     return TEMPLATES[rng.pick(keys)];
   }
-  return TEMPLATES[name] ?? TEMPLATES['command-center'];
+  const tmpl = TEMPLATES[name] ?? TEMPLATES['command-center'];
+  // ops-hud randomly picks from its dedicated symmetric patterns
+  if (name === 'ops-hud') {
+    return { ...tmpl, layoutPattern: rng.pick(OPS_HUD_PATTERNS) };
+  }
+  return tmpl;
 }
 
 export function templateNames(): string[] {

@@ -302,8 +302,8 @@ export function compose(
     assignable = assignable.slice(0, candidates.length);
   }
 
-  // 4. Pick dominant mood
-  const dominantMood = pickDominantMood(rng);
+  // 4. Pick dominant mood (template can override)
+  const dominantMood = template.dominantMood ?? pickDominantMood(rng);
 
   // Placement context
   const ctx: PlacementContext = {

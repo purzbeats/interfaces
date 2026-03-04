@@ -509,6 +509,95 @@ function hexWall(rng: SeededRandom): Region[] {
   }, rng);
 }
 
+// --- Pattern M: "ops-center" (symmetric mission control) ---
+function opsCenter(rng: SeededRandom): Region[] {
+  const topH = 0.08;        // thin status strip
+  const botY = 0.92;        // bottom instrument strip
+  const sideW = 0.18;       // symmetric side panels
+  // Widget subdivisions get subtle jitter
+  const tw1 = jitter(0.25, rng, 0.01);
+  const tw2 = 0.50;
+  const tw3 = jitter(0.75, rng, 0.01);
+  const bw1 = jitter(0.25, rng, 0.01);
+  const bw2 = 0.50;
+  const bw3 = jitter(0.75, rng, 0.01);
+
+  return [
+    // Top status strip: 4 widgets
+    createTieredRegion('widget-0', 'widget', 0, 0, tw1, topH),
+    createTieredRegion('widget-1', 'widget', tw1, 0, tw2 - tw1, topH),
+    createTieredRegion('widget-2', 'widget', tw2, 0, tw3 - tw2, topH),
+    createTieredRegion('widget-3', 'widget', tw3, 0, 1 - tw3, topH),
+    // Main area: symmetric side panels + hero
+    createTieredRegion('panel-0', 'panel', 0, topH, sideW, botY - topH),
+    createTieredRegion('hero-0', 'hero', sideW, topH, 1 - 2 * sideW, botY - topH),
+    createTieredRegion('panel-1', 'panel', 1 - sideW, topH, sideW, botY - topH),
+    // Bottom instrument strip: 4 widgets
+    createTieredRegion('widget-4', 'widget', 0, botY, bw1, 1 - botY),
+    createTieredRegion('widget-5', 'widget', bw1, botY, bw2 - bw1, 1 - botY),
+    createTieredRegion('widget-6', 'widget', bw2, botY, bw3 - bw2, 1 - botY),
+    createTieredRegion('widget-7', 'widget', bw3, botY, 1 - bw3, 1 - botY),
+  ];
+}
+
+// --- Pattern N: "bridge" (ship bridge) ---
+function bridge(rng: SeededRandom): Region[] {
+  const heroH = 0.40;       // wide hero across top
+  const gridH = 0.22;       // each panel row
+  const botH = 0.08;        // bottom widget strip (fills remaining ~0.18 → 0.08 strip)
+  const gridMidX = 0.50;    // exact center split
+  const gridMidY = heroH + gridH;
+  const botY = heroH + 2 * gridH;
+  // Bottom widget subdivisions with subtle jitter
+  const bw1 = jitter(0.20, rng, 0.01);
+  const bw2 = jitter(0.40, rng, 0.01);
+  const bw3 = 0.60;
+  const bw4 = jitter(0.80, rng, 0.01);
+
+  return [
+    // Top hero
+    createTieredRegion('hero-0', 'hero', 0, 0, 1, heroH),
+    // 2×2 panel grid
+    createTieredRegion('panel-0', 'panel', 0, heroH, gridMidX, gridH),
+    createTieredRegion('panel-1', 'panel', gridMidX, heroH, 1 - gridMidX, gridH),
+    createTieredRegion('panel-2', 'panel', 0, gridMidY, gridMidX, gridH),
+    createTieredRegion('panel-3', 'panel', gridMidX, gridMidY, 1 - gridMidX, gridH),
+    // Bottom widget strip: 5 widgets
+    createTieredRegion('widget-0', 'widget', 0, botY, bw1, 1 - botY),
+    createTieredRegion('widget-1', 'widget', bw1, botY, bw2 - bw1, 1 - botY),
+    createTieredRegion('widget-2', 'widget', bw2, botY, bw3 - bw2, 1 - botY),
+    createTieredRegion('widget-3', 'widget', bw3, botY, bw4 - bw3, 1 - botY),
+    createTieredRegion('widget-4', 'widget', bw4, botY, 1 - bw4, 1 - botY),
+  ];
+}
+
+// --- Pattern O: "split-ops" (dual-screen operator) ---
+function splitOps(rng: SeededRandom): Region[] {
+  const sideW = 0.10;       // narrow widget columns
+  const heroSplitX = 0.50;  // exact center
+  const heroH = 0.60;       // hero row height
+  // Widget column subdivisions with subtle jitter
+  const lw1 = jitter(0.50, rng, 0.01) * heroH;
+  const rw1 = jitter(0.50, rng, 0.01) * heroH;
+
+  return [
+    // Left widget column (2 stacked)
+    createTieredRegion('widget-0', 'widget', 0, 0, sideW, lw1),
+    createTieredRegion('widget-1', 'widget', 0, lw1, sideW, heroH - lw1),
+    // Two heroes side by side
+    createTieredRegion('hero-0', 'hero', sideW, 0, heroSplitX - sideW, heroH),
+    createTieredRegion('hero-1', 'hero', heroSplitX, 0, 1 - sideW - heroSplitX, heroH),
+    // Right widget column (2 stacked)
+    createTieredRegion('widget-2', 'widget', 1 - sideW, 0, sideW, rw1),
+    createTieredRegion('widget-3', 'widget', 1 - sideW, rw1, sideW, heroH - rw1),
+    // Bottom panel strip
+    createTieredRegion('panel-0', 'panel', sideW, heroH, heroSplitX - sideW, 1 - heroH),
+    createTieredRegion('panel-1', 'panel', heroSplitX, heroH, 1 - sideW - heroSplitX, 1 - heroH),
+    // Bottom corner widgets
+    createTieredRegion('widget-4', 'widget', 0, heroH, sideW, 1 - heroH),
+  ];
+}
+
 // --- Pattern registry ---
 
 export const PATTERNS: Record<string, LayoutPattern> = {
@@ -524,6 +613,9 @@ export const PATTERNS: Record<string, LayoutPattern> = {
   'picture-in-picture': { name: 'picture-in-picture',  generate: pictureInPicture },
   'radial-sanctum':     { name: 'radial-sanctum',      generate: radialSanctum },
   'culture-plate':      { name: 'culture-plate',       generate: culturePlate },
+  'ops-center':         { name: 'ops-center',          generate: opsCenter },
+  'bridge':             { name: 'bridge',              generate: bridge },
+  'split-ops':          { name: 'split-ops',           generate: splitOps },
   'hex-cluster':        { name: 'hex-cluster',         generate: hexCluster },
   'hex-grid':           { name: 'hex-grid',            generate: hexGrid },
   'hex-wall':           { name: 'hex-wall',            generate: hexWall },
