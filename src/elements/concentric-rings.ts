@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import { hexagonPoints } from '../layout/hex-grid';
 
 /**
  * Concentric expanding rings that ripple outward from center.
@@ -16,6 +17,7 @@ export class ConcentricRingsElement extends BaseElement {
   private maxRings: number = 0;
   private rippleSpeed: number = 0;
   private segments: number = 0;
+  private isHex: boolean = false;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -33,6 +35,7 @@ export class ConcentricRingsElement extends BaseElement {
     this.maxRings = this.rng.int(p.ringMin, p.ringMax);
     this.rippleSpeed = this.rng.float(p.speedMin, p.speedMax);
     this.segments = p.segments;
+    this.isHex = !!this.region.hexCell;
     (this as any)._fadeExp = p.fadeExp;
 
     for (let i = 0; i < this.maxRings; i++) {
@@ -79,9 +82,18 @@ export class ConcentricRingsElement extends BaseElement {
       const fadeOut = Math.pow(1 - phase, (this as any)._fadeExp); // fade as it expands
 
       const positions = this.ringMeshes[i].geometry.getAttribute('position') as THREE.BufferAttribute;
-      for (let s = 0; s <= this.segments; s++) {
-        const a = (s / this.segments) * Math.PI * 2;
-        positions.setXYZ(s, cx + Math.cos(a) * easedRadius + gx, cy + Math.sin(a) * easedRadius, 1);
+      if (this.isHex) {
+        const ptsPerEdge = Math.max(1, Math.floor(this.segments / 6));
+        const pts = hexagonPoints(cx + gx, cy, easedRadius, ptsPerEdge);
+        for (let s = 0; s <= this.segments; s++) {
+          const pt = pts[s % pts.length];
+          positions.setXYZ(s, pt.x, pt.y, 1);
+        }
+      } else {
+        for (let s = 0; s <= this.segments; s++) {
+          const a = (s / this.segments) * Math.PI * 2;
+          positions.setXYZ(s, cx + Math.cos(a) * easedRadius + gx, cy + Math.sin(a) * easedRadius, 1);
+        }
       }
       positions.needsUpdate = true;
 

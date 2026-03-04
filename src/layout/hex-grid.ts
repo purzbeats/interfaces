@@ -155,6 +155,49 @@ export function generateHexGrid(cols: number, rows: number): HexCell[] {
 }
 
 // ---------------------------------------------------------------------------
+// Hex geometry helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate points along a regular flat-top hexagon at arbitrary center/radius
+ * in pixel space. Used by radial elements to draw concentric hexagons.
+ */
+export function hexagonPoints(
+  cx: number, cy: number, radius: number, pointsPerEdge: number = 1
+): { x: number; y: number }[] {
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i < 6; i++) {
+    const a1 = (Math.PI / 3) * i;
+    const a2 = (Math.PI / 3) * ((i + 1) % 6);
+    const x1 = cx + radius * Math.cos(a1), y1 = cy + radius * Math.sin(a1);
+    const x2 = cx + radius * Math.cos(a2), y2 = cy + radius * Math.sin(a2);
+    for (let p = 0; p < pointsPerEdge; p++) {
+      const t = p / pointsPerEdge;
+      pts.push({ x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t });
+    }
+  }
+  return pts;
+}
+
+/**
+ * Map normalized position t ∈ [0,1) to a point along a hex perimeter (6 edges).
+ * Used by border-chase and corner-pip for hex perimeter traversal.
+ */
+export function hexPerimeterPoint(
+  corners: THREE.Vector3[], t: number
+): { px: number; py: number } {
+  t = ((t % 1) + 1) % 1;
+  const edgeIndex = Math.floor(t * 6);
+  const edgeFrac = (t * 6) - edgeIndex;
+  const p1 = corners[edgeIndex % 6];
+  const p2 = corners[(edgeIndex + 1) % 6];
+  return {
+    px: p1.x + (p2.x - p1.x) * edgeFrac,
+    py: p1.y + (p2.y - p1.y) * edgeFrac,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Clipping planes
 // ---------------------------------------------------------------------------
 
