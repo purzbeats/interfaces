@@ -24,6 +24,7 @@ import { getMeta, BAND_INDEX } from './elements/tags';
 import { showToast } from './gui/toast';
 import { toggleHelp, isHelpVisible } from './gui/help-overlay';
 import type { Region } from './layout/region';
+import { regionClippingPlanes } from './layout/region';
 import { HexBorderOverlay } from './layout/hex-border';
 import { hexClippingPlanes } from './layout/hex-grid';
 import type { HexCell } from './layout/hex-grid';
@@ -101,6 +102,23 @@ export class Engine {
     const planes = hexClippingPlanes(hexCell, this.config.width, this.config.height);
     element.group.traverse(obj => {
       // Cast broadly — Mesh, Line, LineSegments, LineSegments2, Points, Sprite all have .material
+      const renderable = obj as THREE.Mesh | THREE.Line | THREE.Points | THREE.Sprite;
+      if (!renderable.material) return;
+      const materials = Array.isArray(renderable.material) ? renderable.material : [renderable.material];
+      for (const mat of materials) {
+        if (mat instanceof THREE.Material) {
+          mat.clippingPlanes = planes;
+          mat.clipIntersection = false;
+          mat.needsUpdate = true;
+        }
+      }
+    });
+  }
+
+  /** Apply rectangular clipping planes to all materials in an element's group. */
+  private applyRectClipping(element: BaseElement, region: Region): void {
+    const planes = regionClippingPlanes(region, this.config.width, this.config.height);
+    element.group.traverse(obj => {
       const renderable = obj as THREE.Mesh | THREE.Line | THREE.Points | THREE.Sprite;
       if (!renderable.material) return;
       const materials = Array.isArray(renderable.material) ? renderable.material : [renderable.material];
@@ -330,7 +348,8 @@ export class Engine {
 
     const layoutRng = rng.fork();
     const canvasAspect = this.config.width / this.config.height;
-    const { regions } = compose(this.config.template, layoutRng, canvasAspect);
+    const hexLayout = this.config.hexLayout;
+    const { regions } = compose(this.config.template, layoutRng, canvasAspect, hexLayout);
 
     const emitAudio = this.makeEmitAudio();
 
@@ -513,9 +532,10 @@ export class Engine {
     const elRng = rng.fork();
     const newEl = createElement(newType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
 
-    // Apply hex clipping planes if spawning into a hex cell
+    // Apply clipping planes to keep content inside tile bounds
     const hex = region.hexCell;
     if (hex) this.applyHexClipping(newEl, hex);
+    else this.applyRectClipping(newEl, region);
 
     const newWrapper = new THREE.Group();
     newWrapper.add(newEl.group);
@@ -818,9 +838,10 @@ export class Engine {
       for (let i = 0; i < count; i++) {
         const item = this.pendingBuild.pop()!;
         item.element.build();
-        // Apply hex clipping planes if this element lives in a hex cell
+        // Apply clipping planes to keep content inside tile bounds
         const hex = item.element.region.hexCell;
         if (hex) this.applyHexClipping(item.element, hex);
+        else this.applyRectClipping(item.element, item.element.region);
         item.wrapper.add(item.element.group);
         this.ctx.scene.add(item.wrapper);
       }
@@ -1157,6 +1178,11 @@ export class Engine {
             this.gallery.enter();
             showToast('Gallery mode');
           }
+          break;
+        case 'x':
+          this.config.hexLayout = !this.config.hexLayout;
+          showToast(this.config.hexLayout ? 'Hex layout: on' : 'Hex layout: off');
+          this.generate(this.config.seed);
           break;
         case 'e':
           if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive) {

@@ -14,6 +14,7 @@ const SHORTCUTS: [string, string][] = [
   ['V', 'Record video'],
   ['G', 'Showcase mode'],
   ['B', 'Gallery mode'],
+  ['X', 'Toggle hex layout'],
   ['H', 'Toggle settings panel'],
   ['1–5', 'Intensity (tap or hold)'],
   ['+/−', 'Adjust overscan padding'],

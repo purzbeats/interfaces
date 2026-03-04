@@ -159,6 +159,7 @@ export class DnaHelixElement extends BaseElement {
     const { x, y, w, h } = this.px;
 
     // Decay alert/glitch modifiers
+    this.unwindAmount = Math.min(0.5, this.unwindAmount);
     if (this.unwindAmount > 0) this.unwindAmount = Math.max(0, this.unwindAmount - dt * 2);
     if (this.alertSpinBoost > 0) this.alertSpinBoost = Math.max(0, this.alertSpinBoost - dt * 0.5);
 

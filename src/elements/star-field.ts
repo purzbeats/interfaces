@@ -185,7 +185,7 @@ export class StarFieldElement extends BaseElement {
     for (let i = this.shoots.length - 1; i >= 0; i--) {
       const s = this.shoots[i];
       s.life -= dt;
-      if (s.life <= 0) { this.shoots.splice(i, 1); continue; }
+      if (s.life <= 0 || s.x < x || s.x > x + w || s.y < y || s.y > y + h) { this.shoots.splice(i, 1); continue; }
       const tailLen = 0.05;
       shootPos.setXYZ(shootVi++, s.x, s.y, 3);
       shootPos.setXYZ(shootVi++, s.x - s.vx * tailLen, s.y - s.vy * tailLen, 3);

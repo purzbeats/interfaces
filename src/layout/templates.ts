@@ -299,9 +299,17 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
   },
 };
 
-export function getTemplate(name: string, rng: SeededRandom): TemplateConfig {
+const HEX_TEMPLATES = new Set(['hive', 'honeycomb', 'hexwall']);
+
+export function isHexTemplate(name: string): boolean {
+  return HEX_TEMPLATES.has(name);
+}
+
+export function getTemplate(name: string, rng: SeededRandom, hexLayout?: boolean): TemplateConfig {
   if (name === 'auto') {
-    const keys = Object.keys(TEMPLATES);
+    const keys = Object.keys(TEMPLATES).filter(k =>
+      hexLayout === undefined ? true : hexLayout === HEX_TEMPLATES.has(k)
+    );
     return TEMPLATES[rng.pick(keys)];
   }
   return TEMPLATES[name] ?? TEMPLATES['command-center'];

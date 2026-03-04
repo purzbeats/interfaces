@@ -217,7 +217,7 @@ export class DropShadowElement extends BaseElement {
       }
 
       // Intensity bumps the offset distance
-      const intensityMul = 1 + this.intensityLevel * 0.15;
+      const intensityMul = Math.min(1.3, 1 + this.intensityLevel * 0.15);
       ox *= intensityMul;
       oy *= intensityMul;
 

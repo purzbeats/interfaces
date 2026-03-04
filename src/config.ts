@@ -80,6 +80,7 @@ export interface Config {
     flicker: boolean;
     jiggle: boolean;
   };
+  hexLayout: boolean;
   rollingSwap: boolean;
   rollingInterval: number;
   export: {
@@ -126,6 +127,7 @@ export const DEFAULT_CONFIG: Config = {
     flicker: true,
     jiggle: true,
   },
+  hexLayout: false,
   rollingSwap: true,
   rollingInterval: 5,
   export: {

@@ -124,6 +124,8 @@ export class SparkEmitterElement extends BaseElement {
     const primary = this.alertMode ? this.palette.alert : this.palette.primary;
     const dim = this.palette.dim;
 
+    const { x, y, w, h } = this.px;
+
     for (let i = 0; i < this.poolSize; i++) {
       const s = this.sparks[i];
       if (s.life > 0) {
@@ -131,6 +133,10 @@ export class SparkEmitterElement extends BaseElement {
         s.y += s.vy * dt;
         s.vy += this.gravity * dt;
         s.life -= dt;
+
+        if (s.x < x || s.x > x + w || s.y < y || s.y > y + h) {
+          s.life = 0;
+        }
 
         const t = Math.max(0, s.life / s.maxLife);
         positions.setXYZ(i, s.x, s.y, 1);

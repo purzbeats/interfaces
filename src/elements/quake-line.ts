@@ -197,7 +197,7 @@ export class QuakeLineElement extends BaseElement {
     if (this.quakeTimer >= this.quakeInterval) {
       this.quakeTimer = 0;
       this.quakeInterval = this.rng.float(4.0, 9.0);
-      this.quakeMagnitude = this.rng.float(0.5, 0.9) * (this.alertMode ? 1.5 : 1.0);
+      this.quakeMagnitude = Math.min(1.0, this.rng.float(0.5, 0.9) * (this.alertMode ? 1.5 : 1.0));
       this.quakeDuration = this.rng.float(1.2, 2.5);
       this.quakePhase = this.quakeDuration;
       this.emitAudio('impact', this.quakeMagnitude);
@@ -297,7 +297,7 @@ export class QuakeLineElement extends BaseElement {
       this.alertMode = true;
       // Force quake
       this.quakePhase = this.quakeDuration * 1.5;
-      this.quakeMagnitude = 1.2;
+      this.quakeMagnitude = 1.0;
       this.pulseTimer = 2.0;
       setTimeout(() => { this.alertMode = false; }, 4000);
     }
@@ -318,11 +318,11 @@ export class QuakeLineElement extends BaseElement {
       // Trigger a quake on high intensity
       if (this.quakePhase <= 0) {
         this.quakePhase = this.quakeDuration;
-        this.quakeMagnitude = 0.5 + level * 0.15;
+        this.quakeMagnitude = Math.min(1.0, 0.5 + level * 0.15);
       }
     }
     if (level >= 5) {
-      this.quakeMagnitude = 1.3;
+      this.quakeMagnitude = 1.0;
       this.quakePhase = this.quakeDuration * 1.5;
     }
   }

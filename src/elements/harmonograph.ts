@@ -270,8 +270,9 @@ export class HarmonographElement extends BaseElement {
     this.phaseX += level * 0.1;
     this.phaseY += level * 0.1;
     if (level >= 3) {
-      this.ampX *= 1 + level * 0.05;
-      this.ampY *= 1 + level * 0.05;
+      const radius = Math.min(this.px.w, this.px.h) * 0.42;
+      this.ampX = Math.min(this.ampX * (1 + level * 0.05), radius);
+      this.ampY = Math.min(this.ampY * (1 + level * 0.05), radius);
     }
     if (level >= 5) {
       // Full parameter reset

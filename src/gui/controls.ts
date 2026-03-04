@@ -32,6 +32,7 @@ export function createGUI(
   genFolder.add(config, 'seed', 0, 99999, 1).name('Seed').onFinishChange(onRegenerate);
   genFolder.add(config, 'palette', paletteNames()).name('Palette').onChange(onRegenerate);
   genFolder.add(config, 'template', templateNames()).name('Template').onChange(onRegenerate);
+  genFolder.add(config, 'hexLayout').name('Hex Layout (X)').onChange(onRegenerate);
   genFolder.add(config, 'aspectRatio', ASPECT_RATIOS).name('Aspect Ratio').onChange(() => {
     if (onAspectChange) onAspectChange();
   });

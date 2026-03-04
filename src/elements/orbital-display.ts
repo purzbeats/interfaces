@@ -25,7 +25,7 @@ export class OrbitalDisplayElement extends BaseElement {
       { orbitMin: 3, orbitMax: 6, particleMin: 6, particleMax: 14, speedMin: 0.3, speedMax: 1.2, eccMin: 0.0, eccMax: 0.25, dotSize: 0.015 },
       { orbitMin: 6, orbitMax: 10, particleMin: 16, particleMax: 30, speedMin: 0.6, speedMax: 2.0, eccMin: 0.0, eccMax: 0.15, dotSize: 0.010 },
       { orbitMin: 2, orbitMax: 3, particleMin: 3, particleMax: 6, speedMin: 0.15, speedMax: 0.5, eccMin: 0.0, eccMax: 0.1, dotSize: 0.025 },
-      { orbitMin: 4, orbitMax: 7, particleMin: 8, particleMax: 20, speedMin: 0.5, speedMax: 1.8, eccMin: 0.15, eccMax: 0.5, dotSize: 0.018 },
+      { orbitMin: 4, orbitMax: 7, particleMin: 8, particleMax: 20, speedMin: 0.5, speedMax: 1.8, eccMin: 0.15, eccMax: 0.25, dotSize: 0.018 },
     ];
     const p = presets[variant];
 
@@ -33,7 +33,7 @@ export class OrbitalDisplayElement extends BaseElement {
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
     this.cy = y + h / 2;
-    this.maxRadius = Math.min(w, h) * 0.44;
+    this.maxRadius = Math.min(w, h) * 0.44 / (1 + p.eccMax);
 
     const orbitCount = this.rng.int(p.orbitMin, p.orbitMax);
     const particleCount = this.rng.int(p.particleMin, p.particleMax);

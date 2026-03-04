@@ -297,7 +297,7 @@ export class IsoBlocksElement extends BaseElement {
       }
 
       if (this.alertMode) {
-        block.targetHeight = block.baseHeight * (1.4 + Math.sin(time * 8 + block.phase) * 0.3);
+        block.targetHeight = block.baseHeight * Math.min(1.35, 1.4 + Math.sin(time * 8 + block.phase) * 0.3);
       }
 
       // Smooth height toward target

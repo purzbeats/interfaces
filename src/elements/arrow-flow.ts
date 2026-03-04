@@ -147,12 +147,14 @@ export class ArrowFlowElement extends BaseElement {
       const botAY = baseY - perpY * ah * 0.5;
 
       const vi = i * 4;
+      const clampX = (v: number) => Math.max(x, Math.min(x + w, v));
+      const clampY = (v: number) => Math.max(y, Math.min(y + h, v));
       // segment 0: tip -> top arm
-      positions.setXYZ(vi + 0, tipX, tipY, 1);
-      positions.setXYZ(vi + 1, topAX, topAY, 1);
+      positions.setXYZ(vi + 0, clampX(tipX), clampY(tipY), 1);
+      positions.setXYZ(vi + 1, clampX(topAX), clampY(topAY), 1);
       // segment 1: tip -> bottom arm
-      positions.setXYZ(vi + 2, tipX, tipY, 1);
-      positions.setXYZ(vi + 3, botAX, botAY, 1);
+      positions.setXYZ(vi + 2, clampX(tipX), clampY(tipY), 1);
+      positions.setXYZ(vi + 3, clampX(botAX), clampY(botAY), 1);
 
       const brightness = fade * shimmer;
       const r = dim.r + (primary.r - dim.r) * brightness;

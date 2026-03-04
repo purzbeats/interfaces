@@ -73,7 +73,7 @@ export class WaveformElement extends BaseElement {
 
     const positions = this.line.geometry.getAttribute('position') as THREE.BufferAttribute;
     const cy = y + h / 2;
-    const amp = h * this.amplitude;
+    const amp = h * Math.min(this.amplitude, 0.45);
 
     const live = this.liveWaveform;
 
@@ -114,6 +114,7 @@ export class WaveformElement extends BaseElement {
         value += (Math.sin(i * 17.3) > 0 ? 1 : -1) * 0.5 * this.glitchTimer;
       }
 
+      value = Math.max(-1, Math.min(1, value));
       positions.setXYZ(i, px, cy + value * amp, 1);
     }
     positions.needsUpdate = true;

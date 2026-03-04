@@ -74,7 +74,7 @@ export class LoadingSpinnerElement extends BaseElement {
 
     if (this.variant === 0) {
       // Single arc: a curved line that spins
-      const arcPoints = this.buildArcPoints(this.cx, this.cy, this.radius, 0, this.arcSpan, 48);
+      const arcPoints = this.buildArcPoints(0, 0, this.radius, 0, this.arcSpan, 48);
       this.singleArcPoints = arcPoints;
       const geo = new THREE.BufferGeometry().setFromPoints(arcPoints);
       this.singleArc = new THREE.Line(geo, new THREE.LineBasicMaterial({
@@ -83,7 +83,6 @@ export class LoadingSpinnerElement extends BaseElement {
         opacity: 0,
       }));
       this.singleArc.position.set(this.cx, this.cy, 0);
-      // Geometry is built in local space centered at origin for clean rotation
       this.group.add(this.singleArc);
 
     } else if (this.variant === 1) {

@@ -248,8 +248,8 @@ export class FractalTreeElement extends BaseElement {
       }
 
       // Compute end position
-      const endX = startXArr[i] + Math.cos(absAngles[i]) * seg.length;
-      const endY = startYArr[i] + Math.sin(absAngles[i]) * seg.length;
+      const endX = Math.max(x, Math.min(x + w, startXArr[i] + Math.cos(absAngles[i]) * seg.length));
+      const endY = Math.max(y, Math.min(y + h, startYArr[i] + Math.sin(absAngles[i]) * seg.length));
 
       const idx = i * 4;
       this.computedPositions[idx] = startXArr[i];
@@ -291,8 +291,8 @@ export class FractalTreeElement extends BaseElement {
       }
       absAngles[i] = parentAngle + relAngle + windSway;
 
-      const endX = startXArr[i] + Math.cos(absAngles[i]) * seg.length;
-      const endY = startYArr[i] + Math.sin(absAngles[i]) * seg.length;
+      const endX = Math.max(x, Math.min(x + w, startXArr[i] + Math.cos(absAngles[i]) * seg.length));
+      const endY = Math.max(y, Math.min(y + h, startYArr[i] + Math.sin(absAngles[i]) * seg.length));
 
       const idx = i * 4;
       this.computedPositions[idx] = startXArr[i];

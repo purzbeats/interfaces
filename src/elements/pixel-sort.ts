@@ -170,7 +170,8 @@ export class PixelSortElement extends BaseElement {
     const result = new Array(n).fill(0);
     for (let sortedPos = 0; sortedPos < n; sortedPos++) {
       const origIdx = indices[sortedPos];
-      result[origIdx] = (sortedPos - origIdx) * this.cellH;
+      const maxDisp = this.numRows * this.cellH * 0.4;
+      result[origIdx] = Math.max(-maxDisp, Math.min(maxDisp, (sortedPos - origIdx) * this.cellH));
     }
     return result;
   }

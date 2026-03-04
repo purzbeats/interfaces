@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { HexCell } from './hex-grid';
 
 export type RegionTier = 'hero' | 'panel' | 'widget';
@@ -55,4 +56,28 @@ export function regionToPixels(
     w: (region.width - pad * 2) * screenWidth,
     h: (region.height - pad * 2) * screenHeight,
   };
+}
+
+/**
+ * Compute 4 THREE.Plane clipping planes for a rectangular region.
+ * Normals point inward so fragments inside the rectangle are kept.
+ * Mirrors hexClippingPlanes() but for axis-aligned rectangles.
+ */
+export function regionClippingPlanes(
+  region: Region,
+  screenWidth: number,
+  screenHeight: number,
+): THREE.Plane[] {
+  const { x, y, w, h } = regionToPixels(region, screenWidth, screenHeight);
+
+  return [
+    // Left edge — normal points right (+x)
+    new THREE.Plane(new THREE.Vector3(1, 0, 0), -x),
+    // Right edge — normal points left (-x)
+    new THREE.Plane(new THREE.Vector3(-1, 0, 0), x + w),
+    // Bottom edge — normal points up (+y)
+    new THREE.Plane(new THREE.Vector3(0, 1, 0), -y),
+    // Top edge — normal points down (-y)
+    new THREE.Plane(new THREE.Vector3(0, -1, 0), y + h),
+  ];
 }

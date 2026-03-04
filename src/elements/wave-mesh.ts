@@ -246,7 +246,7 @@ export class WaveMeshElement extends BaseElement {
       this.intensityBoost = 1.0;
       return;
     }
-    this.intensityBoost = 1.0 + level * 0.4;
+    this.intensityBoost = Math.min(2.0, 1.0 + level * 0.4);
     if (level >= 4) {
       this.waveSpeed *= 1.5;
     }

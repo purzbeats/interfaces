@@ -96,7 +96,7 @@ export class ThreatMeterElement extends BaseElement {
       transparent: true,
       opacity: 0,
     }));
-    this.labelMesh.position.set(x + w / 2, y + h + labelH / 2 + 2, 2);
+    this.labelMesh.position.set(x + w / 2, y + h - labelH / 2 - 2, 2);
     this.group.add(this.labelMesh);
   }
 

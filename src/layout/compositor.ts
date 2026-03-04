@@ -252,14 +252,15 @@ function demoteSlicedHeroes(regions: Region[]): void {
 export function compose(
   templateName: string,
   rng: SeededRandom,
-  canvasAspect?: number
+  canvasAspect?: number,
+  hexLayout?: boolean,
 ): CompositorResult {
   if (canvasAspect && canvasAspect > 0) {
     screenAspect = canvasAspect;
     setHexAspect(canvasAspect);
   }
   resetDividerCounter();
-  const template = getTemplate(templateName, rng);
+  const template = getTemplate(templateName, rng, hexLayout);
 
   // 1. Generate regions from pattern
   const patternName = template.layoutPattern;

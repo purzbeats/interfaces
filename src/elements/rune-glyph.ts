@@ -217,7 +217,8 @@ export class RuneGlyphElement extends BaseElement {
       for (let gi = 0; gi < totalGlyphs; gi++) {
         const row = Math.floor(gi / this.cols);
         const scrolledY = y + row * this.cellH - this.scrollOffset;
-        this.glyphLines[gi].position.y = scrolledY - (y + row * this.cellH);
+        const clampedY = Math.max(y, Math.min(y + h, scrolledY));
+        this.glyphLines[gi].position.y = clampedY - (y + row * this.cellH);
       }
       // Clip via scissor-like fade at edges — handled by opacity fade
     }

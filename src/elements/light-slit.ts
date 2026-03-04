@@ -157,7 +157,7 @@ export class LightSlitElement extends BaseElement {
     for (let i = 0; i < this.numBars; i++) {
       const tilt = Math.sin(time * this.tiltSpeed + this.barTiltPhase[i]) * this.barTiltAmp[i];
       const angleMul = this.variantAngled ? 0.35 : 1.0;
-      const effectiveTilt = tilt * angleMul + (this.variantAngled ? 0.22 : 0);
+      const effectiveTilt = Math.max(-0.2, Math.min(0.2, tilt * angleMul + (this.variantAngled ? 0.22 : 0)));
 
       // Open/close: barHeight oscillates
       let bh = this.barHeights[i];

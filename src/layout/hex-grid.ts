@@ -121,7 +121,7 @@ export function generateHexGrid(cols: number, rows: number): HexCell[] {
   // Compute hex size in aspect-corrected space [0, _aspect] × [0, 1]
   const sizeFromW = _aspect / (1.5 * (cols - 1) + 2);
   const sizeFromH = 1.0 / (SQRT3 * (rows - 1) + SQRT3 + (cols > 1 ? SQRT3 / 2 : 0));
-  const size = Math.min(sizeFromW, sizeFromH);
+  const size = Math.max(sizeFromW, sizeFromH);
 
   // Generate cell centers in aspect-corrected space
   const raw: { q: number; r: number; ax: number; ay: number }[] = [];

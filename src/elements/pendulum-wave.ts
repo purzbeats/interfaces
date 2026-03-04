@@ -258,11 +258,11 @@ export class PendulumWaveElement extends BaseElement {
     super.onIntensity(level);
     if (level === 0) return;
     if (level >= 5) {
-      this.amplitudeBoost = 2.0;
-    } else if (level >= 3) {
       this.amplitudeBoost = 0.8;
+    } else if (level >= 3) {
+      this.amplitudeBoost = 0.5;
     } else {
-      this.amplitudeBoost = 0.3;
+      this.amplitudeBoost = 0.2;
     }
   }
 
@@ -275,8 +275,7 @@ export class PendulumWaveElement extends BaseElement {
       }
     }
     if (action === 'alert') {
-      // Dramatic amplitude increase
-      this.amplitudeBoost = 2.0;
+      this.amplitudeBoost = 0.8;
       this.pulseTimer = 2.0;
     }
     if (action === 'pulse') {

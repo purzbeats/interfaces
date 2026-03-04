@@ -134,7 +134,7 @@ export class SpiralArmElement extends BaseElement {
       const arm = i % this.numArms;
       const armOffset = (arm / this.numArms) * Math.PI * 2;
       const t = this.rng.float(0.1, 1.0);
-      const r = t * maxR * this.rng.float(0.8, 1.2);
+      const r = t * maxR * this.rng.float(0.8, 1.0);
       const logSpiral = Math.log(1 + t * 4) * this.spiralTightness * Math.PI * 2 * 1.5;
       const angle = armOffset + logSpiral + this.rng.float(-p.spread * 2.5, p.spread * 2.5);
 

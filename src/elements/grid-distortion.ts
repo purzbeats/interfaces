@@ -257,8 +257,8 @@ export class GridDistortionElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'glitch') {
-      this.waveAmp *= 4;
-      setTimeout(() => { this.waveAmp /= 4; }, 400);
+      this.waveAmp *= 2;
+      setTimeout(() => { this.waveAmp /= 2; }, 400);
     }
     if (action === 'alert') {
       this.alertMode = true;

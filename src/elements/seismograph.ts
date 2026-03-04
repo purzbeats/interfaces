@@ -24,9 +24,9 @@ export class SeismographElement extends BaseElement {
     const variant = this.rng.int(0, 3);
     const presets = [
       { pointsDivisor: 2, spikeChance: [0.01, 0.04] as const, noiseScale: [0.15, 0.35] as const },
-      { pointsDivisor: 1, spikeChance: [0.04, 0.1] as const, noiseScale: [0.3, 0.5] as const },
+      { pointsDivisor: 1, spikeChance: [0.04, 0.1] as const, noiseScale: [0.3, 0.4] as const },
       { pointsDivisor: 4, spikeChance: [0.005, 0.015] as const, noiseScale: [0.08, 0.18] as const },
-      { pointsDivisor: 1.5, spikeChance: [0.02, 0.06] as const, noiseScale: [0.25, 0.45] as const },
+      { pointsDivisor: 1.5, spikeChance: [0.02, 0.06] as const, noiseScale: [0.25, 0.35] as const },
     ];
     const p = presets[variant];
 
@@ -119,6 +119,8 @@ export class SeismographElement extends BaseElement {
       value += Math.sin(time * 47) * 0.8 * this.glitchTimer;
     }
 
+    value = Math.max(-1.0, Math.min(1.0, value));
+
     positions.setY(this.numPoints - 1, cy + value * amp);
 
     // Re-position x coords (in case of resize)
@@ -136,7 +138,7 @@ export class SeismographElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'glitch') {
-      this.noiseScale = this.rng.float(0.3, 0.5);
+      this.noiseScale = this.rng.float(0.3, 0.4);
       setTimeout(() => { this.noiseScale = this.rng.float(0.15, 0.35); }, 500);
     }
     if (action === 'alert') {

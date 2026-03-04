@@ -25,9 +25,9 @@ export class HeartMonitorElement extends BaseElement {
     const variant = this.rng.int(0, 3);
     const presets = [
       { bpmMin: 60, bpmMax: 120, speedMin: 80, speedMax: 160, ampScale: 0.4, eraseGap: 3, dotSize: 0.02 },
-      { bpmMin: 100, bpmMax: 180, speedMin: 160, speedMax: 280, ampScale: 0.5, eraseGap: 5, dotSize: 0.015 },
+      { bpmMin: 100, bpmMax: 180, speedMin: 160, speedMax: 280, ampScale: 0.45, eraseGap: 5, dotSize: 0.015 },
       { bpmMin: 40, bpmMax: 70, speedMin: 50, speedMax: 90, ampScale: 0.3, eraseGap: 2, dotSize: 0.03 },
-      { bpmMin: 80, bpmMax: 200, speedMin: 120, speedMax: 220, ampScale: 0.55, eraseGap: 8, dotSize: 0.025 },
+      { bpmMin: 80, bpmMax: 200, speedMin: 120, speedMax: 220, ampScale: 0.45, eraseGap: 8, dotSize: 0.025 },
     ];
     const p = presets[variant];
 

@@ -144,7 +144,7 @@ export class ChainLinkElement extends BaseElement {
     let sag = 0;
     if (this.isCatenary) {
       const t = (i / (this.numLinks - 1)) * 2 - 1; // -1 to 1
-      sag = t * t * h * 0.28; // parabolic sag
+      sag = t * t * h * 0.18; // parabolic sag
     }
 
     // Vibration: standing wave
