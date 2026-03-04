@@ -1140,10 +1140,12 @@ export class Engine {
           }
           break;
         case 'f':
-          if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-          } else {
-            document.exitFullscreen();
+          if (!this.showcase.isActive) {
+            if (!document.fullscreenElement) {
+              document.documentElement.requestFullscreen();
+            } else {
+              document.exitFullscreen();
+            }
           }
           break;
         case 'm':

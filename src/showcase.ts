@@ -91,6 +91,7 @@ export class ShowcaseMode {
   private types: string[];
   private currentIndex: number = 0;
   private element: BaseElement | null = null;
+  private elements: BaseElement[] = [];
   private wrapper: THREE.Group = new THREE.Group();
   private palette!: Palette;
   private elapsed: number = 0;
@@ -383,10 +384,12 @@ export class ShowcaseMode {
   }
 
   private clearElement(): void {
-    if (this.element) {
+    if (this.element || this.elements.length > 0) {
       this.ctx.scene.remove(this.wrapper);
-      this.element.dispose();
+      this.element?.dispose();
       this.element = null;
+      for (const el of this.elements) el.dispose();
+      this.elements = [];
       this.wrapper = new THREE.Group();
     }
   }
@@ -402,29 +405,86 @@ export class ShowcaseMode {
     const w = this.config.width;
     const h = this.config.height;
 
-    // Inset region to leave room for the overlay bar at the bottom (GL y=0 is bottom)
-    const bottomInset = this.fullscreen ? 0 : OVERLAY_BAR_PX / h;
-    const region: Region = createRegion('showcase', 0, bottomInset, 1, 1 - bottomInset, 0.02);
-    region.elementType = type;
-
-    const rng = new SeededRandom(this.config.seed + this.currentIndex);
-    this.element = createElement(type, region, this.palette, rng, w, h);
-
     this.wrapper = new THREE.Group();
-    this.wrapper.add(this.element.group);
+
+    if (this.fullscreen) {
+      // Multi-aspect proof sheet layout
+      this.spawnMultiAspect(type, w, h);
+    } else {
+      // Single element with overlay bar
+      const bottomInset = OVERLAY_BAR_PX / h;
+      const region: Region = createRegion('showcase', 0, bottomInset, 1, 1 - bottomInset, 0.02);
+      region.elementType = type;
+
+      const rng = new SeededRandom(this.config.seed + this.currentIndex);
+      this.element = createElement(type, region, this.palette, rng, w, h);
+
+      this.wrapper.add(this.element.group);
+
+      this.element.group.visible = true;
+      this.element.stateMachine.transition('active');
+    }
+
     this.ctx.scene.add(this.wrapper);
-
-    // Immediately activate — skip boot animation in showcase
-    this.element.group.visible = true;
-    this.element.stateMachine.transition('active');
-
     this.updateOverlay();
   }
 
+  /**
+   * Spawn 7 instances of the same element at different aspect ratios:
+   * Top row: 16:9 wide
+   * Bottom row: 9:16 tall | 1:1 square | 2x2 grid of small squares
+   */
+  private spawnMultiAspect(type: string, w: number, h: number): void {
+    const g = 0.008; // gap between panels
+    const topH = 0.42;
+    const botY = topH + g;
+    const botH = 1 - botY;
+
+    // Column widths for bottom row
+    const col1W = 0.22;
+    const col2W = 0.38;
+    const col3W = 1 - col1W - col2W - g * 2;
+
+    const col1X = 0;
+    const col2X = col1W + g;
+    const col3X = col2X + col2W + g;
+
+    // Define all 7 panel regions: [id, x, y, width, height]
+    const panels: [string, number, number, number, number][] = [
+      // Top: 16:9 wide
+      ['wide', 0, 1 - topH, 1, topH],
+      // Bottom-left: 9:16 tall
+      ['tall', col1X, 0, col1W, botH - g],
+      // Bottom-center: 1:1 square
+      ['square', col2X, 0, col2W, botH - g],
+      // Bottom-right: 2x2 grid of small squares
+      ['sm-tl', col3X, (botH - g) / 2 + g / 2, (col3W - g) / 2, (botH - g) / 2 - g / 2],
+      ['sm-tr', col3X + (col3W - g) / 2 + g, (botH - g) / 2 + g / 2, (col3W - g) / 2, (botH - g) / 2 - g / 2],
+      ['sm-bl', col3X, 0, (col3W - g) / 2, (botH - g) / 2 - g / 2],
+      ['sm-br', col3X + (col3W - g) / 2 + g, 0, (col3W - g) / 2, (botH - g) / 2 - g / 2],
+    ];
+
+    for (let i = 0; i < panels.length; i++) {
+      const [id, x, y, pw, ph] = panels[i];
+      const region = createRegion(`showcase-${id}`, x, y, pw, ph, 0.02);
+      region.elementType = type;
+
+      const rng = new SeededRandom(this.config.seed + this.currentIndex + i * 997);
+      const el = createElement(type, region, this.palette, rng, w, h);
+
+      this.wrapper.add(el.group);
+      el.group.visible = true;
+      el.stateMachine.transition('active');
+      this.elements.push(el);
+    }
+  }
+
   update(dt: number): void {
-    if (!this.active || !this.element) return;
+    if (!this.active) return;
+    if (!this.element && this.elements.length === 0) return;
     this.elapsed += dt;
-    this.element.tick(dt, this.elapsed);
+    this.element?.tick(dt, this.elapsed);
+    for (const el of this.elements) el.tick(dt, this.elapsed);
     this.pipeline.update(this.elapsed, this.config);
   }
 
