@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
 import { glitchOffset } from '../animation/fx';
+import { hexagonPoints } from '../layout/hex-grid';
 
 export class RadarSweepElement extends BaseElement {
   static readonly registration: ElementRegistration = {
@@ -15,6 +16,7 @@ export class RadarSweepElement extends BaseElement {
   private speed: number = 0;
   private blipData: Array<{ angle: number; radius: number; brightness: number }> = [];
   private alertMode: boolean = false;
+  private isHex: boolean = false;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -32,24 +34,42 @@ export class RadarSweepElement extends BaseElement {
     const cy = y + h / 2;
     const radius = Math.min(w, h) / 2 * 0.9;
     this.speed = p.speed + this.rng.float(-0.3, 0.3);
+    this.isHex = !!this.region.hexCell;
 
     // Concentric rings + crosshairs
     const ringVerts: number[] = [];
     const ringCount = p.ringCount + this.rng.int(-1, 1);
     const segments = p.segments;
-    for (let r = 1; r <= ringCount; r++) {
-      const rr = (radius / ringCount) * r;
-      for (let i = 0; i < segments; i++) {
-        const a1 = (i / segments) * Math.PI * 2;
-        const a2 = ((i + 1) / segments) * Math.PI * 2;
-        ringVerts.push(
-          cx + Math.cos(a1) * rr, cy + Math.sin(a1) * rr, 0,
-          cx + Math.cos(a2) * rr, cy + Math.sin(a2) * rr, 0,
-        );
+
+    if (this.isHex) {
+      for (let r = 1; r <= ringCount; r++) {
+        const rr = (radius / ringCount) * r;
+        const pts = hexagonPoints(cx, cy, rr, Math.max(1, Math.floor(segments / 6)));
+        for (let i = 0; i < pts.length; i++) {
+          const next = pts[(i + 1) % pts.length];
+          ringVerts.push(pts[i].x, pts[i].y, 0, next.x, next.y, 0);
+        }
       }
+      // 6 radial lines to hex vertices
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i;
+        ringVerts.push(cx, cy, 0, cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 0);
+      }
+    } else {
+      for (let r = 1; r <= ringCount; r++) {
+        const rr = (radius / ringCount) * r;
+        for (let i = 0; i < segments; i++) {
+          const a1 = (i / segments) * Math.PI * 2;
+          const a2 = ((i + 1) / segments) * Math.PI * 2;
+          ringVerts.push(
+            cx + Math.cos(a1) * rr, cy + Math.sin(a1) * rr, 0,
+            cx + Math.cos(a2) * rr, cy + Math.sin(a2) * rr, 0,
+          );
+        }
+      }
+      ringVerts.push(cx - radius, cy, 0, cx + radius, cy, 0);
+      ringVerts.push(cx, cy - radius, 0, cx, cy + radius, 0);
     }
-    ringVerts.push(cx - radius, cy, 0, cx + radius, cy, 0);
-    ringVerts.push(cx, cy - radius, 0, cx, cy + radius, 0);
 
     const ringGeo = new THREE.BufferGeometry();
     ringGeo.setAttribute('position', new THREE.Float32BufferAttribute(ringVerts, 3));
@@ -112,7 +132,30 @@ export class RadarSweepElement extends BaseElement {
     // Update sweep line endpoint
     const positions = this.sweepLine.geometry.getAttribute('position') as THREE.BufferAttribute;
     positions.setXY(0, cx, cy);
-    positions.setXY(1, cx + Math.cos(this.angle) * radius, cy + Math.sin(this.angle) * radius);
+    if (this.isHex) {
+      // Intersect ray from center at sweep angle with hex boundary
+      const cosA = Math.cos(this.angle), sinA = Math.sin(this.angle);
+      // For flat-top hex, find the edge the ray crosses and compute intersection
+      let endR = radius;
+      for (let i = 0; i < 6; i++) {
+        const a1 = (Math.PI / 3) * i;
+        const a2 = (Math.PI / 3) * ((i + 1) % 6);
+        // Edge from vertex i to vertex i+1
+        const ex1 = Math.cos(a1), ey1 = Math.sin(a1);
+        const ex2 = Math.cos(a2), ey2 = Math.sin(a2);
+        // Ray: P = t*(cosA, sinA), Edge: Q = ex1 + s*(ex2-ex1, ey2-ey1)
+        const dx = ex2 - ex1, dy = ey2 - ey1;
+        const denom = cosA * dy - sinA * dx;
+        if (Math.abs(denom) < 1e-10) continue;
+        const s = (cosA * ey1 - sinA * ex1) / denom;
+        if (s < 0 || s > 1) continue;
+        const t = (ex1 * dy - ey1 * dx) / denom;
+        if (t > 0) endR = Math.min(endR, t * radius);
+      }
+      positions.setXY(1, cx + cosA * endR, cy + sinA * endR);
+    } else {
+      positions.setXY(1, cx + Math.cos(this.angle) * radius, cy + Math.sin(this.angle) * radius);
+    }
     positions.needsUpdate = true;
 
     const sweepColor = this.alertMode ? this.palette.alert : this.palette.primary;

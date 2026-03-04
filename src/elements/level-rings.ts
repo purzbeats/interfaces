@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import { hexagonPoints, hexPerimeterPoint, hexCornersPixel } from '../layout/hex-grid';
 
 /**
  * Multi-metric concentric arcs (3-5 rings), each with independent fill level.
@@ -27,6 +28,8 @@ export class LevelRingsElement extends BaseElement {
   private renderAccum: number = 0;
   private springK: number = 15;
   private springDamping: number = 3;
+  private isHex: boolean = false;
+  private hexCorners: THREE.Vector3[] | null = null;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -47,6 +50,10 @@ export class LevelRingsElement extends BaseElement {
     this.springK = p.springK + this.rng.float(-2, 2);
     this.springDamping = p.damping + this.rng.float(-0.3, 0.3);
     const ringGap = maxR / (this.ringCount + 1) * (p.gapFactor + this.rng.float(-0.05, 0.05));
+    this.isHex = !!this.region.hexCell;
+    if (this.region.hexCell) {
+      this.hexCorners = hexCornersPixel(this.region.hexCell, this.screenWidth, this.screenHeight);
+    }
 
     const allLabels = ['CPU', 'MEM', 'NET', 'DISK', 'GPU', 'TEMP', 'PWR', 'IO'];
     for (let r = 0; r < this.ringCount; r++) {
@@ -57,11 +64,17 @@ export class LevelRingsElement extends BaseElement {
       this.velocities.push(0);
       this.labels.push(allLabels[r % allLabels.length]);
 
-      // Background ring (full circle)
+      // Background ring (full shape)
       const bgVerts: number[] = [];
-      for (let i = 0; i <= this.segments; i++) {
-        const a = (i / this.segments) * Math.PI * 2 - Math.PI / 2;
-        bgVerts.push(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 0);
+      if (this.isHex) {
+        const pts = hexagonPoints(cx, cy, radius, Math.max(1, Math.floor(this.segments / 6)));
+        for (const pt of pts) bgVerts.push(pt.x, pt.y, 0);
+        bgVerts.push(pts[0].x, pts[0].y, 0); // close
+      } else {
+        for (let i = 0; i <= this.segments; i++) {
+          const a = (i / this.segments) * Math.PI * 2 - Math.PI / 2;
+          bgVerts.push(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 0);
+        }
       }
       const bgGeo = new THREE.BufferGeometry();
       bgGeo.setAttribute('position', new THREE.Float32BufferAttribute(bgVerts, 3));
@@ -132,12 +145,25 @@ export class LevelRingsElement extends BaseElement {
       this.values[r] = Math.max(0, Math.min(1.1, this.values[r]));
 
       const radius = maxR - ringGap * r;
-      const fillAngle = this.values[r] * Math.PI * 2;
       const fillPos = this.fillRings[r].geometry.getAttribute('position') as THREE.BufferAttribute;
 
-      for (let i = 0; i <= this.segments; i++) {
-        const a = (i / this.segments) * fillAngle - Math.PI / 2;
-        fillPos.setXYZ(i, cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 1);
+      if (this.isHex && this.hexCorners) {
+        const fillFrac = Math.min(this.values[r], 1);
+        for (let i = 0; i <= this.segments; i++) {
+          const t = (i / this.segments) * fillFrac;
+          const pt = hexPerimeterPoint(this.hexCorners, t);
+          // Scale to this ring's radius from center
+          const dx = pt.px - cx, dy = pt.py - cy;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          const scale = d > 0 ? radius / d : 0;
+          fillPos.setXYZ(i, cx + dx * scale, cy + dy * scale, 1);
+        }
+      } else {
+        const fillAngle = this.values[r] * Math.PI * 2;
+        for (let i = 0; i <= this.segments; i++) {
+          const a = (i / this.segments) * fillAngle - Math.PI / 2;
+          fillPos.setXYZ(i, cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 1);
+        }
       }
       fillPos.needsUpdate = true;
 

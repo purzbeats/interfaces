@@ -189,6 +189,114 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'grid-distortion': 2,
     },
   },
+  'biblically-accurate': {
+    name: 'biblically-accurate',
+    layoutPattern: 'radial-sanctum',
+    createRegions: () => [
+      createRegion('center', 0.40, 0.40, 0.20, 0.20, 0.005),
+      createRegion('inner-ring', 0.20, 0.20, 0.60, 0.60, 0.005),
+      createRegion('outer-ring', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0, splitVariance: 0.1, minWidth: 0.12, minHeight: 0.1 },
+    elementWeights: {
+      'watching-eye': 4, 'spiral-vortex': 3, 'clock-melt': 3,
+      'concentric-rings': 3, 'iris-aperture': 2, 'cipher-wheel': 2,
+      'data-rings': 2, 'ring-gauge': 2, 'level-rings': 2,
+      'breathing-grid': 2, 'infinite-hallway': 2, 'static-channel': 2,
+      'corrupted-text': 2, 'face-brackets': 2,
+      'hex-tunnel': 2, 'warp-tunnel': 2, 'orbital-display': 2,
+      'radial-scanner': 1, 'radar-sweep': 1, 'target-lock': 1,
+      'harmonograph': 1, 'plasma-field': 1, 'star-field': 1,
+    },
+  },
+  'biolab': {
+    name: 'biolab',
+    layoutPattern: 'culture-plate',
+    createRegions: () => [
+      createRegion('specimen', 0.08, 0.0, 0.52, 0.58, 0.005),
+      createRegion('instruments-right', 0.60, 0.0, 0.40, 0.58, 0.005),
+      createRegion('instruments-bottom', 0.0, 0.58, 1.0, 0.42, 0.005),
+    ],
+    bspOptions: { maxDepth: 2, splitVariance: 0.25, minWidth: 0.10, minHeight: 0.10 },
+    elementWeights: {
+      // New biotech elements (high)
+      'cell-division': 3, 'petri-dish': 3, 'bio-reactor': 3,
+      'capillary-network': 2, 'spore-bloom': 2, 'gel-electrophoresis': 2,
+      'pulse-membrane': 2, 'enzyme-cascade': 2,
+      // Existing organic elements (medium)
+      'dna-helix': 3, 'fractal-tree': 2, 'flow-field': 2,
+      'neural-mesh': 2, 'boids-swarm': 2, 'heart-monitor': 2,
+      'plasma-field': 1, 'network-graph': 1,
+      // Lab-fitting general elements (low)
+      'concentric-rings': 1, 'ring-gauge': 1, 'thermal-map': 1,
+      'waveform': 1, 'graph': 1, 'oscilloscope': 1,
+      'progress-bar': 1, 'data-table': 1, 'text-label': 1,
+    },
+  },
+  'hive': {
+    name: 'hive',
+    layoutPattern: 'hex-cluster',
+    createRegions: () => [
+      createRegion('center', 0.35, 0.35, 0.30, 0.30, 0.005),
+      createRegion('ring', 0.10, 0.10, 0.80, 0.80, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    elementWeights: {
+      'concentric-rings': 3, 'hex-grid': 2, 'ring-gauge': 2,
+      'radar-sweep': 2, 'radial-scanner': 2, 'cipher-wheel': 2,
+      'orbital-display': 2, 'hex-tunnel': 2, 'target-lock': 2,
+      'level-rings': 2, 'phase-indicator': 1,
+      'cross-scope': 1, 'coord-grid': 1,
+      'waveform': 1, 'signal-bars': 1, 'text-label': 1,
+      'status-readout': 1, 'clock-display': 1, 'segment-display': 1,
+      'pulse-wave': 1, 'countdown-timer': 1,
+      'pressure-gauge': 1, 'data-table': 1,
+      'harmonograph': 1, 'lorenz-attractor': 1, 'plasma-field': 1,
+      'star-field': 1, 'boids-swarm': 1, 'flow-field': 1,
+    },
+  },
+
+  'honeycomb': {
+    name: 'honeycomb',
+    layoutPattern: 'hex-grid',
+    createRegions: () => [
+      createRegion('full', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    elementWeights: {
+      graph: 2, waveform: 2, 'scrolling-numbers': 1,
+      'text-label': 2, 'progress-bar': 1, 'status-readout': 1,
+      'signal-bars': 1, 'ring-gauge': 2, 'bracket-frame': 1,
+      'threat-meter': 1, 'clock-display': 1, 'segment-display': 1,
+      'freq-analyzer': 1, 'binary-stream': 1, 'scan-line': 1,
+      'radar-sweep': 1, 'cross-scope': 1,
+      'pulse-wave': 2, 'spectrogram': 1, 'target-lock': 1,
+      'countdown-timer': 2, 'heart-monitor': 1, 'flight-ladder': 1,
+      'cpu-cores': 1, 'audio-meter': 1, 'data-table': 1,
+      'neural-mesh': 1, 'hex-tunnel': 1, 'orbital-display': 1,
+      'concentric-rings': 2, 'radial-scanner': 1, 'cipher-wheel': 1,
+    },
+  },
+
+  'hexwall': {
+    name: 'hexwall',
+    layoutPattern: 'hex-wall',
+    createRegions: () => [
+      createRegion('full', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    elementWeights: {
+      'concentric-rings': 2, 'ring-gauge': 2, 'radar-sweep': 2,
+      'radial-scanner': 2, 'cross-scope': 2, 'target-lock': 2,
+      'hex-grid': 1, 'hex-tunnel': 1, 'cipher-wheel': 1,
+      'phase-indicator': 1, 'level-rings': 1,
+      'signal-bars': 1, 'waveform': 1, 'graph': 1,
+      'text-label': 1, 'status-readout': 1, 'clock-display': 1,
+      'pulse-wave': 1, 'dot-matrix': 1, 'segment-display': 1,
+      'countdown-timer': 1, 'pressure-gauge': 1, 'data-table': 1,
+      'boids-swarm': 1, 'flow-field': 1, 'plasma-field': 1,
+    },
+  },
 };
 
 export function getTemplate(name: string, rng: SeededRandom): TemplateConfig {

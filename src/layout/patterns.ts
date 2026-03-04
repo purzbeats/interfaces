@@ -1,6 +1,7 @@
 import type { SeededRandom } from '../random';
 import type { Region } from './region';
 import { createTieredRegion } from './region';
+import { generateHexGrid, hexInscribedRect, hexDistance } from './hex-grid';
 
 export interface LayoutPattern {
   name: string;
@@ -298,6 +299,149 @@ function pictureInPicture(rng: SeededRandom): Region[] {
   ];
 }
 
+// --- Pattern K: "radial-sanctum" ---
+// Concentric 5×5 grid: small central hero, 8 inner ring panels, 8 outer frame widgets.
+// Designed for "wheels within wheels" — dense ring of radial elements around a focal point.
+function radialSanctum(rng: SeededRandom): Region[] {
+  // Jittered 5×5 grid boundaries
+  const c1 = jitter(0.20, rng, 0.015, 0.16, 0.24);
+  const c2 = jitter(0.40, rng, 0.015, 0.36, 0.44);
+  const c3 = jitter(0.60, rng, 0.015, 0.56, 0.64);
+  const c4 = jitter(0.80, rng, 0.015, 0.76, 0.84);
+
+  const r1 = jitter(0.20, rng, 0.015, 0.16, 0.24);
+  const r2 = jitter(0.40, rng, 0.015, 0.36, 0.44);
+  const r3 = jitter(0.60, rng, 0.015, 0.56, 0.64);
+  const r4 = jitter(0.80, rng, 0.015, 0.76, 0.84);
+
+  return [
+    // Ring 0: central hero (the entity)
+    createTieredRegion('hero-0', 'hero', c2, r2, c3 - c2, r3 - r2),
+
+    // Ring 1: 8 inner panels (the eyes / wheels)
+    createTieredRegion('panel-0', 'panel', c1, r1, c2 - c1, r2 - r1),   // top-left
+    createTieredRegion('panel-1', 'panel', c2, r1, c3 - c2, r2 - r1),   // top
+    createTieredRegion('panel-2', 'panel', c3, r1, c4 - c3, r2 - r1),   // top-right
+    createTieredRegion('panel-3', 'panel', c1, r2, c2 - c1, r3 - r2),   // left
+    createTieredRegion('panel-4', 'panel', c3, r2, c4 - c3, r3 - r2),   // right
+    createTieredRegion('panel-5', 'panel', c1, r3, c2 - c1, r4 - r3),   // bottom-left
+    createTieredRegion('panel-6', 'panel', c2, r3, c3 - c2, r4 - r3),   // bottom
+    createTieredRegion('panel-7', 'panel', c3, r3, c4 - c3, r4 - r3),   // bottom-right
+
+    // Ring 2: 8 outer widgets (4 corners + 4 edges)
+    createTieredRegion('widget-0', 'widget', 0, 0, c1, r1),             // corner TL
+    createTieredRegion('widget-1', 'widget', c4, 0, 1 - c4, r1),        // corner TR
+    createTieredRegion('widget-2', 'widget', 0, r4, c1, 1 - r4),        // corner BL
+    createTieredRegion('widget-3', 'widget', c4, r4, 1 - c4, 1 - r4),   // corner BR
+    createTieredRegion('widget-4', 'widget', c1, 0, c4 - c1, r1),       // edge top
+    createTieredRegion('widget-5', 'widget', c1, r4, c4 - c1, 1 - r4),  // edge bottom
+    createTieredRegion('widget-6', 'widget', 0, r1, c1, r4 - r1),       // edge left
+    createTieredRegion('widget-7', 'widget', c4, r1, 1 - c4, r4 - r1),  // edge right
+  ];
+}
+
+// --- Pattern L: "culture-plate" ---
+// Asymmetric microscope-view layout: off-center hero "specimen field" with
+// stacked right-side panels, bottom panels, and scattered widgets forming
+// an L-shaped instrument cluster.
+function culturePlate(rng: SeededRandom): Region[] {
+  const leftStripW = jitter(0.08, rng, 0.015, 0.05, 0.12);
+  const heroRightX = jitter(0.60, rng, 0.02, 0.54, 0.66);
+  const heroBottomY = jitter(0.58, rng, 0.02, 0.52, 0.64);
+  // Right side panel splits
+  const rPanel0Y = jitter(0.30, rng, 0.02, 0.24, 0.36);
+  const rPanel1Y = jitter(0.65, rng, 0.02, 0.58, 0.72);
+  // Bottom row splits
+  const bSplitX1 = jitter(0.35, rng, 0.02, 0.28, 0.42);
+  const bSplitX2 = jitter(0.65, rng, 0.02, 0.58, 0.72);
+
+  return [
+    // Left strip widget
+    createTieredRegion('widget-5', 'widget', 0, 0, leftStripW, heroBottomY),
+    // Hero: main specimen view (upper-left, ~52% x 58%)
+    createTieredRegion('hero-0', 'hero', leftStripW, 0, heroRightX - leftStripW, heroBottomY),
+    // Right stacked: top widget + 2 panels
+    createTieredRegion('widget-0', 'widget', heroRightX, 0, 1 - heroRightX, rPanel0Y),
+    createTieredRegion('panel-0', 'panel', heroRightX, rPanel0Y, 1 - heroRightX, rPanel1Y - rPanel0Y),
+    createTieredRegion('panel-1', 'panel', heroRightX, rPanel1Y, 1 - heroRightX, heroBottomY - rPanel1Y),
+    // Bottom row: panel + 2 widgets
+    createTieredRegion('panel-2', 'panel', 0, heroBottomY, bSplitX1, 1 - heroBottomY),
+    createTieredRegion('widget-3', 'widget', bSplitX1, heroBottomY, bSplitX2 - bSplitX1, 1 - heroBottomY),
+    createTieredRegion('widget-4', 'widget', bSplitX2, heroBottomY, 1 - bSplitX2, 1 - heroBottomY),
+    // Corner widgets
+    createTieredRegion('widget-1', 'widget', heroRightX, heroBottomY - 0.06, (1 - heroRightX) * 0.5, 0.06),
+    createTieredRegion('widget-2', 'widget', heroRightX + (1 - heroRightX) * 0.5, heroBottomY - 0.06, (1 - heroRightX) * 0.5, 0.06),
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Hex patterns — flat-top hexagonal grids
+// ---------------------------------------------------------------------------
+
+/** Convert a HexCell array to Regions with inscribed rectangles and tier assignment. */
+function hexCellsToRegions(
+  cells: { q: number; r: number; size: number; cx: number; cy: number }[],
+  tierFn: (q: number, r: number) => 'hero' | 'panel' | 'widget',
+): Region[] {
+  return cells.map((cell, i) => {
+    const tier = tierFn(cell.q, cell.r);
+    const rect = hexInscribedRect(cell);
+    const region = createTieredRegion(
+      `hex-${i}`, tier,
+      rect.x, rect.y, rect.w, rect.h,
+      0, // no padding — hex clipping planes handle boundaries
+    );
+    region.hexCell = cell;
+    return region;
+  });
+}
+
+// --- Pattern: "hex-cluster" (7 cells — 1 center + 6 ring) ---
+function hexCluster(_rng: SeededRandom): Region[] {
+  const cells = generateHexGrid(3, 3);
+  // Pick the center cell (q=1, r=1 in a 3×3 grid)
+  const centerQ = 1, centerR = 1;
+  // Filter to only the center + its 6 neighbors (the "flower" cluster)
+  const cluster = cells.filter(c =>
+    hexDistance(c.q, c.r, centerQ, centerR) <= 1
+  );
+  return hexCellsToRegions(cluster, (q, r) =>
+    (q === centerQ && r === centerR) ? 'hero' : 'panel'
+  );
+}
+
+// --- Pattern: "hex-grid" (12–19 cells, medium) ---
+function hexGrid(rng: SeededRandom): Region[] {
+  const cols = rng.pick([3, 4]);
+  const rows = rng.pick([4, 5]);
+  const cells = generateHexGrid(cols, rows);
+  // Center cell is hero; ring-1 are panels; rest are widgets
+  const cq = Math.floor(cols / 2);
+  const cr = Math.floor(rows / 2);
+  return hexCellsToRegions(cells, (q, r) => {
+    const d = hexDistance(q, r, cq, cr);
+    if (d === 0) return 'hero';
+    if (d === 1) return 'panel';
+    return 'widget';
+  });
+}
+
+// --- Pattern: "hex-wall" (20–30 cells, dense) ---
+function hexWall(rng: SeededRandom): Region[] {
+  const cols = rng.pick([5, 6]);
+  const rows = rng.pick([4, 5]);
+  const cells = generateHexGrid(cols, rows);
+  // Two hero cells near center; ring-1 panels; rest widgets
+  const cq = Math.floor(cols / 2);
+  const cr = Math.floor(rows / 2);
+  return hexCellsToRegions(cells, (q, r) => {
+    const d = hexDistance(q, r, cq, cr);
+    if (d === 0) return 'hero';
+    if (d === 1) return 'panel';
+    return 'widget';
+  });
+}
+
 // --- Pattern registry ---
 
 export const PATTERNS: Record<string, LayoutPattern> = {
@@ -311,6 +455,11 @@ export const PATTERNS: Record<string, LayoutPattern> = {
   'cockpit':            { name: 'cockpit',             generate: cockpit },
   'watchtower':         { name: 'watchtower',          generate: watchtower },
   'picture-in-picture': { name: 'picture-in-picture',  generate: pictureInPicture },
+  'radial-sanctum':     { name: 'radial-sanctum',      generate: radialSanctum },
+  'culture-plate':      { name: 'culture-plate',       generate: culturePlate },
+  'hex-cluster':        { name: 'hex-cluster',         generate: hexCluster },
+  'hex-grid':           { name: 'hex-grid',            generate: hexGrid },
+  'hex-wall':           { name: 'hex-wall',            generate: hexWall },
 };
 
 export function getPattern(name: string): LayoutPattern | undefined {

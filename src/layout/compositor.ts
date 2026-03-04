@@ -4,6 +4,7 @@ import { getTemplate, type TemplateConfig } from './templates';
 import { getPattern, randomPattern } from './patterns';
 import { getMeta, allElementNames } from '../elements/tags';
 import { injectDividers, resetDividerCounter } from './dividers';
+import { setHexAspect, hexDistance } from './hex-grid';
 
 export interface CompositorResult {
   template: TemplateConfig;
@@ -86,6 +87,11 @@ function shapeFitness(elementName: string, regionShape: RegionShape): number {
 const EDGE_TOLERANCE = 0.02;
 
 function areAdjacent(a: Region, b: Region): boolean {
+  // Hex-aware adjacency: use hex distance if both regions have hex metadata
+  if (a.hexCell && b.hexCell) {
+    return hexDistance(a.hexCell.q, a.hexCell.r, b.hexCell.q, b.hexCell.r) === 1;
+  }
+
   const aRight = a.x + a.width;
   const bRight = b.x + b.width;
   const aBottom = a.y + a.height;
@@ -248,7 +254,10 @@ export function compose(
   rng: SeededRandom,
   canvasAspect?: number
 ): CompositorResult {
-  if (canvasAspect && canvasAspect > 0) screenAspect = canvasAspect;
+  if (canvasAspect && canvasAspect > 0) {
+    screenAspect = canvasAspect;
+    setHexAspect(canvasAspect);
+  }
   resetDividerCounter();
   const template = getTemplate(templateName, rng);
 
@@ -259,13 +268,17 @@ export function compose(
     ? pattern.generate(rng)
     : randomPattern(rng).generate(rng);
 
-  // 2. Inject dividers (slice regions; dividers are pre-assigned)
-  const { contentRegions, dividerRegions } = injectDividers(patternRegions, rng);
+  // 2. Inject dividers — skip for hex layouts (hex borders serve as dividers)
+  const isHexLayout = patternRegions.some(r => r.hexCell != null);
+  let allRegions: Region[];
 
-  // Demote heroes that got sliced too small
-  demoteSlicedHeroes(contentRegions);
-
-  const allRegions = [...contentRegions, ...dividerRegions];
+  if (isHexLayout) {
+    allRegions = patternRegions;
+  } else {
+    const { contentRegions, dividerRegions } = injectDividers(patternRegions, rng);
+    demoteSlicedHeroes(contentRegions);
+    allRegions = [...contentRegions, ...dividerRegions];
+  }
 
   // 3. Resolve base weights
   const baseWeights = resolveWeights(template);
@@ -276,7 +289,7 @@ export function compose(
   }
 
   // Cap content regions to available candidate count
-  let assignable = contentRegions.filter(r => !r.isDivider);
+  let assignable = allRegions.filter((r: Region) => !r.isDivider);
   if (assignable.length > candidates.length) {
     assignable.sort((a, b) => (b.width * b.height) - (a.width * a.height));
     const toDrop = new Set(assignable.slice(candidates.length));

@@ -1,3 +1,5 @@
+import type { HexCell } from './hex-grid';
+
 export type RegionTier = 'hero' | 'panel' | 'widget';
 
 /**
@@ -14,6 +16,7 @@ export interface Region {
   isDivider?: boolean;
   elementType?: string;
   children?: Region[];
+  hexCell?: HexCell; // present only for hex-layout regions
 }
 
 export function createRegion(

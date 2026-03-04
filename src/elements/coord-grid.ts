@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import { hexCornersPixel, hexCellToPixel, hexagonPoints } from '../layout/hex-grid';
 
 /**
  * Tactical grid with wandering point, trailing path, and coordinate readout.
@@ -27,6 +28,10 @@ export class CoordGridElement extends BaseElement {
   private maxTrail: number = 60;
   private renderAccum: number = 0;
   private renderInterval: number = 1 / 10;
+  private isHex: boolean = false;
+  private hexCx: number = 0;
+  private hexCy: number = 0;
+  private hexMaxR: number = 0;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -47,18 +52,43 @@ export class CoordGridElement extends BaseElement {
     this.maxTrail = p.trailLen;
     this.renderInterval = 1 / p.renderFps;
 
-    // Grid lines — scale spacing to region size
-    const divisions = this.rng.pick(p.divPicks);
-    const gridSpacing = Math.max(10, Math.floor(minDim / divisions));
+    const hexCell = this.region.hexCell;
     const gridVerts: number[] = [];
-    // Vertical lines
-    for (let gx2 = x; gx2 <= x + w; gx2 += gridSpacing) {
-      gridVerts.push(gx2, y, 0, gx2, y + h, 0);
+
+    if (hexCell) {
+      this.isHex = true;
+      const hexCorners = hexCornersPixel(hexCell, this.screenWidth, this.screenHeight);
+      const hpx = hexCellToPixel(hexCell, this.screenWidth, this.screenHeight);
+      this.hexCx = hpx.cx;
+      this.hexCy = hpx.cy;
+      this.hexMaxR = hpx.size * 0.85;
+
+      // 6 radial lines from center to each vertex
+      for (let i = 0; i < 6; i++) {
+        gridVerts.push(hpx.cx, hpx.cy, 0, hexCorners[i].x, hexCorners[i].y, 0);
+      }
+      // 2-3 concentric hex rings
+      const ringCount = Math.min(3, Math.max(2, Math.floor(minDim / 80)));
+      for (let r = 1; r <= ringCount; r++) {
+        const ringR = hpx.size * (r / (ringCount + 1));
+        const pts = hexagonPoints(hpx.cx, hpx.cy, ringR, 1);
+        for (let i = 0; i < pts.length; i++) {
+          const next = pts[(i + 1) % pts.length];
+          gridVerts.push(pts[i].x, pts[i].y, 0, next.x, next.y, 0);
+        }
+      }
+    } else {
+      // Rect mode: orthogonal grid
+      const divisions = this.rng.pick(p.divPicks);
+      const gridSpacing = Math.max(10, Math.floor(minDim / divisions));
+      for (let gx2 = x; gx2 <= x + w; gx2 += gridSpacing) {
+        gridVerts.push(gx2, y, 0, gx2, y + h, 0);
+      }
+      for (let gy = y; gy <= y + h; gy += gridSpacing) {
+        gridVerts.push(x, gy, 0, x + w, gy, 0);
+      }
     }
-    // Horizontal lines
-    for (let gy = y; gy <= y + h; gy += gridSpacing) {
-      gridVerts.push(x, gy, 0, x + w, gy, 0);
-    }
+
     const gridGeo = new THREE.BufferGeometry();
     gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(gridVerts, 3));
     this.gridLines = new THREE.LineSegments(gridGeo, new THREE.LineBasicMaterial({
@@ -111,12 +141,22 @@ export class CoordGridElement extends BaseElement {
     this.group.add(this.labelMesh);
 
     // Border
-    const bv = new Float32Array([
-      x, y, 0, x + w, y, 0,
-      x + w, y, 0, x + w, y + h, 0,
-      x + w, y + h, 0, x, y + h, 0,
-      x, y + h, 0, x, y, 0,
-    ]);
+    let bv: Float32Array;
+    if (hexCell) {
+      const hc = hexCornersPixel(hexCell, this.screenWidth, this.screenHeight);
+      const borderVerts: number[] = [];
+      for (let i = 0; i < 6; i++) {
+        borderVerts.push(hc[i].x, hc[i].y, 0, hc[(i + 1) % 6].x, hc[(i + 1) % 6].y, 0);
+      }
+      bv = new Float32Array(borderVerts);
+    } else {
+      bv = new Float32Array([
+        x, y, 0, x + w, y, 0,
+        x + w, y, 0, x + w, y + h, 0,
+        x + w, y + h, 0, x, y + h, 0,
+        x, y + h, 0, x, y, 0,
+      ]);
+    }
     const bg = new THREE.BufferGeometry();
     bg.setAttribute('position', new THREE.BufferAttribute(bv, 3));
     this.borderLines = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({
@@ -145,13 +185,29 @@ export class CoordGridElement extends BaseElement {
     this.pointY += this.pointVy * dt;
 
     // Bounce off bounds
-    if (this.pointX < x + 4 || this.pointX > x + w - 4) {
-      this.pointVx *= -1;
-      this.pointX = Math.max(x + 4, Math.min(x + w - 4, this.pointX));
-    }
-    if (this.pointY < y + 4 || this.pointY > y + h - 4) {
-      this.pointVy *= -1;
-      this.pointY = Math.max(y + 4, Math.min(y + h - 4, this.pointY));
+    if (this.isHex) {
+      const dx = this.pointX - this.hexCx;
+      const dy = this.pointY - this.hexCy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const bound = this.hexMaxR;
+      if (dist > bound) {
+        // Reflect velocity and clamp position
+        const nx = dx / dist, ny = dy / dist;
+        const dot = this.pointVx * nx + this.pointVy * ny;
+        this.pointVx -= 2 * dot * nx;
+        this.pointVy -= 2 * dot * ny;
+        this.pointX = this.hexCx + nx * bound;
+        this.pointY = this.hexCy + ny * bound;
+      }
+    } else {
+      if (this.pointX < x + 4 || this.pointX > x + w - 4) {
+        this.pointVx *= -1;
+        this.pointX = Math.max(x + 4, Math.min(x + w - 4, this.pointX));
+      }
+      if (this.pointY < y + 4 || this.pointY > y + h - 4) {
+        this.pointVy *= -1;
+        this.pointY = Math.max(y + 4, Math.min(y + h - 4, this.pointY));
+      }
     }
 
     this.pointMesh.position.set(this.pointX, this.pointY, 2);

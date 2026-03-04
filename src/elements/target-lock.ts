@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import { hexagonPoints } from '../layout/hex-grid';
 
 /**
  * Animated targeting reticle that tracks a wandering point —
@@ -31,6 +32,7 @@ export class TargetLockElement extends BaseElement {
   private locked: boolean = false;
   private lockTimer: number = 0;
   private renderAccum: number = 0;
+  private isHex: boolean = false;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -52,15 +54,26 @@ export class TargetLockElement extends BaseElement {
     this.targetY = this.cy + this.rng.float(-this.radius * 0.3, this.radius * 0.3);
     this.targetVx = this.rng.float(-p.targetSpeed, p.targetSpeed);
     this.targetVy = this.rng.float(-p.targetSpeed, p.targetSpeed);
+    this.isHex = !!this.region.hexCell;
 
     // Outer ring
     const outerPts = p.outerPts;
     const outerPositions = new Float32Array(outerPts * 3);
-    for (let i = 0; i < outerPts; i++) {
-      const a = (i / (outerPts - 1)) * Math.PI * 2;
-      outerPositions[i * 3] = this.cx + Math.cos(a) * this.radius;
-      outerPositions[i * 3 + 1] = this.cy + Math.sin(a) * this.radius;
-      outerPositions[i * 3 + 2] = 0;
+    if (this.isHex) {
+      const pts = hexagonPoints(this.cx, this.cy, this.radius, Math.max(1, Math.floor(outerPts / 6)));
+      for (let i = 0; i < outerPts; i++) {
+        const pt = pts[i % pts.length];
+        outerPositions[i * 3] = pt.x;
+        outerPositions[i * 3 + 1] = pt.y;
+        outerPositions[i * 3 + 2] = 0;
+      }
+    } else {
+      for (let i = 0; i < outerPts; i++) {
+        const a = (i / (outerPts - 1)) * Math.PI * 2;
+        outerPositions[i * 3] = this.cx + Math.cos(a) * this.radius;
+        outerPositions[i * 3 + 1] = this.cy + Math.sin(a) * this.radius;
+        outerPositions[i * 3 + 2] = 0;
+      }
     }
     const outerGeo = new THREE.BufferGeometry();
     outerGeo.setAttribute('position', new THREE.BufferAttribute(outerPositions, 3));
@@ -83,8 +96,9 @@ export class TargetLockElement extends BaseElement {
     }));
     this.group.add(this.innerRing);
 
-    // Crosshairs (4 lines from center outward with gap)
-    const crossPositions = new Float32Array(8 * 3); // 4 segments × 2 endpoints
+    // Crosshairs — 6 spokes for hex, 4 for rect
+    const spokeCount = this.isHex ? 6 : 4;
+    const crossPositions = new Float32Array(spokeCount * 2 * 3);
     const crossGeo = new THREE.BufferGeometry();
     crossGeo.setAttribute('position', new THREE.BufferAttribute(crossPositions, 3));
     this.crosshairs = new THREE.LineSegments(crossGeo, new THREE.LineBasicMaterial({
@@ -94,16 +108,43 @@ export class TargetLockElement extends BaseElement {
     }));
     this.group.add(this.crosshairs);
 
-    // Tick marks around outer ring
+    // Tick marks around outer ring / hex edges
     const tickVerts: number[] = [];
-    for (let i = 0; i < p.tickCount; i++) {
-      const a = (i / p.tickCount) * Math.PI * 2;
-      const isMajor = i % Math.max(1, Math.floor(p.tickCount / 4)) === 0;
-      const innerR = this.radius * (isMajor ? 0.88 : 0.93);
-      tickVerts.push(
-        this.cx + Math.cos(a) * innerR, this.cy + Math.sin(a) * innerR, 0,
-        this.cx + Math.cos(a) * this.radius, this.cy + Math.sin(a) * this.radius, 0,
-      );
+    if (this.isHex) {
+      // 6 major ticks at hex vertices, minor ticks along edges
+      for (let i = 0; i < p.tickCount; i++) {
+        const a = (i / p.tickCount) * Math.PI * 2;
+        const isMajor = i % Math.max(1, Math.floor(p.tickCount / 6)) === 0;
+        const innerR = this.radius * (isMajor ? 0.88 : 0.93);
+        // Get hex-boundary radius at this angle
+        let outerR = this.radius;
+        for (let e = 0; e < 6; e++) {
+          const ea1 = (Math.PI / 3) * e, ea2 = (Math.PI / 3) * ((e + 1) % 6);
+          const ex1 = Math.cos(ea1), ey1 = Math.sin(ea1);
+          const dx = Math.cos(ea2) - ex1, dy = Math.sin(ea2) - ey1;
+          const ca = Math.cos(a), sa = Math.sin(a);
+          const denom = ca * dy - sa * dx;
+          if (Math.abs(denom) < 1e-10) continue;
+          const s = (ca * ey1 - sa * ex1) / denom;
+          if (s < 0 || s > 1) continue;
+          const t = (ex1 * dy - ey1 * dx) / denom;
+          if (t > 0) outerR = Math.min(outerR, t * this.radius);
+        }
+        tickVerts.push(
+          this.cx + Math.cos(a) * innerR, this.cy + Math.sin(a) * innerR, 0,
+          this.cx + Math.cos(a) * outerR, this.cy + Math.sin(a) * outerR, 0,
+        );
+      }
+    } else {
+      for (let i = 0; i < p.tickCount; i++) {
+        const a = (i / p.tickCount) * Math.PI * 2;
+        const isMajor = i % Math.max(1, Math.floor(p.tickCount / 4)) === 0;
+        const innerR = this.radius * (isMajor ? 0.88 : 0.93);
+        tickVerts.push(
+          this.cx + Math.cos(a) * innerR, this.cy + Math.sin(a) * innerR, 0,
+          this.cx + Math.cos(a) * this.radius, this.cy + Math.sin(a) * this.radius, 0,
+        );
+      }
     }
     const tickGeo = new THREE.BufferGeometry();
     tickGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tickVerts), 3));
@@ -179,8 +220,10 @@ export class TargetLockElement extends BaseElement {
     const crossPos = this.crosshairs.geometry.getAttribute('position') as THREE.BufferAttribute;
     const gap = this.radius * 0.12;
     const len = this.radius * 0.35;
-    for (let i = 0; i < 4; i++) {
-      const a = this.reticleAngle + (Math.PI / 2) * i;
+    const spokeCount = this.isHex ? 6 : 4;
+    const spokeAngleStep = this.isHex ? Math.PI / 3 : Math.PI / 2;
+    for (let i = 0; i < spokeCount; i++) {
+      const a = this.reticleAngle + spokeAngleStep * i;
       const cos = Math.cos(a);
       const sin = Math.sin(a);
       crossPos.setXYZ(i * 2, this.cx + cos * gap, this.cy + sin * gap, 0);
@@ -191,9 +234,18 @@ export class TargetLockElement extends BaseElement {
     // Inner ring follows target
     const innerR = this.radius * (this.locked ? 0.18 : 0.25);
     const innerPos = this.innerRing.geometry.getAttribute('position') as THREE.BufferAttribute;
-    for (let i = 0; i < innerPos.count; i++) {
-      const a = (i / (innerPos.count - 1)) * Math.PI * 2;
-      innerPos.setXYZ(i, this.targetX + Math.cos(a) * innerR, this.targetY + Math.sin(a) * innerR, 0);
+    if (this.isHex) {
+      const ptsPerEdge = Math.max(1, Math.floor(innerPos.count / 6));
+      const pts = hexagonPoints(this.targetX, this.targetY, innerR, ptsPerEdge);
+      for (let i = 0; i < innerPos.count; i++) {
+        const pt = pts[i % pts.length];
+        innerPos.setXYZ(i, pt.x, pt.y, 0);
+      }
+    } else {
+      for (let i = 0; i < innerPos.count; i++) {
+        const a = (i / (innerPos.count - 1)) * Math.PI * 2;
+        innerPos.setXYZ(i, this.targetX + Math.cos(a) * innerR, this.targetY + Math.sin(a) * innerR, 0);
+      }
     }
     innerPos.needsUpdate = true;
 

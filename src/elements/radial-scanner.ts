@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import { hexagonPoints } from '../layout/hex-grid';
 
 /**
  * Expanding ping rings from center that illuminate static blips.
@@ -21,6 +22,7 @@ export class RadialScannerElement extends BaseElement {
   private pingTimer: number = 0;
   private pingInterval: number = 0;
   private segments: number = 48;
+  private isHex: boolean = false;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -38,12 +40,19 @@ export class RadialScannerElement extends BaseElement {
     const cy = y + h / 2;
     const maxR = Math.min(w, h) / 2 * 0.9;
     this.pingInterval = pr.pingInterval + this.rng.float(-0.1, 0.1);
+    this.isHex = !!this.region.hexCell;
 
     // Border ring
     const borderVerts: number[] = [];
-    for (let i = 0; i <= this.segments; i++) {
-      const a = (i / this.segments) * Math.PI * 2;
-      borderVerts.push(cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR, 0);
+    if (this.isHex) {
+      const pts = hexagonPoints(cx, cy, maxR, Math.max(1, Math.floor(this.segments / 6)));
+      for (const pt of pts) borderVerts.push(pt.x, pt.y, 0);
+      borderVerts.push(pts[0].x, pts[0].y, 0); // close
+    } else {
+      for (let i = 0; i <= this.segments; i++) {
+        const a = (i / this.segments) * Math.PI * 2;
+        borderVerts.push(cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR, 0);
+      }
     }
     const borderGeo = new THREE.BufferGeometry();
     borderGeo.setAttribute('position', new THREE.Float32BufferAttribute(borderVerts, 3));
@@ -54,13 +63,24 @@ export class RadialScannerElement extends BaseElement {
     }));
     this.group.add(this.borderRing);
 
-    // Crosshairs — full diameter
-    const crossVerts = new Float32Array([
-      cx - maxR, cy, 0, cx + maxR, cy, 0,
-      cx, cy - maxR, 0, cx, cy + maxR, 0,
-    ]);
+    // Crosshairs — 6-spoke for hex, 4-spoke for rect
+    const crossArr: number[] = [];
+    if (this.isHex) {
+      for (let i = 0; i < 3; i++) {
+        const a = (Math.PI / 3) * i;
+        crossArr.push(
+          cx - Math.cos(a) * maxR, cy - Math.sin(a) * maxR, 0,
+          cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR, 0,
+        );
+      }
+    } else {
+      crossArr.push(
+        cx - maxR, cy, 0, cx + maxR, cy, 0,
+        cx, cy - maxR, 0, cx, cy + maxR, 0,
+      );
+    }
     const crossGeo = new THREE.BufferGeometry();
-    crossGeo.setAttribute('position', new THREE.BufferAttribute(crossVerts, 3));
+    crossGeo.setAttribute('position', new THREE.Float32BufferAttribute(crossArr, 3));
     this.crosshairs = new THREE.LineSegments(crossGeo, new THREE.LineBasicMaterial({
       color: this.palette.primary,
       transparent: true,
@@ -159,9 +179,18 @@ export class RadialScannerElement extends BaseElement {
 
       // Update ring vertices
       const pos = pr.ring.geometry.getAttribute('position') as THREE.BufferAttribute;
-      for (let i = 0; i <= this.segments; i++) {
-        const a = (i / this.segments) * Math.PI * 2;
-        pos.setXYZ(i, cx + Math.cos(a) * pr.radius, cy + Math.sin(a) * pr.radius, 1);
+      if (this.isHex) {
+        const ptsPerEdge = Math.max(1, Math.floor(this.segments / 6));
+        const pts = hexagonPoints(cx, cy, pr.radius, ptsPerEdge);
+        for (let i = 0; i <= this.segments; i++) {
+          const pt = pts[i % pts.length];
+          pos.setXYZ(i, pt.x, pt.y, 1);
+        }
+      } else {
+        for (let i = 0; i <= this.segments; i++) {
+          const a = (i / this.segments) * Math.PI * 2;
+          pos.setXYZ(i, cx + Math.cos(a) * pr.radius, cy + Math.sin(a) * pr.radius, 1);
+        }
       }
       pos.needsUpdate = true;
       (pr.ring.material as THREE.LineBasicMaterial).opacity = ringOpacity;

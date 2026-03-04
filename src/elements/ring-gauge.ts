@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
 import { drawGlowText } from '../animation/retro-text';
+import { hexagonPoints, hexPerimeterPoint, hexCornersPixel } from '../layout/hex-grid';
 
 /**
  * Circular ring gauge — a thick arc that fills clockwise to indicate a value,
@@ -30,6 +31,8 @@ export class RingGaugeElement extends BaseElement {
   private springDamping: number = 3;
   private warningThreshold: number = 0.7;
   private alertThreshold: number = 0.9;
+  private isHex: boolean = false;
+  private hexCorners: THREE.Vector3[] | null = null;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -53,15 +56,25 @@ export class RingGaugeElement extends BaseElement {
     this.springDamping = p.damping + this.rng.float(-0.3, 0.3);
     this.warningThreshold = p.warningThreshold;
     this.alertThreshold = p.alertThreshold;
+    this.isHex = !!this.region.hexCell;
+    if (this.region.hexCell) {
+      this.hexCorners = hexCornersPixel(this.region.hexCell, this.screenWidth, this.screenHeight);
+    }
 
     const labels = ['AT FIELD', 'PWR LVL', 'SYNC', 'SHIELD', 'CHARGE', 'OUTPUT', 'SIGNAL', 'CORE'];
     this.label = this.rng.pick(labels);
 
-    // Background ring (full circle, dim)
+    // Background ring (full shape, dim)
     const bgPositions: number[] = [];
-    for (let i = 0; i <= this.segments; i++) {
-      const a = (i / this.segments) * Math.PI * 2 - Math.PI / 2;
-      bgPositions.push(cx + Math.cos(a) * midR, cy + Math.sin(a) * midR, 0);
+    if (this.isHex) {
+      const pts = hexagonPoints(cx, cy, midR, Math.max(1, Math.floor(this.segments / 6)));
+      for (const pt of pts) bgPositions.push(pt.x, pt.y, 0);
+      bgPositions.push(pts[0].x, pts[0].y, 0); // close
+    } else {
+      for (let i = 0; i <= this.segments; i++) {
+        const a = (i / this.segments) * Math.PI * 2 - Math.PI / 2;
+        bgPositions.push(cx + Math.cos(a) * midR, cy + Math.sin(a) * midR, 0);
+      }
     }
     const bgGeo = new THREE.BufferGeometry();
     bgGeo.setAttribute('position', new THREE.Float32BufferAttribute(bgPositions, 3));
@@ -87,13 +100,33 @@ export class RingGaugeElement extends BaseElement {
     // Tick marks
     const tickCount = p.tickCount + this.rng.int(-1, 1);
     const tickVerts: number[] = [];
-    for (let i = 0; i < tickCount; i++) {
-      const a = (i / tickCount) * Math.PI * 2 - Math.PI / 2;
-      const t1 = i % 3 === 0 ? outerR * 1.05 : outerR;
-      tickVerts.push(
-        cx + Math.cos(a) * innerR * 0.95, cy + Math.sin(a) * innerR * 0.95, 1,
-        cx + Math.cos(a) * t1, cy + Math.sin(a) * t1, 1,
-      );
+    if (this.isHex && this.hexCorners) {
+      // Major ticks at hex vertices, minor ticks along edges
+      for (let i = 0; i < tickCount; i++) {
+        const t = i / tickCount;
+        const pt = hexPerimeterPoint(this.hexCorners, t);
+        // Direction: outward from center
+        const dx = pt.px - cx, dy = pt.py - cy;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 1) continue;
+        const nx = dx / d, ny = dy / d;
+        const isMajor = i % Math.max(1, Math.floor(tickCount / 6)) === 0;
+        const inner = d * (isMajor ? 0.85 : 0.9);
+        const outer = d * (isMajor ? 1.05 : 1.0);
+        tickVerts.push(
+          cx + nx * inner, cy + ny * inner, 1,
+          cx + nx * outer, cy + ny * outer, 1,
+        );
+      }
+    } else {
+      for (let i = 0; i < tickCount; i++) {
+        const a = (i / tickCount) * Math.PI * 2 - Math.PI / 2;
+        const t1 = i % 3 === 0 ? outerR * 1.05 : outerR;
+        tickVerts.push(
+          cx + Math.cos(a) * innerR * 0.95, cy + Math.sin(a) * innerR * 0.95, 1,
+          cx + Math.cos(a) * t1, cy + Math.sin(a) * t1, 1,
+        );
+      }
     }
     const tickGeo = new THREE.BufferGeometry();
     tickGeo.setAttribute('position', new THREE.Float32BufferAttribute(tickVerts, 3));
@@ -147,10 +180,24 @@ export class RingGaugeElement extends BaseElement {
 
     // Update fill arc
     const fillPos = this.fillRing.geometry.getAttribute('position') as THREE.BufferAttribute;
-    const fillAngle = this.value * Math.PI * 2;
-    for (let i = 0; i <= this.segments; i++) {
-      const a = (i / this.segments) * fillAngle - Math.PI / 2;
-      fillPos.setXYZ(i, cx + Math.cos(a) * midR, cy + Math.sin(a) * midR, 1);
+    if (this.isHex && this.hexCorners) {
+      // Trace along hex perimeter proportionally
+      const fillFrac = Math.min(this.value, 1);
+      for (let i = 0; i <= this.segments; i++) {
+        const t = (i / this.segments) * fillFrac;
+        const pt = hexPerimeterPoint(this.hexCorners, t);
+        // Scale to midR from center
+        const dx = pt.px - cx, dy = pt.py - cy;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const scale = d > 0 ? midR / d : 0;
+        fillPos.setXYZ(i, cx + dx * scale, cy + dy * scale, 1);
+      }
+    } else {
+      const fillAngle = this.value * Math.PI * 2;
+      for (let i = 0; i <= this.segments; i++) {
+        const a = (i / this.segments) * fillAngle - Math.PI / 2;
+        fillPos.setXYZ(i, cx + Math.cos(a) * midR, cy + Math.sin(a) * midR, 1);
+      }
     }
     fillPos.needsUpdate = true;
 

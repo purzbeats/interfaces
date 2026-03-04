@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseElement, type ElementRegistration } from './base-element';
 import type { ElementMeta } from './tags';
+import { hexCornersPixel, hexPerimeterPoint } from '../layout/hex-grid';
 
 /**
  * Corner pip — small decorative dots/squares placed at corners, midpoints,
@@ -57,51 +58,81 @@ export class CornerPipElement extends BaseElement {
 
     // Build pip positions based on variant
     const positions: Array<{ px: number; py: number; isAccent: boolean }> = [];
-    const corners = [
-      { px: x, py: y },
-      { px: x + w, py: y },
-      { px: x + w, py: y + h },
-      { px: x, py: y + h },
-    ];
+    const hexCell = this.region.hexCell;
+    const hexCorners = hexCell
+      ? hexCornersPixel(hexCell, this.screenWidth, this.screenHeight)
+      : null;
 
-    if (p.positions === 'corners') {
-      for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
-    } else if (p.positions === 'corners+mid') {
-      for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
-      // Midpoints of each edge
-      positions.push({ px: x + w / 2, py: y, isAccent: true });
-      positions.push({ px: x + w, py: y + h / 2, isAccent: true });
-      positions.push({ px: x + w / 2, py: y + h, isAccent: true });
-      positions.push({ px: x, py: y + h / 2, isAccent: true });
-    } else if (p.positions === 'perimeter') {
-      // Evenly spaced around the perimeter
-      const perimeter = 2 * (w + h);
-      for (let i = 0; i < p.pipCount; i++) {
-        const t = (i / p.pipCount) * perimeter;
-        let px2: number, py2: number;
-        if (t < w) {
-          px2 = x + t; py2 = y;
-        } else if (t < w + h) {
-          px2 = x + w; py2 = y + (t - w);
-        } else if (t < 2 * w + h) {
-          px2 = x + w - (t - w - h); py2 = y + h;
-        } else {
-          px2 = x; py2 = y + h - (t - 2 * w - h);
+    if (hexCorners) {
+      // --- Hex mode ---
+      if (p.positions === 'corners') {
+        for (const c of hexCorners) positions.push({ px: c.x, py: c.y, isAccent: false });
+      } else if (p.positions === 'corners+mid') {
+        for (const c of hexCorners) positions.push({ px: c.x, py: c.y, isAccent: false });
+        // Midpoints of each hex edge
+        for (let i = 0; i < 6; i++) {
+          const mid = hexPerimeterPoint(hexCorners, (i + 0.5) / 6);
+          positions.push({ px: mid.px, py: mid.py, isAccent: true });
         }
-        positions.push({ px: px2, py: py2, isAccent: i % 4 === 0 });
+      } else if (p.positions === 'perimeter') {
+        for (let i = 0; i < p.pipCount; i++) {
+          const pt = hexPerimeterPoint(hexCorners, i / p.pipCount);
+          positions.push({ px: pt.px, py: pt.py, isAccent: i % 4 === 0 });
+        }
+      } else {
+        // corners+accent: 6 vertex pips + accent dots at 1/3 and 2/3 along each edge
+        for (const c of hexCorners) positions.push({ px: c.x, py: c.y, isAccent: false });
+        for (let edge = 0; edge < 6; edge++) {
+          for (const frac of [1 / 3, 2 / 3]) {
+            const pt = hexPerimeterPoint(hexCorners, (edge + frac) / 6);
+            positions.push({ px: pt.px, py: pt.py, isAccent: true });
+          }
+        }
       }
     } else {
-      // corners+accent: corners as squares + scattered accent dots
-      for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
-      // Edge accent dots at 1/3 and 2/3 along each edge
-      for (let edge = 0; edge < 4; edge++) {
-        for (const frac of [1 / 3, 2 / 3]) {
+      // --- Rect mode ---
+      const corners = [
+        { px: x, py: y },
+        { px: x + w, py: y },
+        { px: x + w, py: y + h },
+        { px: x, py: y + h },
+      ];
+
+      if (p.positions === 'corners') {
+        for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
+      } else if (p.positions === 'corners+mid') {
+        for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
+        positions.push({ px: x + w / 2, py: y, isAccent: true });
+        positions.push({ px: x + w, py: y + h / 2, isAccent: true });
+        positions.push({ px: x + w / 2, py: y + h, isAccent: true });
+        positions.push({ px: x, py: y + h / 2, isAccent: true });
+      } else if (p.positions === 'perimeter') {
+        const perimeter = 2 * (w + h);
+        for (let i = 0; i < p.pipCount; i++) {
+          const t = (i / p.pipCount) * perimeter;
           let px2: number, py2: number;
-          if (edge === 0) { px2 = x + w * frac; py2 = y; }
-          else if (edge === 1) { px2 = x + w; py2 = y + h * frac; }
-          else if (edge === 2) { px2 = x + w * (1 - frac); py2 = y + h; }
-          else { px2 = x; py2 = y + h * (1 - frac); }
-          positions.push({ px: px2, py: py2, isAccent: true });
+          if (t < w) {
+            px2 = x + t; py2 = y;
+          } else if (t < w + h) {
+            px2 = x + w; py2 = y + (t - w);
+          } else if (t < 2 * w + h) {
+            px2 = x + w - (t - w - h); py2 = y + h;
+          } else {
+            px2 = x; py2 = y + h - (t - 2 * w - h);
+          }
+          positions.push({ px: px2, py: py2, isAccent: i % 4 === 0 });
+        }
+      } else {
+        for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
+        for (let edge = 0; edge < 4; edge++) {
+          for (const frac of [1 / 3, 2 / 3]) {
+            let px2: number, py2: number;
+            if (edge === 0) { px2 = x + w * frac; py2 = y; }
+            else if (edge === 1) { px2 = x + w; py2 = y + h * frac; }
+            else if (edge === 2) { px2 = x + w * (1 - frac); py2 = y + h; }
+            else { px2 = x; py2 = y + h * (1 - frac); }
+            positions.push({ px: px2, py: py2, isAccent: true });
+          }
         }
       }
     }
@@ -126,13 +157,13 @@ export class CornerPipElement extends BaseElement {
       this.pipBaseOpacity.push(isAccent ? 0.5 : 0.85);
     }
 
-    // Optional connector lines between corner pips
-    if (this.hasConnectors && positions.length >= 4) {
+    // Optional connector lines between corner/vertex pips
+    const vertexCount = hexCorners ? 6 : 4;
+    if (this.hasConnectors && positions.length >= vertexCount) {
       const connVerts: number[] = [];
-      // Connect all corners with dim lines
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < vertexCount; i++) {
         const a = positions[i];
-        const b = positions[(i + 1) % 4];
+        const b = positions[(i + 1) % vertexCount];
         connVerts.push(a.px, a.py, 0, b.px, b.py, 0);
       }
       const connGeo = new THREE.BufferGeometry();
