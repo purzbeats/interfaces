@@ -26,6 +26,7 @@ npm run preview
 | Backspace | Restart current seed |
 | R | Regenerate with new seed |
 | L | Toggle continuous loop mode |
+| D | Debug overlay (region outlines, IDs, element types) |
 | G | Showcase mode (cycle through all elements) |
 | F | Toggle fullscreen / multi-aspect proof sheet (in showcase) |
 | B | Gallery mode (paginated grid of live previews) |
@@ -105,7 +106,7 @@ Ten built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `
 Each element is tagged with metadata for smart placement:
 
 - **Shape** (`rectangular` / `linear` / `radial`) -- matched against region aspect ratio
-- **Role** (`structural` / `gauge` / `scanner` / `data-display` / `text` / `decorative`) -- diversity tracking
+- **Role** (`structural` / `gauge` / `scanner` / `data-display` / `text` / `decorative` / `border`) -- diversity tracking
 - **Mood** (`tactical` / `diagnostic` / `ambient`) -- thematic grouping
 - **Size** (`works-small` / `needs-medium` / `needs-large`) -- region size fitness
 

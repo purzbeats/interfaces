@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.2.0
+
+Border overlay system and debug mode.
+
+### Added
+- **Border overlay system**: border elements (border-chase, bracket-frame, corner-pip, drop-shadow, face-brackets, zigzag-divider) now render as overlays on top of ~30% of content cells instead of occupying regions exclusively. The compositor selects overlays weighted by shape fitness and the engine renders them at a higher layer with proper clipping.
+- **`border` role tag**: new element role for the 6 border element types, added to gallery tag filters
+- **Debug overlay** (D key): toggleable HTML overlay showing region outlines, IDs, element types, and border overlay assignments. Green solid borders for content, magenta dashed for border overlays. Auto-refreshes during rolling swap.
+
+### Changed
+- Border elements excluded from standalone content assignment (near-zero weight) — they now appear only as overlays
+- Rolling swap mutations correctly retire and respawn border overlays alongside their host content elements
+
+---
+
 ## v3.1.0
 
 31 new widget elements and multi-aspect showcase fullscreen, bringing the total to 161.
