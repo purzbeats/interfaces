@@ -315,7 +315,7 @@ export function compose(
   const candidates = Object.keys(baseWeights);
 
   if (candidates.length === 0) {
-    return { template, regions: allRegions };
+    return { template, regions: allRegions, borderOverlays: [] };
   }
 
   // Cap content regions to available candidate count
