@@ -53,10 +53,10 @@ export class DropShadowElement extends BaseElement {
     const { x, y, w, h } = this.px;
 
     const presets = [
-      { numLayers: 6, distRatio: 0.12, angleMin: Math.PI / 5, angleMax: Math.PI / 4 },    // diagonal
-      { numLayers: 7, distRatio: 0.09, angleMin: 0, angleMax: Math.PI * 2 },              // spread (angle unused)
-      { numLayers: 5, distRatio: 0.10, angleMin: Math.PI / 6, angleMax: Math.PI / 3 },    // pulsing
-      { numLayers: 6, distRatio: 0.11, angleMin: 0, angleMax: Math.PI * 2 },              // rotating offset
+      { numLayers: 40, distRatio: 0.35, angleMin: Math.PI / 5, angleMax: Math.PI / 4 },    // diagonal
+      { numLayers: 40, distRatio: 0.30, angleMin: 0, angleMax: Math.PI * 2 },              // spread (angle unused)
+      { numLayers: 40, distRatio: 0.30, angleMin: Math.PI / 6, angleMax: Math.PI / 3 },    // pulsing
+      { numLayers: 40, distRatio: 0.32, angleMin: 0, angleMax: Math.PI * 2 },              // rotating offset
     ];
     const pr = presets[this.variant];
 
@@ -106,8 +106,13 @@ export class DropShadowElement extends BaseElement {
         offsetY = Math.sin(this.shadowAngle) * this.shadowDist * backFraction;
       }
 
-      // Layer slightly larger when spread variant
-      const scaleFactor = this.variant === 1 ? 1 + backFraction * 0.15 : 1.0;
+      // Each layer scales down toward center; spread variant also expands back layers
+      const insetScale = depthFraction; // 0 at back → 1 at front (full size)
+      const minScale = 0.15;
+      const baseShrink = minScale + (1 - minScale) * insetScale;
+      const scaleFactor = this.variant === 1
+        ? baseShrink * (1 + backFraction * 0.15)
+        : baseShrink;
       const lw = rw * scaleFactor;
       const lh = rh * scaleFactor;
 
@@ -185,35 +190,39 @@ export class DropShadowElement extends BaseElement {
       let lw: number;
       let lh: number;
 
+      // Scale factor matching build(): layers shrink toward center
+      const minScale = 0.15;
+      const baseShrink = minScale + (1 - minScale) * depthFraction;
+
       if (this.variant === 0) {
         // Diagonal: layers slowly drift along shadow direction
         const drift = Math.sin(time * 0.3 + backFraction * 1.2) * this.shadowDist * 0.15;
         ox = Math.cos(this.shadowAngle) * (this.shadowDist * backFraction + drift);
         oy = Math.sin(this.shadowAngle) * (this.shadowDist * backFraction + drift);
-        lw = rw;
-        lh = rh;
+        lw = rw * baseShrink;
+        lh = rh * baseShrink;
       } else if (this.variant === 1) {
         // Spread: layers breathe in/out
         const breathe = 1.0 + Math.sin(time * 0.6 + backFraction * 0.8) * 0.04 * backFraction;
         ox = 0;
         oy = 0;
-        lw = rw * (1 + backFraction * 0.18) * breathe;
-        lh = rh * (1 + backFraction * 0.18) * breathe;
+        lw = rw * baseShrink * (1 + backFraction * 0.15) * breathe;
+        lh = rh * baseShrink * (1 + backFraction * 0.15) * breathe;
       } else if (this.variant === 2) {
         // Pulsing depth: offset pulses rhythmically
         const pulse = 0.5 + 0.5 * Math.sin(time * 1.8 - backFraction * 1.5);
         ox = Math.cos(this.shadowAngle) * this.shadowDist * backFraction * pulse;
         oy = Math.sin(this.shadowAngle) * this.shadowDist * backFraction * pulse;
-        lw = rw;
-        lh = rh;
+        lw = rw * baseShrink;
+        lh = rh * baseShrink;
       } else {
         // Rotating offset
         const angle = this.shadowAngle + backFraction * 0.4;
         const dist = this.shadowDist * backFraction;
         ox = Math.cos(angle) * dist;
         oy = Math.sin(angle) * dist;
-        lw = rw;
-        lh = rh;
+        lw = rw * baseShrink;
+        lh = rh * baseShrink;
       }
 
       // Intensity bumps the offset distance

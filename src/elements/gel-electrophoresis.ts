@@ -224,9 +224,8 @@ export class GelElectrophoresisElement extends BaseElement {
     const secondaryHex = '#' + this.palette.secondary.getHexString();
     const dimHex = '#' + this.palette.dim.getHexString();
 
-    // Clear to background
-    ctx.fillStyle = bgHex;
-    ctx.fillRect(0, 0, canvasW, canvasH);
+    // Clear to transparent
+    ctx.clearRect(0, 0, canvasW, canvasH);
 
     const laneW = canvasW / this.laneCount;
 
