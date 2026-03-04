@@ -1,7 +1,7 @@
 import type { SeededRandom } from '../random';
 import type { Region } from './region';
 import { createTieredRegion } from './region';
-import { generateHexGrid, hexInscribedRect, hexDistance } from './hex-grid';
+import { generateHexGrid, hexInscribedRect, hexDistance, getHexAspect } from './hex-grid';
 
 export interface LayoutPattern {
   name: string;
@@ -378,12 +378,71 @@ function culturePlate(rng: SeededRandom): Region[] {
 // Hex patterns — flat-top hexagonal grids
 // ---------------------------------------------------------------------------
 
+const SQRT3 = Math.sqrt(3);
+
+/**
+ * Subdivide a hex cell into 2-4 smaller hex cells nested inside it.
+ * Each sub-hex gets its own HexCell for clipping + border rendering.
+ */
+function subdivideHexCell(
+  parentRegion: Region,
+  rng: SeededRandom,
+): Region[] {
+  const cell = parentRegion.hexCell!;
+  const aspect = getHexAspect();
+  const type = rng.pick(['pair', 'trio', 'quad']);
+
+  let subSize: number;
+  let coords: { q: number; r: number }[];
+
+  if (type === 'pair') {
+    subSize = cell.size * 0.45;
+    coords = [{ q: 0, r: 0 }, { q: 1, r: 0 }];
+  } else if (type === 'trio') {
+    subSize = cell.size * 0.30;
+    coords = [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }];
+  } else {
+    subSize = cell.size * 0.33;
+    coords = [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 0, r: 1 }, { q: 1, r: 1 }];
+  }
+
+  // Compute sub-hex centers in aspect-corrected space, centered on parent
+  const gapScale = 1.08;
+  const raw = coords.map(c => ({
+    dx: subSize * 1.5 * c.q * gapScale,
+    dy: subSize * SQRT3 * (c.r + c.q / 2) * gapScale,
+  }));
+  const avgDx = raw.reduce((s, p) => s + p.dx, 0) / raw.length;
+  const avgDy = raw.reduce((s, p) => s + p.dy, 0) / raw.length;
+
+  return raw.map((off, i) => {
+    const subCell = {
+      q: cell.q * 1000 + coords[i].q,
+      r: cell.r * 1000 + coords[i].r,
+      size: subSize,
+      cx: cell.cx + (off.dx - avgDx) / aspect,
+      cy: cell.cy + (off.dy - avgDy),
+    };
+    const rect = hexInscribedRect(subCell);
+    const region = createTieredRegion(
+      `${parentRegion.id}-sub${i}`, 'widget',
+      rect.x, rect.y, rect.w, rect.h,
+      0,
+    );
+    region.hexCell = subCell;
+    return region;
+  });
+}
+
 /** Convert a HexCell array to Regions with inscribed rectangles and tier assignment. */
 function hexCellsToRegions(
   cells: { q: number; r: number; size: number; cx: number; cy: number }[],
   tierFn: (q: number, r: number) => 'hero' | 'panel' | 'widget',
+  rng?: SeededRandom,
 ): Region[] {
-  return cells.map((cell, i) => {
+  const regions: Region[] = [];
+  for (let i = 0; i < cells.length; i++) {
+    const cell = cells[i];
     const tier = tierFn(cell.q, cell.r);
     const rect = hexInscribedRect(cell);
     const region = createTieredRegion(
@@ -392,12 +451,19 @@ function hexCellsToRegions(
       0, // no padding — hex clipping planes handle boundaries
     );
     region.hexCell = cell;
-    return region;
-  });
+
+    // Subdivide ~40% of panel/widget cells when rng is provided
+    if (rng && tier !== 'hero' && rng.float(0, 1) < 0.4) {
+      regions.push(...subdivideHexCell(region, rng));
+    } else {
+      regions.push(region);
+    }
+  }
+  return regions;
 }
 
 // --- Pattern: "hex-cluster" (7 cells — 1 center + 6 ring) ---
-function hexCluster(_rng: SeededRandom): Region[] {
+function hexCluster(rng: SeededRandom): Region[] {
   const cells = generateHexGrid(3, 3);
   // Pick the center cell (q=1, r=1 in a 3×3 grid)
   const centerQ = 1, centerR = 1;
@@ -406,7 +472,8 @@ function hexCluster(_rng: SeededRandom): Region[] {
     hexDistance(c.q, c.r, centerQ, centerR) <= 1
   );
   return hexCellsToRegions(cluster, (q, r) =>
-    (q === centerQ && r === centerR) ? 'hero' : 'panel'
+    (q === centerQ && r === centerR) ? 'hero' : 'panel',
+    rng,
   );
 }
 
@@ -423,7 +490,7 @@ function hexGrid(rng: SeededRandom): Region[] {
     if (d === 0) return 'hero';
     if (d === 1) return 'panel';
     return 'widget';
-  });
+  }, rng);
 }
 
 // --- Pattern: "hex-wall" (20–30 cells, dense) ---
@@ -439,7 +506,7 @@ function hexWall(rng: SeededRandom): Region[] {
     if (d === 0) return 'hero';
     if (d === 1) return 'panel';
     return 'widget';
-  });
+  }, rng);
 }
 
 // --- Pattern registry ---

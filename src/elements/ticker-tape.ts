@@ -63,9 +63,10 @@ export class TickerTapeElement extends BaseElement {
     this.blockCount = this.rng.int(p.blockCountRange[0], p.blockCountRange[1]);
 
     const rowHeight = h / p.rowCount;
-    const blockH = rowHeight * p.blockHFrac;
-    const gap = Math.max(2, rowHeight * 0.08);
-    const blockBaseW = Math.max(3, blockH * this.rng.float(0.5, 1.2));
+    // Cap block height so ticker blocks stay small even in large regions
+    const blockH = Math.min(rowHeight * p.blockHFrac, 12);
+    const gap = Math.max(2, Math.min(rowHeight * 0.08, 4));
+    const blockBaseW = Math.max(3, Math.min(blockH * this.rng.float(0.5, 1.2), 14));
 
     for (let ri = 0; ri < p.rowCount; ri++) {
       const rowY = y + rowHeight * ri + rowHeight / 2;
@@ -118,9 +119,12 @@ export class TickerTapeElement extends BaseElement {
               : (isSecondRow ? this.palette.secondary : this.palette.primary),
             transparent: true,
             opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
           });
           const mesh = new THREE.Mesh(geo, mat);
-          mesh.position.set(cx + bw / 2, rowY, 1);
+          mesh.position.set(cx + bw / 2, rowY, 0);
+          mesh.visible = false;
           this.group.add(mesh);
           blocks.push(mesh);
           cx += bw + gap;
@@ -151,9 +155,11 @@ export class TickerTapeElement extends BaseElement {
           color: this.palette.dim,
           transparent: true,
           opacity: 0,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
         });
         const dot = new THREE.Mesh(geo, mat);
-        dot.position.set(x + (di + 0.5) * (w / dotCount), dotY, 0.5);
+        dot.position.set(x + (di + 0.5) * (w / dotCount), dotY, 0);
         this.separatorDots.push(dot);
         this.group.add(dot);
       }
@@ -172,6 +178,8 @@ export class TickerTapeElement extends BaseElement {
       color: this.palette.dim,
       transparent: true,
       opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
     }));
     this.group.add(this.borderLines);
   }
@@ -213,16 +221,17 @@ export class TickerTapeElement extends BaseElement {
           // Compute opacity — fade in/out near edges
           const relX = (screenX - x) / w;
           const edgeFade = Math.min(1, Math.min(relX * 6, (1 - relX) * 6));
-          const visible = screenX + bw > x && screenX - bw < x + w;
+          const inBounds = screenX + bw > x && screenX - bw < x + w;
           const blockMat = block.material as THREE.MeshBasicMaterial;
 
-          if (visible) {
+          if (inBounds && opacity > 0) {
+            block.visible = true;
             // Subtle flicker per block
             const flicker = 0.85 + 0.15 * Math.sin(time * 8 + bi * 1.37 + tile * 0.91);
             blockMat.opacity = opacity * edgeFade * flicker *
               (row.isAccent[bi] ? 0.4 : 0.7);
           } else {
-            blockMat.opacity = 0;
+            block.visible = false;
           }
 
           cx += bw + row.gap;

@@ -13,6 +13,7 @@ const SQRT3 = Math.sqrt(3);
 /** Screen aspect ratio — set by the compositor before pattern generation. */
 let _aspect = 16 / 9;
 export function setHexAspect(a: number): void { _aspect = a; }
+export function getHexAspect(): number { return _aspect; }
 
 // ---------------------------------------------------------------------------
 // Coordinate helpers
