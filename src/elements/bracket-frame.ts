@@ -10,7 +10,7 @@ import { hexCornersPixel } from '../layout/hex-grid';
 export class BracketFrameElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'bracket-frame',
-    meta: { shape: 'rectangular', roles: ['structural', 'scanner'], moods: ['tactical'], bandAffinity: 'bass', sizes: ['needs-medium', 'needs-large'] },
+    meta: { shape: 'rectangular', roles: ['structural', 'scanner', 'border'], moods: ['tactical'], bandAffinity: 'bass', sizes: ['needs-medium', 'needs-large'] },
   };
   private corners: THREE.LineSegments[] = [];
   private edgeLines!: THREE.LineSegments;

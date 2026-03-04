@@ -1,5 +1,5 @@
 export type ShapeTag = 'rectangular' | 'linear' | 'radial';
-export type RoleTag = 'structural' | 'gauge' | 'scanner' | 'data-display' | 'text' | 'decorative';
+export type RoleTag = 'structural' | 'gauge' | 'scanner' | 'data-display' | 'text' | 'decorative' | 'border';
 export type MoodTag = 'tactical' | 'diagnostic' | 'ambient';
 export type SizeTag = 'works-small' | 'needs-medium' | 'needs-large';
 

@@ -32,7 +32,7 @@ export class DropShadowElement extends BaseElement {
     name: 'drop-shadow',
     meta: {
       shape: 'rectangular',
-      roles: ['decorative', 'structural'],
+      roles: ['decorative', 'structural', 'border'],
       moods: ['tactical', 'ambient'],
       sizes: ['works-small', 'needs-medium'],
       bandAffinity: 'sub',

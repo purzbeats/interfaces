@@ -8,7 +8,7 @@ import { BaseElement, type ElementRegistration } from './base-element';
 export class FaceBracketsElement extends BaseElement {
   static readonly registration: ElementRegistration = {
     name: 'face-brackets',
-    meta: { shape: 'rectangular', roles: ['scanner', 'decorative'], moods: ['tactical', 'ambient'], sizes: ['needs-medium', 'needs-large'], bandAffinity: 'mid' },
+    meta: { shape: 'rectangular', roles: ['scanner', 'decorative', 'border'], moods: ['tactical', 'ambient'], sizes: ['needs-medium', 'needs-large'], bandAffinity: 'mid' },
   };
   private bracketGroups: THREE.LineSegments[] = [];
   private canvas!: HTMLCanvasElement;

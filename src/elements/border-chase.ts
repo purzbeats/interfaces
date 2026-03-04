@@ -13,7 +13,7 @@ export class BorderChaseElement extends BaseElement {
     name: 'border-chase',
     meta: {
       shape: 'rectangular',
-      roles: ['structural', 'decorative'],
+      roles: ['structural', 'decorative', 'border'],
       moods: ['tactical', 'ambient'],
       bandAffinity: 'bass',
       sizes: ['works-small', 'needs-medium', 'needs-large'],

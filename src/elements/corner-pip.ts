@@ -12,7 +12,7 @@ export class CornerPipElement extends BaseElement {
     name: 'corner-pip',
     meta: {
       shape: 'rectangular',
-      roles: ['decorative', 'structural'],
+      roles: ['decorative', 'structural', 'border'],
       moods: ['tactical', 'diagnostic'],
       bandAffinity: 'high',
       sizes: ['works-small', 'needs-medium'],
@@ -37,15 +37,20 @@ export class CornerPipElement extends BaseElement {
     this.variant = this.rng.int(0, 3);
     const { x, y, w, h } = this.px;
 
+    // Scale pip density to region perimeter so larger regions get more pips
+    const perimeter = 2 * (w + h);
+    const densePipCount = Math.max(24, Math.floor(perimeter / 12));
+    const midPipCount = Math.max(16, Math.floor(perimeter / 18));
+
     const presets = [
-      // Variant 0: Corners only — 4 dots, slow breathe, no connectors
-      { positions: 'corners', pipCount: 4, sizeRange: [4, 8] as const, breatheSpeed: 0.8, breatheDepth: 0.4, connectors: false, squares: false, sequenceInterval: 0 },
-      // Variant 1: Corners + midpoints — 8 dots, staggered pulse
-      { positions: 'corners+mid', pipCount: 8, sizeRange: [3, 6] as const, breatheSpeed: 1.4, breatheDepth: 0.5, connectors: true, squares: false, sequenceInterval: 0.3 },
-      // Variant 2: Full perimeter dots — 16 dots, sequential lighting
-      { positions: 'perimeter', pipCount: 16, sizeRange: [2, 4] as const, breatheSpeed: 2.0, breatheDepth: 0.3, connectors: false, squares: true, sequenceInterval: 0.12 },
-      // Variant 3: Corner squares with accent dots — mixed, fast pulse
-      { positions: 'corners+accent', pipCount: 12, sizeRange: [3, 7] as const, breatheSpeed: 3.0, breatheDepth: 0.6, connectors: true, squares: true, sequenceInterval: 0.08 },
+      // Variant 0: Corners + dense edge pips — many dots along every edge
+      { positions: 'perimeter', pipCount: densePipCount, sizeRange: [2, 4] as const, breatheSpeed: 0.8, breatheDepth: 0.4, connectors: true, squares: false, sequenceInterval: 0 },
+      // Variant 1: Corners + midpoints + edge subdivisions — staggered pulse
+      { positions: 'corners+dense', pipCount: midPipCount, sizeRange: [2, 5] as const, breatheSpeed: 1.4, breatheDepth: 0.5, connectors: true, squares: false, sequenceInterval: 0.06 },
+      // Variant 2: Dense perimeter — sequential lighting sweep
+      { positions: 'perimeter', pipCount: densePipCount, sizeRange: [1.5, 3] as const, breatheSpeed: 2.0, breatheDepth: 0.3, connectors: false, squares: true, sequenceInterval: 0.04 },
+      // Variant 3: Dense mixed with accent dots — fast pulse
+      { positions: 'corners+dense', pipCount: midPipCount, sizeRange: [2, 5] as const, breatheSpeed: 3.0, breatheDepth: 0.6, connectors: true, squares: true, sequenceInterval: 0.03 },
     ];
 
     const p = presets[this.variant];
@@ -65,25 +70,18 @@ export class CornerPipElement extends BaseElement {
 
     if (hexCorners) {
       // --- Hex mode ---
-      if (p.positions === 'corners') {
-        for (const c of hexCorners) positions.push({ px: c.x, py: c.y, isAccent: false });
-      } else if (p.positions === 'corners+mid') {
-        for (const c of hexCorners) positions.push({ px: c.x, py: c.y, isAccent: false });
-        // Midpoints of each hex edge
-        for (let i = 0; i < 6; i++) {
-          const mid = hexPerimeterPoint(hexCorners, (i + 0.5) / 6);
-          positions.push({ px: mid.px, py: mid.py, isAccent: true });
-        }
-      } else if (p.positions === 'perimeter') {
+      if (p.positions === 'perimeter') {
         for (let i = 0; i < p.pipCount; i++) {
           const pt = hexPerimeterPoint(hexCorners, i / p.pipCount);
-          positions.push({ px: pt.px, py: pt.py, isAccent: i % 4 === 0 });
+          positions.push({ px: pt.px, py: pt.py, isAccent: i % 3 !== 0 });
         }
       } else {
-        // corners+accent: 6 vertex pips + accent dots at 1/3 and 2/3 along each edge
+        // corners+dense: 6 vertex pips + many subdivisions along each edge
         for (const c of hexCorners) positions.push({ px: c.x, py: c.y, isAccent: false });
+        const edgeSubs = Math.max(3, Math.floor((p.pipCount - 6) / 6));
         for (let edge = 0; edge < 6; edge++) {
-          for (const frac of [1 / 3, 2 / 3]) {
+          for (let s = 1; s <= edgeSubs; s++) {
+            const frac = s / (edgeSubs + 1);
             const pt = hexPerimeterPoint(hexCorners, (edge + frac) / 6);
             positions.push({ px: pt.px, py: pt.py, isAccent: true });
           }
@@ -98,18 +96,12 @@ export class CornerPipElement extends BaseElement {
         { px: x, py: y + h },
       ];
 
-      if (p.positions === 'corners') {
-        for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
-      } else if (p.positions === 'corners+mid') {
-        for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
-        positions.push({ px: x + w / 2, py: y, isAccent: true });
-        positions.push({ px: x + w, py: y + h / 2, isAccent: true });
-        positions.push({ px: x + w / 2, py: y + h, isAccent: true });
-        positions.push({ px: x, py: y + h / 2, isAccent: true });
-      } else if (p.positions === 'perimeter') {
-        const perimeter = 2 * (w + h);
+      const perimLen = 2 * (w + h);
+
+      if (p.positions === 'perimeter') {
+        // Evenly spaced pips around the full perimeter
         for (let i = 0; i < p.pipCount; i++) {
-          const t = (i / p.pipCount) * perimeter;
+          const t = (i / p.pipCount) * perimLen;
           let px2: number, py2: number;
           if (t < w) {
             px2 = x + t; py2 = y;
@@ -120,12 +112,18 @@ export class CornerPipElement extends BaseElement {
           } else {
             px2 = x; py2 = y + h - (t - 2 * w - h);
           }
-          positions.push({ px: px2, py: py2, isAccent: i % 4 === 0 });
+          positions.push({ px: px2, py: py2, isAccent: i % 3 !== 0 });
         }
       } else {
+        // corners+dense: 4 corner pips + many subdivisions along each edge
         for (const c of corners) positions.push({ px: c.px, py: c.py, isAccent: false });
+        // Distribute remaining pips proportionally to each edge length
+        const edgeLengths = [w, h, w, h];
+        const totalRemaining = p.pipCount - 4;
         for (let edge = 0; edge < 4; edge++) {
-          for (const frac of [1 / 3, 2 / 3]) {
+          const edgePips = Math.max(2, Math.round(totalRemaining * edgeLengths[edge] / perimLen));
+          for (let s = 1; s <= edgePips; s++) {
+            const frac = s / (edgePips + 1);
             let px2: number, py2: number;
             if (edge === 0) { px2 = x + w * frac; py2 = y; }
             else if (edge === 1) { px2 = x + w; py2 = y + h * frac; }

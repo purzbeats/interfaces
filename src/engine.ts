@@ -37,6 +37,10 @@ interface Composition {
   elementTypeMap: Map<string, string>;
   wrapperMap: Map<string, THREE.Group>;
   regions: Region[];
+  borderOverlays: BaseElement[];
+  borderWrappers: Map<string, THREE.Group>;
+  /** Maps content region ID → border overlay element for that region. */
+  borderByRegion: Map<string, BaseElement>;
 }
 
 export class Engine {
@@ -349,7 +353,7 @@ export class Engine {
     const layoutRng = rng.fork();
     const canvasAspect = this.config.width / this.config.height;
     const hexLayout = this.config.hexLayout;
-    const { regions } = compose(this.config.template, layoutRng, canvasAspect, hexLayout);
+    const { regions, borderOverlays: borderOverlaySpecs } = compose(this.config.template, layoutRng, canvasAspect, hexLayout);
 
     const emitAudio = this.makeEmitAudio();
 
@@ -360,6 +364,9 @@ export class Engine {
       elementTypeMap: new Map(),
       wrapperMap: new Map(),
       regions,
+      borderOverlays: [],
+      borderByRegion: new Map(),
+      borderWrappers: new Map(),
     };
 
     const genPrefix = `g${this.generationCounter}_`;
@@ -390,6 +397,32 @@ export class Engine {
 
       if (deferred) {
         this.pendingBuild.push({ element, wrapper });
+      }
+    }
+
+    // Create border overlay elements — same regions as content, rendered on top
+    const borderRng = rng.fork();
+    for (const spec of borderOverlaySpecs) {
+      // Find the region with the prefixed ID
+      const region = spec.region; // already prefixed above
+      const elRng = borderRng.fork();
+      const borderEl = deferred
+        ? createElementDeferred(spec.borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio)
+        : createElement(spec.borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
+
+      comp.borderOverlays.push(borderEl);
+      comp.elementMap.set(borderEl.id, borderEl);
+      comp.borderByRegion.set(region.id, borderEl);
+
+      const wrapper = new THREE.Group();
+      if (!deferred) {
+        wrapper.add(borderEl.group);
+      }
+      wrapper.renderOrder = 12; // above content (0), below hex border (15)
+      comp.borderWrappers.set(borderEl.id, wrapper);
+
+      if (deferred) {
+        this.pendingBuild.push({ element: borderEl, wrapper });
       }
     }
 
@@ -425,6 +458,11 @@ export class Engine {
           el.onAction('deactivate');
         }
       }
+      for (const el of this.outgoing.borderOverlays) {
+        if (el.stateMachine.state !== 'idle') {
+          el.onAction('deactivate');
+        }
+      }
     }
 
     // Tear down previous hex border overlay
@@ -456,8 +494,12 @@ export class Engine {
     const rng = new SeededRandom(seed);
     rng.fork(); // skip layout rng
     rng.fork(); // skip element rng
+    rng.fork(); // skip border rng
     const timelineRng = rng.fork();
-    const elementIds = this.current.elements.map((e) => e.id);
+    const elementIds = [
+      ...this.current.elements.map((e) => e.id),
+      ...this.current.borderOverlays.map((e) => e.id),
+    ];
 
     if (this.config.rollingSwap) {
       // Boot-only timeline: just stagger-activate, no cooldown
@@ -481,6 +523,16 @@ export class Engine {
   private teardownComposition(comp: Composition): void {
     for (const el of comp.elements) {
       const wrapper = comp.wrapperMap.get(el.id);
+      if (wrapper) {
+        this.ctx.scene.remove(wrapper);
+      } else {
+        this.ctx.scene.remove(el.group);
+      }
+      el.dispose();
+    }
+    // Dispose border overlays
+    for (const el of comp.borderOverlays) {
+      const wrapper = comp.borderWrappers.get(el.id);
       if (wrapper) {
         this.ctx.scene.remove(wrapper);
       } else {
@@ -516,6 +568,31 @@ export class Engine {
     this.current.elementTypeMap.delete(el.id);
     this.current.wrapperMap.delete(el.id);
     this.current.regionMap.delete(el.id);
+
+    // Also retire the associated border overlay (if any)
+    this.retireBorderForRegion(el.id);
+  }
+
+  /** Retire and dispose the border overlay associated with a region. */
+  private retireBorderForRegion(regionId: string): void {
+    if (!this.current) return;
+    const borderEl = this.current.borderByRegion.get(regionId);
+    if (!borderEl) return;
+
+    const borderWrapper = this.current.borderWrappers.get(borderEl.id);
+    if (borderEl.stateMachine.state !== 'idle') {
+      borderEl.onAction('deactivate');
+    }
+    if (borderWrapper) {
+      this.retiringElements.push({ el: borderEl, wrapper: borderWrapper });
+    }
+
+    // Remove from all tracking structures
+    const idx = this.current.borderOverlays.indexOf(borderEl);
+    if (idx !== -1) this.current.borderOverlays.splice(idx, 1);
+    this.current.elementMap.delete(borderEl.id);
+    this.current.borderWrappers.delete(borderEl.id);
+    this.current.borderByRegion.delete(regionId);
   }
 
   /** Spawn a new element into the current composition for a given region. */
@@ -550,6 +627,42 @@ export class Engine {
     this.current.regionMap.set(region.id, region);
 
     this.audio.blip(200 + Math.random() * 200);
+
+    // Spawn a border overlay for this region (~30% chance)
+    this.maybeSpawnBorder(region, rng);
+  }
+
+  private static readonly BORDER_TYPES = [
+    'border-chase', 'bracket-frame', 'corner-pip',
+    'drop-shadow', 'face-brackets', 'zigzag-divider',
+  ];
+
+  /** Optionally spawn a border overlay for a newly-created content region. */
+  private maybeSpawnBorder(region: Region, rng: SeededRandom): void {
+    if (!this.current) return;
+    // ~30% chance to get a border overlay
+    if (rng.float(0, 1) > 0.3) return;
+
+    const borderType = rng.pick(Engine.BORDER_TYPES);
+    const emitAudio = this.makeEmitAudio();
+    const elRng = rng.fork();
+    const borderEl = createElement(borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
+
+    // Apply clipping planes — same region bounds as content
+    const hex = region.hexCell;
+    if (hex) this.applyHexClipping(borderEl, hex);
+    else this.applyRectClipping(borderEl, region);
+
+    const wrapper = new THREE.Group();
+    wrapper.add(borderEl.group);
+    wrapper.renderOrder = 12;
+    this.ctx.scene.add(wrapper);
+    borderEl.onAction('activate');
+
+    this.current.borderOverlays.push(borderEl);
+    this.current.elementMap.set(borderEl.id, borderEl);
+    this.current.borderWrappers.set(borderEl.id, wrapper);
+    this.current.borderByRegion.set(region.id, borderEl);
   }
 
   /** Classify tier from region area. */
@@ -857,6 +970,12 @@ export class Engine {
           allIdle = false;
         }
       }
+      for (const el of this.outgoing.borderOverlays) {
+        el.tick(dt, this.elapsed);
+        if (el.stateMachine.state !== 'idle') {
+          allIdle = false;
+        }
+      }
       if (allIdle) {
         this.teardownComposition(this.outgoing);
         this.outgoing = null;
@@ -952,10 +1071,19 @@ export class Engine {
       el.tick(dt, this.elapsed);
     }
 
+    // Update border overlay elements
+    for (const el of this.current.borderOverlays) {
+      el.tick(dt, this.elapsed);
+    }
+
     // Pass real audio data to elements when audio-reactive is active
     const audioFrame = this.audioReactive.frame;
     if (audioFrame) {
       for (const el of this.current.elements) {
+        if (!el.group.visible || el.stateMachine.state === 'idle') continue;
+        el.tickAudio(audioFrame);
+      }
+      for (const el of this.current.borderOverlays) {
         if (!el.group.visible || el.stateMachine.state === 'idle') continue;
         el.tickAudio(audioFrame);
       }
@@ -1000,6 +1128,10 @@ export class Engine {
         el.stateMachine.forceIdle();
         el.group.visible = false;
       }
+      for (const el of this.current.borderOverlays) {
+        el.stateMachine.forceIdle();
+        el.group.visible = false;
+      }
     }
   }
 
@@ -1016,6 +1148,11 @@ export class Engine {
     this.currentIntensity = level;
     if (!this.current) return;
     for (const el of this.current.elements) {
+      if (!el.group.visible) continue;
+      if (el.stateMachine.state === 'idle') continue;
+      el.onIntensity(level);
+    }
+    for (const el of this.current.borderOverlays) {
       if (!el.group.visible) continue;
       if (el.stateMachine.state === 'idle') continue;
       el.onIntensity(level);

@@ -26,7 +26,7 @@ const LABEL_HEIGHT_PX = 20;       // per-cell label below each cell
 
 // All available filter tags, grouped by category
 const SHAPE_TAGS = ['rectangular', 'linear', 'radial'] as const;
-const ROLE_TAGS = ['gauge', 'scanner', 'data-display', 'text', 'decorative'] as const;
+const ROLE_TAGS = ['gauge', 'scanner', 'data-display', 'text', 'decorative', 'border'] as const;
 const MOOD_TAGS = ['tactical', 'diagnostic', 'ambient'] as const;
 const ALL_TAGS = [...SHAPE_TAGS, '|', ...ROLE_TAGS, '|', ...MOOD_TAGS] as const;
 

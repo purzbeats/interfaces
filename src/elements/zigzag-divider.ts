@@ -11,7 +11,7 @@ export class ZigzagDividerElement extends BaseElement {
     name: 'zigzag-divider',
     meta: {
       shape: 'linear',
-      roles: ['structural', 'decorative'],
+      roles: ['structural', 'decorative', 'border'],
       moods: ['tactical', 'ambient'],
       sizes: ['works-small'],
       bandAffinity: 'mid',

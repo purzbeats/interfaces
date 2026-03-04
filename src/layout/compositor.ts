@@ -9,6 +9,7 @@ import { setHexAspect, hexDistance } from './hex-grid';
 export interface CompositorResult {
   template: TemplateConfig;
   regions: Region[];
+  borderOverlays: Array<{ region: Region; borderType: string }>;
 }
 
 // --- Weight resolution ---
@@ -170,6 +171,34 @@ function moodBoost(elementName: string, dominantMood: Mood): number {
   if (!meta) return 1.0;
   if (meta.moods.includes(dominantMood)) return 2.0;
   return 0.5;
+}
+
+// --- Text width fitness ---
+
+/** Minimum normalized width for text elements to look decent (~120px on 1920w) */
+const MIN_TEXT_WIDTH = 0.07;
+
+function textWidthFitness(elementName: string, region: Region): number {
+  const pixelWidth = region.width * screenAspect;
+  if (pixelWidth >= MIN_TEXT_WIDTH * (16 / 9)) return 1.0;
+  const meta = getMeta(elementName);
+  if (!meta) return 1.0;
+  if (meta.roles.includes('text')) return 0.02; // near-zero — effectively excluded
+  return 1.0;
+}
+
+// --- Border role exclusion from content ---
+
+const BORDER_TYPES = new Set([
+  'border-chase', 'bracket-frame', 'corner-pip',
+  'drop-shadow', 'face-brackets', 'zigzag-divider',
+]);
+
+function borderExclusion(elementName: string): number {
+  const meta = getMeta(elementName);
+  if (!meta) return 1.0;
+  if (meta.roles.includes('border')) return 0.02; // near-zero — effectively excluded from content
+  return 1.0;
 }
 
 // --- Size fitness ---
@@ -338,7 +367,9 @@ export function compose(
         const mood = moodBoost(name, dominantMood);
         const div = diversityMultiplier(name, region, ctx);
         const tierAff = tierAffinityMultiplier(name, regionTier);
-        return base * fit * size * mood * div * tierAff;
+        const textW = textWidthFitness(name, region);
+        const borderEx = borderExclusion(name);
+        return base * fit * size * mood * div * tierAff * textW * borderEx;
       });
 
       const total = adjustedWeights.reduce((a, b) => a + b, 0);
@@ -358,7 +389,84 @@ export function compose(
     }
   }
 
-  return { template, regions: allRegions };
+  // 6. Select border overlays for ~20-40% of non-divider regions
+  const borderOverlays = selectBorderOverlays(assignable, rng);
+
+  return { template, regions: allRegions, borderOverlays };
+}
+
+// --- Border overlay selection ---
+
+const BORDER_CANDIDATES = [
+  'border-chase', 'bracket-frame', 'corner-pip',
+  'drop-shadow', 'face-brackets', 'zigzag-divider',
+];
+
+function borderShapeFitness(borderType: string, regionShape: RegionShape): number {
+  switch (borderType) {
+    case 'border-chase':
+      // Great for thin strips and wide/tall regions
+      if (regionShape === 'thin-strip') return 2.0;
+      return 1.0;
+    case 'bracket-frame':
+      // Best for square/wide regions
+      if (regionShape === 'square') return 1.5;
+      if (regionShape === 'thin-strip') return 0.3;
+      return 1.0;
+    case 'corner-pip':
+      // Works well everywhere, especially small widgets
+      return 1.2;
+    case 'drop-shadow':
+      // Best for square/rectangular
+      if (regionShape === 'square') return 1.3;
+      if (regionShape === 'thin-strip') return 0.5;
+      return 1.0;
+    case 'face-brackets':
+      // Needs room — penalise thin strips
+      if (regionShape === 'thin-strip') return 0.2;
+      if (regionShape === 'square') return 1.4;
+      return 1.0;
+    case 'zigzag-divider':
+      // Linear element — loves thin strips
+      if (regionShape === 'thin-strip') return 2.5;
+      if (regionShape === 'wide' || regionShape === 'tall') return 1.2;
+      return 0.5;
+    default:
+      return 1.0;
+  }
+}
+
+function selectBorderOverlays(
+  regions: Region[],
+  rng: SeededRandom,
+): Array<{ region: Region; borderType: string }> {
+  const overlays: Array<{ region: Region; borderType: string }> = [];
+  const density = rng.float(0.2, 0.4); // 20-40% of regions
+
+  // Track used border types for diversity
+  const usedTypes = new Set<string>();
+
+  for (const region of regions) {
+    if (rng.float(0, 1) > density) continue;
+
+    const regionShape = classifyRegion(region);
+
+    // Weight each border candidate by shape fitness + diversity
+    const weights = BORDER_CANDIDATES.map(type => {
+      let w = borderShapeFitness(type, regionShape);
+      if (usedTypes.has(type)) w *= 0.5; // mild diversity penalty
+      return w;
+    });
+
+    const total = weights.reduce((a, b) => a + b, 0);
+    if (total <= 0) continue;
+
+    const chosen = BORDER_CANDIDATES[rng.weighted(weights)];
+    overlays.push({ region, borderType: chosen });
+    usedTypes.add(chosen);
+  }
+
+  return overlays;
 }
 
 /**
@@ -406,7 +514,9 @@ export function pickElementForRegion(
     const mood = moodBoost(name, dominantMood);
     const div = diversityMultiplier(name, region, ctx);
     const tierAff = tierAffinityMultiplier(name, regionTier);
-    return base * fit * size * mood * div * tierAff;
+    const textW = textWidthFitness(name, region);
+    const borderEx = borderExclusion(name);
+    return base * fit * size * mood * div * tierAff * textW * borderEx;
   });
 
   const total = adjustedWeights.reduce((a, b) => a + b, 0);
