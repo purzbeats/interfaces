@@ -24,6 +24,9 @@ import { getMeta, BAND_INDEX } from './elements/tags';
 import { showToast } from './gui/toast';
 import { toggleHelp, isHelpVisible } from './gui/help-overlay';
 import type { Region } from './layout/region';
+import { HexBorderOverlay } from './layout/hex-border';
+import { hexClippingPlanes } from './layout/hex-grid';
+import type { HexCell } from './layout/hex-grid';
 import * as THREE from 'three';
 
 interface Composition {
@@ -78,6 +81,9 @@ export class Engine {
   /** Cached per-element intensity level — avoids redundant onIntensity calls. */
   private elementIntensityCache: Map<string, number> = new Map();
 
+  /** Hex border overlay — present only when current layout is hex-based. */
+  private hexBorder: HexBorderOverlay | null = null;
+
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
     const persisted = loadConfig();
@@ -88,6 +94,24 @@ export class Engine {
     if (params.has('seed')) this.config.seed = parseInt(params.get('seed')!, 10) || 42;
     if (params.has('palette')) this.config.palette = params.get('palette')!;
     if (params.has('template')) this.config.template = params.get('template')!;
+  }
+
+  /** Apply hex clipping planes to all materials in an element's group. */
+  private applyHexClipping(element: BaseElement, hexCell: HexCell): void {
+    const planes = hexClippingPlanes(hexCell, this.config.width, this.config.height);
+    element.group.traverse(obj => {
+      // Cast broadly — Mesh, Line, LineSegments, LineSegments2, Points, Sprite all have .material
+      const renderable = obj as THREE.Mesh | THREE.Line | THREE.Points | THREE.Sprite;
+      if (!renderable.material) return;
+      const materials = Array.isArray(renderable.material) ? renderable.material : [renderable.material];
+      for (const mat of materials) {
+        if (mat instanceof THREE.Material) {
+          mat.clippingPlanes = planes;
+          mat.clipIntersection = false;
+          mat.needsUpdate = true;
+        }
+      }
+    });
   }
 
   /** Compute and apply canvas size from aspect ratio + window dimensions. */
@@ -384,11 +408,29 @@ export class Engine {
       }
     }
 
+    // Tear down previous hex border overlay
+    if (this.hexBorder) {
+      this.ctx.scene.remove(this.hexBorder.group);
+      this.hexBorder.dispose();
+      this.hexBorder = null;
+    }
+
     // Build new composition (deferred — staggered build in update())
     this.current = this.buildComposition(seed, true);
     this.originalElementCount = this.current.elements.filter(
       (el) => !this.current!.regionMap.get(el.id)?.isDivider
     ).length;
+
+    // Create hex border overlay if this is a hex layout
+    const hexCells = this.current.regions
+      .map(r => r.hexCell)
+      .filter((c): c is HexCell => c != null);
+    if (hexCells.length > 0) {
+      this.hexBorder = new HexBorderOverlay();
+      this.hexBorder.create(hexCells, this.config.width, this.config.height, this.palette);
+      this.hexBorder.group.renderOrder = 15;
+      this.ctx.scene.add(this.hexBorder.group);
+    }
 
     // Generate timeline
     const wasLooping = this.timeline?.loop ?? true;
@@ -470,6 +512,10 @@ export class Engine {
     const emitAudio = this.makeEmitAudio();
     const elRng = rng.fork();
     const newEl = createElement(newType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
+
+    // Apply hex clipping planes if spawning into a hex cell
+    const hex = region.hexCell;
+    if (hex) this.applyHexClipping(newEl, hex);
 
     const newWrapper = new THREE.Group();
     newWrapper.add(newEl.group);
@@ -772,6 +818,9 @@ export class Engine {
       for (let i = 0; i < count; i++) {
         const item = this.pendingBuild.pop()!;
         item.element.build();
+        // Apply hex clipping planes if this element lives in a hex cell
+        const hex = item.element.region.hexCell;
+        if (hex) this.applyHexClipping(item.element, hex);
         item.wrapper.add(item.element.group);
         this.ctx.scene.add(item.wrapper);
       }
@@ -889,6 +938,11 @@ export class Engine {
         if (!el.group.visible || el.stateMachine.state === 'idle') continue;
         el.tickAudio(audioFrame);
       }
+    }
+
+    // Update hex border overlay
+    if (this.hexBorder) {
+      this.hexBorder.update(dt, this.elapsed);
     }
 
     // Update post-FX
@@ -1177,6 +1231,10 @@ export class Engine {
     }
     for (const { el } of this.retiringElements) {
       el.dispose();
+    }
+    if (this.hexBorder) {
+      this.hexBorder.dispose();
+      this.hexBorder = null;
     }
     this.showcase.dispose();
     this.gallery.dispose();

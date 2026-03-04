@@ -1,6 +1,7 @@
 import type { SeededRandom } from '../random';
 import type { Region } from './region';
 import { createTieredRegion } from './region';
+import { generateHexGrid, hexInscribedRect, hexDistance } from './hex-grid';
 
 export interface LayoutPattern {
   name: string;
@@ -373,6 +374,74 @@ function culturePlate(rng: SeededRandom): Region[] {
   ];
 }
 
+// ---------------------------------------------------------------------------
+// Hex patterns — flat-top hexagonal grids
+// ---------------------------------------------------------------------------
+
+/** Convert a HexCell array to Regions with inscribed rectangles and tier assignment. */
+function hexCellsToRegions(
+  cells: { q: number; r: number; size: number; cx: number; cy: number }[],
+  tierFn: (q: number, r: number) => 'hero' | 'panel' | 'widget',
+): Region[] {
+  return cells.map((cell, i) => {
+    const tier = tierFn(cell.q, cell.r);
+    const rect = hexInscribedRect(cell);
+    const region = createTieredRegion(
+      `hex-${i}`, tier,
+      rect.x, rect.y, rect.w, rect.h,
+      0, // no padding — hex clipping planes handle boundaries
+    );
+    region.hexCell = cell;
+    return region;
+  });
+}
+
+// --- Pattern: "hex-cluster" (7 cells — 1 center + 6 ring) ---
+function hexCluster(_rng: SeededRandom): Region[] {
+  const cells = generateHexGrid(3, 3);
+  // Pick the center cell (q=1, r=1 in a 3×3 grid)
+  const centerQ = 1, centerR = 1;
+  // Filter to only the center + its 6 neighbors (the "flower" cluster)
+  const cluster = cells.filter(c =>
+    hexDistance(c.q, c.r, centerQ, centerR) <= 1
+  );
+  return hexCellsToRegions(cluster, (q, r) =>
+    (q === centerQ && r === centerR) ? 'hero' : 'panel'
+  );
+}
+
+// --- Pattern: "hex-grid" (12–19 cells, medium) ---
+function hexGrid(rng: SeededRandom): Region[] {
+  const cols = rng.pick([3, 4]);
+  const rows = rng.pick([4, 5]);
+  const cells = generateHexGrid(cols, rows);
+  // Center cell is hero; ring-1 are panels; rest are widgets
+  const cq = Math.floor(cols / 2);
+  const cr = Math.floor(rows / 2);
+  return hexCellsToRegions(cells, (q, r) => {
+    const d = hexDistance(q, r, cq, cr);
+    if (d === 0) return 'hero';
+    if (d === 1) return 'panel';
+    return 'widget';
+  });
+}
+
+// --- Pattern: "hex-wall" (20–30 cells, dense) ---
+function hexWall(rng: SeededRandom): Region[] {
+  const cols = rng.pick([5, 6]);
+  const rows = rng.pick([4, 5]);
+  const cells = generateHexGrid(cols, rows);
+  // Two hero cells near center; ring-1 panels; rest widgets
+  const cq = Math.floor(cols / 2);
+  const cr = Math.floor(rows / 2);
+  return hexCellsToRegions(cells, (q, r) => {
+    const d = hexDistance(q, r, cq, cr);
+    if (d === 0) return 'hero';
+    if (d === 1) return 'panel';
+    return 'widget';
+  });
+}
+
 // --- Pattern registry ---
 
 export const PATTERNS: Record<string, LayoutPattern> = {
@@ -388,6 +457,9 @@ export const PATTERNS: Record<string, LayoutPattern> = {
   'picture-in-picture': { name: 'picture-in-picture',  generate: pictureInPicture },
   'radial-sanctum':     { name: 'radial-sanctum',      generate: radialSanctum },
   'culture-plate':      { name: 'culture-plate',       generate: culturePlate },
+  'hex-cluster':        { name: 'hex-cluster',         generate: hexCluster },
+  'hex-grid':           { name: 'hex-grid',            generate: hexGrid },
+  'hex-wall':           { name: 'hex-wall',            generate: hexWall },
 };
 
 export function getPattern(name: string): LayoutPattern | undefined {
