@@ -1,5 +1,44 @@
 # Changelog
 
+## v3.1.0
+
+31 new widget elements and multi-aspect showcase fullscreen, bringing the total to 161.
+
+### Added
+- **31 new element types**:
+  - Gauges: battery-cell, tilt-level, depth-gauge
+  - Mechanical: gear-train, metronome, spring-coil, newton-cradle
+  - Waves & patterns: sine-weave, ripple-tank, fibonacci-spiral, prism-split
+  - Data displays: flip-clock, chess-clock, abacus-row, punch-card, bit-decay
+  - Tactical: laser-grid, semaphore, roulette-spin
+  - Nature & physics: magnet-field, crystal-grow, smoke-rise, pendulum-grid, hourglass-timer, tuning-fork, wind-sock
+  - Decorative: kaleidoscope, domino-fall, vinyl-spin, card-fan, typewriter-head
+- **Multi-aspect showcase fullscreen**: pressing F in showcase mode now shows 7 simultaneous instances of the current element at different aspect ratios (16:9 wide, 9:16 tall, 1:1 square, 4 small squares) as a design proof sheet
+
+---
+
+## v3.0.0
+
+Massive expansion: element count tripled from 64 to 130. Hex layouts, biotech and weirdcore themes, rolling swap transitions, audio-reactive compositing, edit mode, HUD mode, and clipping plane system.
+
+### Added
+- **66 new element types** across multiple expansions: arrow-flow, barcode-strip, bio-reactor, border-chase, breathing-grid, capillary-network, card-fan, cell-division, chain-link, chevron-scroll, circuit-trace, clock-melt, compass-rose, corner-pip, corrupted-text, crosshatch-fill, data-rings, decay-text, diamond-grid, dot-orbit, drop-shadow, enzyme-cascade, face-brackets, flame-column, gauge-needle, gel-electrophoresis, grid-distortion, gyroscope, hex-counter, infinite-hallway, iris-aperture, iso-blocks, light-slit, loading-spinner, matrix-rain, moire-pattern, morse-ticker, noise-band, petri-dish, pin-array, pipe-network, pixel-sort, prism-refract, pulse-membrane, quake-line, rune-glyph, seismograph, sonar-ping, spark-emitter, spark-gap, spiral-arm, spiral-vortex, spore-bloom, stack-bars, static-channel, tape-reel, terrain-scan, ticker-tape, tread-track, watching-eye, water-level, wave-mesh, wave-radar, waveform-3d, zigzag-divider
+- **Hexagonal tile layout** with clipping planes and honeycomb borders
+- **Biotech expansion**: 8 bio-themed elements, bioluminescent palette, biolab template
+- **Weirdcore expansion**: 8 surreal elements, backrooms palette, biblically-accurate template
+- **Edit/Performance mode** (E key): bespoke interface building with drag-and-drop
+- **HUD mode**: symmetric patterns with ops-hud template
+- **Live compositing**: crossfade transitions and rolling swap mutations
+- **Audio band affinity and sensitivity** metadata on all elements
+- **4 visual presets** per element for variant diversity
+- **Rectangular clipping planes** to prevent element overflow
+
+### Changed
+- Power-on/off animations: dramatic boot sequences with flicker/strobe styles
+- Hex cell subdivision with mesh-based borders
+
+---
+
 ## v2.1.0
 
 10 new simulation and generative art elements, bringing the total to 64.

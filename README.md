@@ -2,7 +2,7 @@
 
 [interfaces-1772551742842.webm](https://github.com/user-attachments/assets/25a11feb-68af-4224-be79-6166f167cead)
 
-Procedural sci-fi interface generator built with Three.js and TypeScript. Produces animated HUD-style compositions from 64 visual element types — radar sweeps, waveforms, data cascades, oscilloscopes, star fields, cipher wheels, and more — arranged via BSP-subdivided layout templates with seeded randomness for deterministic output.
+Procedural sci-fi interface generator built with Three.js and TypeScript. Produces animated HUD-style compositions from 161 visual element types — radar sweeps, waveforms, data cascades, oscilloscopes, star fields, cipher wheels, mechanical gauges, physics simulations, and more — arranged via BSP-subdivided and hexagonal layout templates with seeded randomness for deterministic output.
 
 ## Quick Start
 
@@ -27,6 +27,9 @@ npm run preview
 | R | Regenerate with new seed |
 | L | Toggle continuous loop mode |
 | G | Showcase mode (cycle through all elements) |
+| F | Toggle fullscreen / multi-aspect proof sheet (in showcase) |
+| B | Gallery mode (paginated grid of live previews) |
+| E | Edit/Performance mode (bespoke interface building) |
 | M | Toggle sound |
 | 1–5 | Intensity broadcast (tap = one-shot, hold = sustained, release = baseline) |
 
@@ -40,7 +43,7 @@ src/
 ├── engine.ts            # Core engine — orchestrates layout, rendering, timeline
 ├── config.ts            # Runtime configuration (seed, palette, template, post-fx)
 ├── random.ts            # Seeded PRNG (mulberry32)
-├── elements/            # 64 visual element types + registry + tag metadata
+├── elements/            # 161 visual element types + registry + tag metadata
 │   ├── base-element.ts  # Abstract base class (pulse/glitch/opacity effects)
 │   ├── registry.ts      # Element factory registry
 │   └── tags.ts          # Shape/role/mood/size tag taxonomy
@@ -63,30 +66,39 @@ src/
 
 ## Templates
 
-Seven built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `tactical`, `nerv`, `datastream`, `geometry`. Use `auto` for random selection.
+Ten built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `tactical`, `nerv`, `datastream`, `geometry`, `biolab`, `biblically-accurate`, `ops-hud`. Use `auto` for random selection. Supports both rectangular BSP and hexagonal tile layouts.
 
-## Elements (64)
+## Elements (161)
 
 ### Data Display
-`graph`, `scrolling-numbers`, `data-cascade`, `signal-bars`, `waveform`, `cross-scope`, `freq-analyzer`, `spectrogram`, `dot-matrix`, `pulse-wave`, `binary-stream`, `cpu-cores`, `data-table`, `network-graph`, `oscilloscope`, `audio-meter`, `heart-monitor`, `voltage-arc`
+`graph`, `scrolling-numbers`, `data-cascade`, `signal-bars`, `waveform`, `cross-scope`, `freq-analyzer`, `spectrogram`, `dot-matrix`, `pulse-wave`, `binary-stream`, `cpu-cores`, `data-table`, `network-graph`, `oscilloscope`, `audio-meter`, `heart-monitor`, `voltage-arc`, `barcode-strip`, `data-rings`, `hex-counter`, `morse-ticker`, `ticker-tape`, `flip-clock`, `chess-clock`, `abacus-row`, `punch-card`, `bit-decay`, `typewriter-head`
 
-### Simulations
-`boids-swarm`, `rule-grid`, `lorenz-attractor`, `neural-mesh`, `flow-field`, `pendulum-wave`, `harmonograph`
+### Simulations & Physics
+`boids-swarm`, `rule-grid`, `lorenz-attractor`, `neural-mesh`, `flow-field`, `pendulum-wave`, `harmonograph`, `cell-division`, `enzyme-cascade`, `gel-electrophoresis`, `newton-cradle`, `pendulum-grid`, `ripple-tank`, `magnet-field`, `crystal-grow`
 
 ### Scanners
-`radar-sweep`, `radial-scanner`, `coord-grid`, `grid-overlay`, `bracket-frame`, `scan-line`, `target-lock`, `depth-sounder`, `satellite-track`, `thermal-map`, `topology-map`
+`radar-sweep`, `radial-scanner`, `coord-grid`, `grid-overlay`, `bracket-frame`, `scan-line`, `target-lock`, `depth-sounder`, `satellite-track`, `thermal-map`, `topology-map`, `terrain-scan`, `sonar-ping`, `laser-grid`, `wave-radar`
 
 ### Gauges
-`ring-gauge`, `progress-bar`, `threat-meter`, `phase-indicator`, `level-rings`, `segment-display`, `pressure-gauge`, `countdown-timer`, `flight-ladder`
+`ring-gauge`, `progress-bar`, `threat-meter`, `phase-indicator`, `level-rings`, `segment-display`, `pressure-gauge`, `countdown-timer`, `flight-ladder`, `gauge-needle`, `water-level`, `battery-cell`, `tilt-level`, `depth-gauge`, `wind-sock`, `hourglass-timer`
 
 ### Text
-`text-label`, `status-readout`, `clock-display`, `uptime-counter`, `boot-sequence`
+`text-label`, `status-readout`, `clock-display`, `uptime-counter`, `boot-sequence`, `corrupted-text`, `decay-text`, `rune-glyph`
 
-### Decorative
-`concentric-rings`, `hex-grid`, `hex-tunnel`, `orbital-display`, `particle-field`, `memory-map`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `plasma-field`, `dna-helix`, `fractal-tree`
+### Mechanical & Kinetic
+`gear-train`, `metronome`, `spring-coil`, `domino-fall`, `loading-spinner`, `tape-reel`, `iris-aperture`, `semaphore`, `roulette-spin`
+
+### Decorative & Generative
+`concentric-rings`, `hex-grid`, `hex-tunnel`, `orbital-display`, `particle-field`, `memory-map`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `plasma-field`, `dna-helix`, `fractal-tree`, `moire-pattern`, `kaleidoscope`, `fibonacci-spiral`, `prism-split`, `sine-weave`, `vinyl-spin`, `card-fan`, `diamond-grid`, `crosshatch-fill`, `spiral-arm`, `spiral-vortex`, `dot-orbit`, `wave-mesh`, `waveform-3d`, `noise-band`, `pixel-sort`, `smoke-rise`, `tuning-fork`
+
+### Biotech
+`bio-reactor`, `capillary-network`, `petri-dish`, `spore-bloom`, `pulse-membrane`
+
+### Atmospheric
+`flame-column`, `spark-emitter`, `spark-gap`, `static-channel`, `drop-shadow`, `infinite-hallway`, `clock-melt`, `watching-eye`, `light-slit`, `iso-blocks`
 
 ### Structural
-`panel`, `separator`, `power-grid`
+`panel`, `separator`, `power-grid`, `border-chase`, `chevron-scroll`, `circuit-trace`, `corner-pip`, `face-brackets`, `pipe-network`, `pin-array`, `stack-bars`, `tread-track`, `zigzag-divider`, `chain-link`, `arrow-flow`, `breathing-grid`, `prism-refract`, `seismograph`, `quake-line`, `grid-distortion`, `compass-rose`, `gyroscope`, `matrix-rain`
 
 ## Element Tags
 
