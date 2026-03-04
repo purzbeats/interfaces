@@ -114,34 +114,39 @@ export class PlasmaFieldElement extends BaseElement {
     const secB = Math.floor(this.palette.secondary.b * 255);
 
     // Map 0..255 across four color stops: bg -> dim -> primary -> secondary
+    // Weighted toward darker values for a subtler look
     for (let i = 0; i < 256; i++) {
       const t = i / 255;
       let r: number, g: number, b: number;
 
-      if (t < 0.25) {
-        // bg -> dim
-        const s = t / 0.25;
+      if (t < 0.35) {
+        // bg -> dim (longer dark region)
+        const s = t / 0.35;
         r = bgR + (dimR - bgR) * s;
         g = bgG + (dimG - bgG) * s;
         b = bgB + (dimB - bgB) * s;
-      } else if (t < 0.55) {
+      } else if (t < 0.65) {
         // dim -> primary
-        const s = (t - 0.25) / 0.30;
-        r = dimR + (priR - dimR) * s;
-        g = dimG + (priG - dimG) * s;
-        b = dimB + (priB - dimB) * s;
-      } else if (t < 0.85) {
-        // primary -> secondary
-        const s = (t - 0.55) / 0.30;
-        r = priR + (secR - priR) * s;
-        g = priG + (secG - priG) * s;
-        b = priB + (secB - priB) * s;
+        const s = (t - 0.35) / 0.30;
+        r = dimR + (priR - dimR) * s * 0.7;
+        g = dimG + (priG - dimG) * s * 0.7;
+        b = dimB + (priB - dimB) * s * 0.7;
+      } else if (t < 0.90) {
+        // primary -> secondary (attenuated)
+        const s = (t - 0.65) / 0.25;
+        const atten = 0.6;
+        r = dimR + (priR - dimR) * 0.7 + (secR - priR) * s * atten;
+        g = dimG + (priG - dimG) * 0.7 + (secG - priG) * s * atten;
+        b = dimB + (priB - dimB) * 0.7 + (secB - priB) * s * atten;
       } else {
-        // secondary -> bright secondary (bloom)
-        const s = (t - 0.85) / 0.15;
-        r = secR + (255 - secR) * s * 0.3;
-        g = secG + (255 - secG) * s * 0.3;
-        b = secB + (255 - secB) * s * 0.3;
+        // secondary -> subtle bloom (much less white push)
+        const s = (t - 0.90) / 0.10;
+        const base_r = dimR + (priR - dimR) * 0.7 + (secR - priR) * 0.6;
+        const base_g = dimG + (priG - dimG) * 0.7 + (secG - priG) * 0.6;
+        const base_b = dimB + (priB - dimB) * 0.7 + (secB - priB) * 0.6;
+        r = base_r + (255 - base_r) * s * 0.12;
+        g = base_g + (255 - base_g) * s * 0.12;
+        b = base_b + (255 - base_b) * s * 0.12;
       }
 
       this.colorLUT[i * 3] = Math.floor(Math.max(0, Math.min(255, r)));
@@ -175,7 +180,7 @@ export class PlasmaFieldElement extends BaseElement {
       this.renderCanvas(time);
     }
 
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.55;
   }
 
   private renderCanvas(time: number): void {

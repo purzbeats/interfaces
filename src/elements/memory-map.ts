@@ -28,10 +28,10 @@ export class MemoryMapElement extends BaseElement {
   build(): void {
     const variant = this.rng.int(0, 3);
     const presets = [
-      { blockPicks: [6, 8, 10], waveMin: 1, waveMax: 3, fillChance: 0.4 },    // Standard
-      { blockPicks: [3, 4, 5], waveMin: 3, waveMax: 6, fillChance: 0.6 },      // Dense
-      { blockPicks: [12, 14, 16], waveMin: 0.5, waveMax: 1.5, fillChance: 0.2 }, // Minimal
-      { blockPicks: [5, 7, 9], waveMin: 2, waveMax: 5, fillChance: 0.75 },     // Exotic (mostly full)
+      { blockPicks: [10, 12, 14], waveMin: 1, waveMax: 3, fillChance: 0.3 },    // Standard
+      { blockPicks: [7, 8, 10], waveMin: 3, waveMax: 6, fillChance: 0.4 },     // Dense
+      { blockPicks: [14, 16, 20], waveMin: 0.5, waveMax: 1.5, fillChance: 0.15 }, // Minimal
+      { blockPicks: [9, 11, 13], waveMin: 2, waveMax: 5, fillChance: 0.5 },    // Exotic
     ];
     const p = presets[variant];
 
@@ -118,7 +118,7 @@ export class MemoryMapElement extends BaseElement {
       this.renderCanvas();
     }
 
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.55;
     (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
   }
 
@@ -144,11 +144,11 @@ export class MemoryMapElement extends BaseElement {
         color = dim;
       }
 
-      const brightness = v > 0.5 ? 0.8 : 0.15;
+      const brightness = v > 0.5 ? 0.55 : 0.08;
       data[i * 4] = Math.floor(color.r * 255 * brightness);
       data[i * 4 + 1] = Math.floor(color.g * 255 * brightness);
       data[i * 4 + 2] = Math.floor(color.b * 255 * brightness);
-      data[i * 4 + 3] = 255;
+      data[i * 4 + 3] = v > 0.5 ? 230 : 100;
     }
 
     ctx.putImageData(imgData, 0, 0);

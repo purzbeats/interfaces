@@ -65,8 +65,15 @@ export class PixelSortElement extends BaseElement {
     ];
     const p = presets[this.variant];
 
-    this.numCols = p.cols;
-    this.numRows = p.rows;
+    // Choose cols/rows so cells are always square
+    const aspect = w / h;
+    if (aspect >= 1) {
+      this.numRows = p.rows;
+      this.numCols = Math.max(4, Math.round(this.numRows * aspect));
+    } else {
+      this.numCols = p.cols;
+      this.numRows = Math.max(4, Math.round(this.numCols / aspect));
+    }
     this.cellW = w / this.numCols;
     this.cellH = h / this.numRows;
 
@@ -92,8 +99,6 @@ export class PixelSortElement extends BaseElement {
         else if (b > 0.33) color = midColor;
         else color = darkColor;
 
-        const cellX = x + col * this.cellW + this.cellW * 0.05;
-        const cellY = y + row * this.cellH + this.cellH * 0.05;
         const geo = new THREE.PlaneGeometry(this.cellW * 0.9, this.cellH * 0.9);
         const mat = new THREE.MeshBasicMaterial({
           color: color.clone(),
@@ -102,7 +107,8 @@ export class PixelSortElement extends BaseElement {
           depthWrite: false,
         });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(cellX + this.cellW * 0.5 - 0.5, cellY + this.cellH * 0.5 - 0.5, 0);
+        // Position at cell center — matches update() positioning
+        mesh.position.set(x + col * this.cellW + this.cellW * 0.5, y + row * this.cellH + this.cellH * 0.5, 0);
         this.group.add(mesh);
         meshes.push(mesh);
         materials.push(mat);

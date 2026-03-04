@@ -87,11 +87,11 @@ export class StaticChannelElement extends BaseElement {
 
         // Random noise with palette tint
         const noise = Math.random();
-        const brightness = noise * noise; // bias toward darker
+        const brightness = noise * noise * 0.7; // bias toward darker, let peaks shine
         data[idx]     = Math.floor(bgR + (tintR - bgR) * brightness);
         data[idx + 1] = Math.floor(bgG + (tintG - bgG) * brightness);
         data[idx + 2] = Math.floor(bgB + (tintB - bgB) * brightness);
-        data[idx + 3] = 255;
+        data[idx + 3] = Math.floor(50 + brightness * 205);
       }
     }
 
@@ -215,7 +215,7 @@ export class StaticChannelElement extends BaseElement {
       this.renderCanvas(time);
     }
 
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.65;
   }
 
   onIntensity(level: number): void {

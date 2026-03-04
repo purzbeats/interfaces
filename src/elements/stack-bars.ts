@@ -224,14 +224,14 @@ export class StackBarsElement extends BaseElement {
         mesh.position.x = curX + segW / 2;
 
         const mat = mesh.material as THREE.MeshBasicMaterial;
-        mat.opacity = opacity * (0.4 + brightness * 0.5);
+        mat.opacity = opacity * (0.2 + brightness * 0.35);
         curX += segW + segGap;
 
         // Gap strip
         if (row.gaps[si]) {
           const gapMesh = row.gaps[si];
           gapMesh.position.x = curX - segGap / 2;
-          (gapMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.6;
+          (gapMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.35;
         }
       }
     }

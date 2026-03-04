@@ -59,8 +59,15 @@ export class GridDistortionElement extends BaseElement {
     this.glitchAmount = 6;
     const { x, y, w, h } = this.px;
 
-    this.divisionsX = this.rng.int(p.divMin, p.divMax);
-    this.divisionsY = this.rng.int(p.divMin, p.divMax);
+    // Choose divisions so cells are always square (1:1 aspect)
+    const aspect = w / h;
+    if (aspect >= 1) {
+      this.divisionsY = this.rng.int(p.divMin, p.divMax);
+      this.divisionsX = Math.max(p.divMin, Math.round(this.divisionsY * aspect));
+    } else {
+      this.divisionsX = this.rng.int(p.divMin, p.divMax);
+      this.divisionsY = Math.max(p.divMin, Math.round(this.divisionsX / aspect));
+    }
     this.waveFreqX = this.rng.float(p.freqMin, p.freqMax);
     this.waveFreqY = this.rng.float(p.freqMin, p.freqMax);
     this.waveAmp = this.rng.float(p.ampMin, p.ampMax);

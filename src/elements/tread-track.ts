@@ -184,7 +184,7 @@ export class TreadTrackElement extends BaseElement {
       for (let i = 0; i < numLinks; i++) {
         const geo = new THREE.PlaneGeometry(this.segW, this.segH);
         const mat = new THREE.MeshBasicMaterial({
-          color: this.palette.primary.clone(),
+          color: this.palette.primary.clone().multiplyScalar(0.55),
           transparent: true,
           opacity: 0,
           depthWrite: false,
@@ -244,12 +244,12 @@ export class TreadTrackElement extends BaseElement {
 
       // Darken links on curved sections vs straight
       const isOnStraight = (py < trackCy - this.trackRy * 0.8) || (py > trackCy + this.trackRy * 0.8);
-      const brightness = isOnStraight ? 1.0 : 0.55;
+      const brightness = isOnStraight ? 0.6 : 0.35;
 
       // Oscillate slight brightness for realism
       const shimmer = 0.9 + 0.1 * Math.sin(time * 3.0 + link.t * Math.PI * 4);
 
-      link.mat.opacity = opacity * brightness * shimmer * 0.9;
+      link.mat.opacity = opacity * brightness * shimmer;
     }
   }
 
