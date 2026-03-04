@@ -517,6 +517,9 @@ export class Engine {
     // Persist state
     saveConfig(this.config);
     updateURL(this.config);
+
+    // Refresh debug overlay if active
+    if (this.debugVisible) this.renderDebugOverlay();
   }
 
   /** Remove all wrappers from scene and dispose all elements in a composition. */
@@ -1094,6 +1097,15 @@ export class Engine {
       this.hexBorder.update(dt, this.elapsed);
     }
 
+    // Refresh debug overlay periodically during rolling swaps (~2Hz)
+    if (this.debugVisible && this.config.rollingSwap) {
+      this.debugRefreshTimer += dt;
+      if (this.debugRefreshTimer >= 0.5) {
+        this.debugRefreshTimer = 0;
+        this.renderDebugOverlay();
+      }
+    }
+
     // Update post-FX
     this.pipeline.update(this.elapsed, this.config);
   }
@@ -1184,7 +1196,107 @@ export class Engine {
     this.generate(this.config.seed);
   }
 
+  private debugOverlay: HTMLDivElement | null = null;
+  private debugVisible: boolean = false;
+  private debugRefreshTimer: number = 0;
   private resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Toggle the debug region overlay. */
+  private toggleDebug(): void {
+    this.debugVisible = !this.debugVisible;
+    if (this.debugVisible) {
+      this.renderDebugOverlay();
+    } else {
+      this.debugOverlay?.remove();
+      this.debugOverlay = null;
+    }
+  }
+
+  /** Build/rebuild the debug overlay showing region outlines, IDs, and element types. */
+  private renderDebugOverlay(): void {
+    if (!this.current) return;
+    this.debugOverlay?.remove();
+
+    const canvas = this.ctx.renderer.domElement;
+    const rect = canvas.getBoundingClientRect();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'debug-region-overlay';
+    Object.assign(overlay.style, {
+      position: 'absolute',
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      pointerEvents: 'none',
+      zIndex: '9999',
+      overflow: 'hidden',
+    });
+
+    const cw = rect.width;
+    const ch = rect.height;
+
+    // Content elements
+    for (const el of this.current.elements) {
+      const r = el.region;
+      const elType = this.current.elementTypeMap.get(el.id) ?? '?';
+      const isBorder = this.current.borderByRegion.has(r.id);
+      overlay.appendChild(this.createDebugCell(r, cw, ch, el.id, elType, r.isDivider ? '#555' : '#0f0', isBorder));
+    }
+
+    // Border overlay elements
+    for (const el of this.current.borderOverlays) {
+      const r = el.region;
+      // Find what border type this is
+      const bType = el.constructor?.toString().match(/class (\w+)/)?.[1] ?? 'border';
+      overlay.appendChild(this.createDebugCell(r, cw, ch, `B:${el.id}`, bType, '#f0f', false, true));
+    }
+
+    document.body.appendChild(overlay);
+    this.debugOverlay = overlay;
+  }
+
+  /** Create a single debug cell div. */
+  private createDebugCell(
+    r: Region, cw: number, ch: number,
+    id: string, typeName: string, color: string,
+    hasBorder: boolean, isBorderOverlay: boolean = false,
+  ): HTMLDivElement {
+    const div = document.createElement('div');
+    // Region coordinates: x is left-to-right, y is bottom-to-top (GL convention)
+    const left = r.x * cw;
+    const top = (1 - r.y - r.height) * ch;
+    const width = r.width * cw;
+    const height = r.height * ch;
+
+    Object.assign(div.style, {
+      position: 'absolute',
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      border: `1px ${isBorderOverlay ? 'dashed' : 'solid'} ${color}`,
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+      background: isBorderOverlay ? 'rgba(255,0,255,0.05)' : 'rgba(0,0,0,0.6)',
+    });
+
+    const label = document.createElement('div');
+    Object.assign(label.style, {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      lineHeight: '1.2',
+      color,
+      padding: '2px 3px',
+      wordBreak: 'break-all',
+    });
+
+    // Strip generation prefix for readability
+    const shortId = id.replace(/^[gG]\d+_/, '').replace(/^B:g\d+_/, 'B:');
+    label.innerHTML = `<b>${shortId}</b><br>${typeName}${hasBorder ? '<br>+border' : ''}`;
+    div.appendChild(label);
+    return div;
+  }
 
   private setupEvents(): void {
     window.addEventListener('resize', () => {
@@ -1305,6 +1417,10 @@ export class Engine {
         case 'l':
           this.timeline.loop = !this.timeline.loop;
           showToast(this.timeline.loop ? 'Loop: on' : 'Loop: off');
+          break;
+        case 'd':
+          this.toggleDebug();
+          showToast(this.debugVisible ? 'Debug: on' : 'Debug: off');
           break;
         case 'g':
           if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive) {
