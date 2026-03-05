@@ -67,11 +67,13 @@ export class CorruptedTextElement extends BaseElement {
     }
 
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.min(400, Math.ceil(w));
-    this.canvas.height = Math.min(400, Math.ceil(h));
+    const maxRes = 400;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.canvas.width = Math.max(64, Math.floor(w * scale));
+    this.canvas.height = Math.max(64, Math.floor(h * scale));
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(w, h);
     this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({

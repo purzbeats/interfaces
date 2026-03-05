@@ -79,7 +79,7 @@ export class LorentzForceElement extends BaseElement {
     pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
     this.particles = new THREE.Points(pGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 6, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.02), sizeAttenuation: false,
     }));
     this.group.add(this.particles);
 

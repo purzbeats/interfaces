@@ -534,7 +534,7 @@ export class Engine {
       } else {
         this.ctx.scene.remove(el.group);
       }
-      el.dispose();
+      if (el._built) el.dispose();
     }
     // Dispose border overlays
     for (const el of comp.borderOverlays) {
@@ -544,7 +544,7 @@ export class Engine {
       } else {
         this.ctx.scene.remove(el.group);
       }
-      el.dispose();
+      if (el._built) el.dispose();
     }
   }
 
@@ -957,6 +957,7 @@ export class Engine {
       for (let i = 0; i < count; i++) {
         const item = this.pendingBuild.pop()!;
         item.element.build();
+        item.element._built = true;
         // Apply clipping planes to keep content inside tile bounds
         const hex = item.element.region.hexCell;
         if (hex) this.applyHexClipping(item.element, hex);
@@ -1462,28 +1463,28 @@ export class Engine {
           this.config.overscanPadding = Math.max(this.config.overscanPadding - 1, 0);
           this.applyAspectAndRegenerate();
           break;
-        case 'ArrowLeft':
+        case 'arrowleft':
           if (e.shiftKey) {
             e.preventDefault();
             this.config.overscanX = Math.max(this.config.overscanX - 1, -100);
             this.applyAspect();
           }
           break;
-        case 'ArrowRight':
+        case 'arrowright':
           if (e.shiftKey) {
             e.preventDefault();
             this.config.overscanX = Math.min(this.config.overscanX + 1, 100);
             this.applyAspect();
           }
           break;
-        case 'ArrowUp':
+        case 'arrowup':
           if (e.shiftKey) {
             e.preventDefault();
             this.config.overscanY = Math.max(this.config.overscanY - 1, -100);
             this.applyAspect();
           }
           break;
-        case 'ArrowDown':
+        case 'arrowdown':
           if (e.shiftKey) {
             e.preventDefault();
             this.config.overscanY = Math.min(this.config.overscanY + 1, 100);
@@ -1507,16 +1508,16 @@ export class Engine {
     this.disposed = true;
     if (this.current) {
       for (const el of this.current.elements) {
-        el.dispose();
+        if (el._built) el.dispose();
       }
     }
     if (this.outgoing) {
       for (const el of this.outgoing.elements) {
-        el.dispose();
+        if (el._built) el.dispose();
       }
     }
     for (const { el } of this.retiringElements) {
-      el.dispose();
+      if (el._built) el.dispose();
     }
     if (this.hexBorder) {
       this.hexBorder.dispose();

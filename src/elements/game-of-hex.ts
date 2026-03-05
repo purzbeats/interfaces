@@ -76,8 +76,8 @@ export class GameOfHexElement extends BaseElement {
     this.ctx = this.get2DContext(this.canvas);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
     const geo = new THREE.PlaneGeometry(w, h);
     this.meshMat = new THREE.MeshBasicMaterial({
       map: this.texture, transparent: true, opacity: 0, depthWrite: false,

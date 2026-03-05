@@ -63,10 +63,10 @@ export class CapillaryNetworkElement extends BaseElement {
   build(): void {
     const variant = this.rng.int(0, 3);
     const presets = [
-      { depth: 5, particles: 100, heartRate: 1.2, flowSpeed: 1.0, pulseAmp: 0.3, varicose: false }, // Standard
-      { depth: 3, particles: 80,  heartRate: 1.8, flowSpeed: 1.6, pulseAmp: 0.4, varicose: false }, // Arterial
-      { depth: 7, particles: 150, heartRate: 0.9, flowSpeed: 0.6, pulseAmp: 0.2, varicose: false }, // Capillary-bed
-      { depth: 5, particles: 100, heartRate: 1.2, flowSpeed: 1.0, pulseAmp: 0.3, varicose: true  }, // Varicose
+      { depth: 6, particles: 180, heartRate: 1.2, flowSpeed: 1.0, pulseAmp: 0.3, varicose: false }, // Standard
+      { depth: 4, particles: 150, heartRate: 1.8, flowSpeed: 1.6, pulseAmp: 0.4, varicose: false }, // Arterial
+      { depth: 8, particles: 200, heartRate: 0.9, flowSpeed: 0.6, pulseAmp: 0.2, varicose: false }, // Capillary-bed
+      { depth: 6, particles: 180, heartRate: 1.2, flowSpeed: 1.0, pulseAmp: 0.3, varicose: true  }, // Varicose
     ];
     const p = presets[variant];
 
@@ -97,8 +97,8 @@ export class CapillaryNetworkElement extends BaseElement {
 
     const rootX = x + w * 0.5;
     const rootY = y + h * 0.05;
-    const rootLength = h * 0.18;
-    const rootWidth = w * 0.08;
+    const rootLength = h * 0.22;
+    const rootWidth = w * 0.10;
 
     this.segCount = 0;
     this.generateBranch(rootX, rootY, Math.PI / 2, rootLength, rootWidth, 0);
@@ -201,7 +201,7 @@ export class CapillaryNetworkElement extends BaseElement {
       vertexColors: true,
       transparent: true,
       opacity: 0,
-      size: Math.max(2, Math.min(w, h) * 0.006),
+      size: Math.max(3, Math.min(w, h) * 0.015),
       sizeAttenuation: false,
     });
     this.cellPoints = new THREE.Points(cellGeo, this.cellMat);
@@ -229,9 +229,9 @@ export class CapillaryNetworkElement extends BaseElement {
     this.segWidth[idx] = width;
 
     if (depth < this.maxDepth) {
-      const spreadAngle = this.rng.float(15, 35) * (Math.PI / 180);
-      const childLength = length * this.rng.float(0.6, 0.8);
-      const childWidth = width * 0.65;
+      const spreadAngle = this.rng.float(25, 55) * (Math.PI / 180);
+      const childLength = length * this.rng.float(0.65, 0.85);
+      const childWidth = width * 0.6;
 
       const jitterA = this.rng.float(-0.05, 0.05);
       const jitterB = this.rng.float(-0.05, 0.05);
@@ -340,7 +340,7 @@ export class CapillaryNetworkElement extends BaseElement {
     this.cellPoints.geometry.setDrawRange(0, this.particleCount);
 
     /* ---- apply opacity ---- */
-    this.vesselMat.opacity = opacity * 0.6;
+    this.vesselMat.opacity = opacity * 0.85;
     this.trunkMat.opacity = opacity;
     this.cellMat.opacity = opacity;
   }

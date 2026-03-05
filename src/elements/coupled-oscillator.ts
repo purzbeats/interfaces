@@ -64,7 +64,7 @@ export class CoupledOscillatorElement extends BaseElement {
     massGeo.setAttribute('position', new THREE.BufferAttribute(massPos, 3));
     this.massPoints = new THREE.Points(massGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 5, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     }));
     this.group.add(this.massPoints);
 

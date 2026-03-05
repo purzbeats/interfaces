@@ -54,6 +54,9 @@ export abstract class BaseElement {
   protected screenWidth: number;
   protected screenHeight: number;
 
+  /** Whether build() has completed. Checked by dispose() to avoid accessing uninitialized fields. */
+  _built: boolean = false;
+
   protected pulseTimer: number = 0;
   protected glitchTimer: number = 0;
   protected glitchAmount: number = 4;

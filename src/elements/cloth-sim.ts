@@ -81,7 +81,7 @@ export class ClothSimElement extends BaseElement {
     const nodeGeo = new THREE.BufferGeometry();
     nodeGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3));
     this.nodesMesh = new THREE.Points(nodeGeo, new THREE.PointsMaterial({
-      color: this.palette.dim, transparent: true, opacity: 0, size: 2, sizeAttenuation: false,
+      color: this.palette.dim, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.007), sizeAttenuation: false,
     }));
     this.group.add(this.nodesMesh);
   }

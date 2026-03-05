@@ -101,7 +101,7 @@ export class DoublePendulumElement extends BaseElement {
       const bobGeo = new THREE.BufferGeometry();
       bobGeo.setAttribute('position', new THREE.BufferAttribute(bobPos, 3));
       const bob = new THREE.Points(bobGeo, new THREE.PointsMaterial({
-        color: colors[i % colors.length], transparent: true, opacity: 0, size: 4, sizeAttenuation: false,
+        color: colors[i % colors.length], transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.013), sizeAttenuation: false,
       }));
       this.bobMeshes.push(bob);
       this.group.add(bob);

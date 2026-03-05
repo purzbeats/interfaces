@@ -238,8 +238,8 @@ export class BioReactorElement extends BaseElement {
     this.canvas.height = this.gaugeCanvasH;
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(gw, gh);
     this.gaugeMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({

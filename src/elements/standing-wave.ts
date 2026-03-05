@@ -77,7 +77,7 @@ export class StandingWaveElement extends BaseElement {
     nodeGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3));
     this.nodeDots = new THREE.Points(nodeGeo, new THREE.PointsMaterial({
       color: this.palette.secondary, transparent: true, opacity: 0,
-      size: 5, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     }));
     this.group.add(this.nodeDots);
 

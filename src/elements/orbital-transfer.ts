@@ -113,7 +113,7 @@ export class OrbitalTransferElement extends BaseElement {
     scGeo.setAttribute('position', new THREE.BufferAttribute(scPos, 3));
     this.spacecraft = new THREE.Points(scGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 6, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.02), sizeAttenuation: false,
     }));
     this.group.add(this.spacecraft);
 
@@ -125,7 +125,7 @@ export class OrbitalTransferElement extends BaseElement {
     bmGeo.setAttribute('position', new THREE.BufferAttribute(bmPos, 3));
     this.burnMarkers = new THREE.Points(bmGeo, new THREE.PointsMaterial({
       color: this.palette.secondary, transparent: true, opacity: 0,
-      size: 8, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.025), sizeAttenuation: false,
     }));
     this.group.add(this.burnMarkers);
 

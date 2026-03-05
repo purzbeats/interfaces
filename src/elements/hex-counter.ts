@@ -49,7 +49,7 @@ export class HexCounterElement extends BaseElement {
     this.canvas.height = Math.ceil(h * scale);
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(w, h);
     this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({

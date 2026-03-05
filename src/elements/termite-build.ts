@@ -68,8 +68,10 @@ export class TermiteBuildElement extends BaseElement {
     this.initTermites(p.agents);
 
     // Canvas
-    const cw = Math.max(64, Math.min(256, Math.round(w)));
-    const ch = Math.max(64, Math.min(256, Math.round(h)));
+    const maxRes = 256;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    const cw = Math.max(64, Math.floor(w * scale));
+    const ch = Math.max(64, Math.floor(h * scale));
     this.canvas = document.createElement('canvas');
     this.canvas.width = cw;
     this.canvas.height = ch;

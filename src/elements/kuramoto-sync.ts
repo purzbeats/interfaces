@@ -110,7 +110,7 @@ export class KuramotoSyncElement extends BaseElement {
     const dotGeo = new THREE.BufferGeometry();
     dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPos, 3));
     this.dotsMat = new THREE.PointsMaterial({
-      color: this.palette.primary, transparent: true, opacity: 0, size: 4, sizeAttenuation: false,
+      color: this.palette.primary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.013), sizeAttenuation: false,
     });
     this.dotsMesh = new THREE.Points(dotGeo, this.dotsMat);
     this.group.add(this.dotsMesh);

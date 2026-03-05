@@ -43,10 +43,10 @@ export class RainRipplesElement extends BaseElement {
 
     const variant = this.rng.int(0, 3);
     const presets = [
-      { maxRipples: 12, segments: 24, interval: 0.5, lifetime: 2.0, speed: 40 },
-      { maxRipples: 25, segments: 32, interval: 0.2, lifetime: 1.5, speed: 60 },
-      { maxRipples: 6, segments: 20, interval: 1.0, lifetime: 3.0, speed: 25 },
-      { maxRipples: 18, segments: 28, interval: 0.3, lifetime: 1.8, speed: 50 },
+      { maxRipples: 24, segments: 24, interval: 0.25, lifetime: 2.0, speed: 60 },
+      { maxRipples: 40, segments: 32, interval: 0.1, lifetime: 1.5, speed: 80 },
+      { maxRipples: 14, segments: 20, interval: 0.5, lifetime: 3.0, speed: 40 },
+      { maxRipples: 30, segments: 28, interval: 0.15, lifetime: 1.8, speed: 70 },
     ];
     const p = presets[variant];
     this.maxRipples = p.maxRipples;
@@ -91,7 +91,7 @@ export class RainRipplesElement extends BaseElement {
       cx: x + this.rng.float(0.1, 0.9) * w,
       cy: y + this.rng.float(0.1, 0.9) * h,
       birthTime: this.elapsed,
-      maxRadius: this.rng.float(0.5, 1.0) * Math.min(w, h) * 0.2,
+      maxRadius: this.rng.float(0.6, 1.2) * Math.min(w, h) * 0.35,
       speed: this.rippleSpeed * this.rng.float(0.8, 1.2),
       lifetime: this.rippleLifetime * this.rng.float(0.8, 1.2),
     };
@@ -127,10 +127,10 @@ export class RainRipplesElement extends BaseElement {
       const age = this.elapsed - r.birthTime;
       const lifeFrac = age / r.lifetime;
       const radius = age * r.speed;
-      const alpha = Math.max(0, 1 - lifeFrac);
+      const alpha = Math.max(0, (1 - lifeFrac) * 1.4);
 
       // Choose color based on age
-      const col = lifeFrac < 0.3 ? this.palette.primary : this.palette.secondary;
+      const col = lifeFrac < 0.4 ? this.palette.primary : this.palette.secondary;
       const cr = col.r * alpha;
       const cg = col.g * alpha;
       const cb = col.b * alpha;

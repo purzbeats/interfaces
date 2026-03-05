@@ -75,7 +75,7 @@ export class MagneticFieldElement extends BaseElement {
     pg2.setAttribute('position', new THREE.BufferAttribute(polePos, 3));
     pg2.setAttribute('color', new THREE.BufferAttribute(this.poleColors, 3));
     this.poleMesh = new THREE.Points(pg2, new THREE.PointsMaterial({
-      vertexColors: true, transparent: true, opacity: 0, size: 5, sizeAttenuation: false,
+      vertexColors: true, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     }));
     this.group.add(this.poleMesh);
 

@@ -69,7 +69,7 @@ export class WireworldElement extends BaseElement {
     this.generateCircuit(p.wireChance, p.electronChance);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
     this.texture.magFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(w, h);

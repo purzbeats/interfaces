@@ -61,13 +61,13 @@ export class CantorDustElement extends BaseElement {
       const segments = this.cantorSegments(level);
       const segCount = segments.length;
       const pos = new Float32Array(segCount * 6);
-      const rowY = this.oy + level * this.rowHeight;
+      const rowY = Math.max(y, Math.min(y + h, this.oy + level * this.rowHeight));
       for (let i = 0; i < segCount; i++) {
         const [start, end] = segments[i];
-        pos[i * 6] = this.ox + start * this.totalW;
+        pos[i * 6] = Math.max(x, Math.min(x + w, this.ox + start * this.totalW));
         pos[i * 6 + 1] = rowY;
         pos[i * 6 + 2] = 0;
-        pos[i * 6 + 3] = this.ox + end * this.totalW;
+        pos[i * 6 + 3] = Math.max(x, Math.min(x + w, this.ox + end * this.totalW));
         pos[i * 6 + 4] = rowY;
         pos[i * 6 + 5] = 0;
       }
@@ -87,17 +87,24 @@ export class CantorDustElement extends BaseElement {
       const dustLevel = Math.min(this.maxLevel, 5);
       const segs1D = this.cantorSegments(dustLevel);
       const dustCount = segs1D.length * segs1D.length;
-      const dustSize = this.totalW * 0.35;
-      const dustOx = this.ox + this.totalW * 0.32;
-      const dustOy = this.oy + this.totalH + this.rowHeight * 0.5;
+      const availH = (y + h - h * 0.06) - (this.oy + this.totalH + this.rowHeight * 0.3);
+      const dustSize = Math.min(this.totalW * 0.35, availH > 0 ? availH : this.totalW * 0.35);
+      const dustOx = this.ox + (this.totalW - dustSize) / 2;
+      const dustOy = this.oy + this.totalH + this.rowHeight * 0.3;
       const dustPos = new Float32Array(dustCount * 3);
       let idx = 0;
+      const xMin = x;
+      const xMax = x + w;
+      const yMin = y;
+      const yMax = y + h;
       for (const [sx, ex] of segs1D) {
         const mx = (sx + ex) / 2;
         for (const [sy, ey] of segs1D) {
           const my = (sy + ey) / 2;
-          dustPos[idx * 3] = dustOx + mx * dustSize;
-          dustPos[idx * 3 + 1] = dustOy + my * dustSize;
+          const px = Math.max(xMin, Math.min(xMax, dustOx + mx * dustSize));
+          const py = Math.max(yMin, Math.min(yMax, dustOy + my * dustSize));
+          dustPos[idx * 3] = px;
+          dustPos[idx * 3 + 1] = py;
           dustPos[idx * 3 + 2] = 1;
           idx++;
         }

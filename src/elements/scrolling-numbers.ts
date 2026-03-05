@@ -41,8 +41,8 @@ export class ScrollingNumbersElement extends BaseElement {
     this.canvas.height = Math.ceil(h);
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     for (let c = 0; c < this.columns; c++) {
       this.scrollSpeeds.push(this.rng.float(p.speedMin, p.speedMax));

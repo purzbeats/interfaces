@@ -182,6 +182,8 @@ export class LsystemGrowElement extends BaseElement {
       const str = this.generateString(this.currentDepth);
       const drawFrac = this.currentDepth >= this.maxDepth ? 1.0 : Math.min(1.0, fraction * 1.5 + 0.3);
       const segCount = this.interpretString(str, drawFrac);
+      // Fit all drawn segments within region bounds
+      this.fitToRegion(segCount);
       this.plantLines.geometry.setDrawRange(0, segCount * 2);
       const posAttr = this.plantLines.geometry.getAttribute('position') as THREE.BufferAttribute;
       posAttr.needsUpdate = true;
@@ -195,6 +197,64 @@ export class LsystemGrowElement extends BaseElement {
     }
 
     (this.plantLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
+  }
+
+  /** Scale and translate drawn segments to fit within region bounds */
+  private fitToRegion(segCount: number): void {
+    if (segCount < 1) return;
+    const posArr = (this.plantLines.geometry.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    const vertCount = segCount * 2;
+    const { x, y, w, h } = this.px;
+    const pad = 4;
+
+    // Find bounding box of drawn vertices
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < vertCount; i++) {
+      const vx = posArr[i * 3];
+      const vy = posArr[i * 3 + 1];
+      if (vx < minX) minX = vx;
+      if (vx > maxX) maxX = vx;
+      if (vy < minY) minY = vy;
+      if (vy > maxY) maxY = vy;
+    }
+
+    const bw = maxX - minX || 1;
+    const bh = maxY - minY || 1;
+    const regionW = w - pad * 2;
+    const regionH = h - pad * 2;
+    const scale = Math.min(regionW / bw, regionH / bh, 1.0);
+
+    if (scale < 1.0) {
+      // Scale around the base point (bottom center), then shift to fit
+      const pivotX = this.baseX;
+      const pivotY = this.baseY;
+      for (let i = 0; i < vertCount; i++) {
+        posArr[i * 3] = pivotX + (posArr[i * 3] - pivotX) * scale;
+        posArr[i * 3 + 1] = pivotY + (posArr[i * 3 + 1] - pivotY) * scale;
+      }
+
+      // Recompute bounds after scaling and shift if still out of region
+      let newMinX = Infinity, newMaxX = -Infinity, newMinY = Infinity, newMaxY = -Infinity;
+      for (let i = 0; i < vertCount; i++) {
+        const vx = posArr[i * 3];
+        const vy = posArr[i * 3 + 1];
+        if (vx < newMinX) newMinX = vx;
+        if (vx > newMaxX) newMaxX = vx;
+        if (vy < newMinY) newMinY = vy;
+        if (vy > newMaxY) newMaxY = vy;
+      }
+      let dx = 0, dy = 0;
+      if (newMinX < x + pad) dx = x + pad - newMinX;
+      if (newMaxX > x + w - pad) dx = x + w - pad - newMaxX;
+      if (newMinY < y + pad) dy = y + pad - newMinY;
+      if (newMaxY > y + h - pad) dy = y + h - pad - newMaxY;
+      if (dx !== 0 || dy !== 0) {
+        for (let i = 0; i < vertCount; i++) {
+          posArr[i * 3] += dx;
+          posArr[i * 3 + 1] += dy;
+        }
+      }
+    }
   }
 
   onAction(action: string): void {

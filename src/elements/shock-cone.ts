@@ -87,7 +87,7 @@ export class ShockConeElement extends BaseElement {
     srcGeo.setAttribute('position', new THREE.BufferAttribute(srcPositions, 3));
     this.sourcePoint = new THREE.Points(srcGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 6, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.02), sizeAttenuation: false,
     }));
     this.group.add(this.sourcePoint);
 
@@ -146,9 +146,9 @@ export class ShockConeElement extends BaseElement {
         } else {
           for (let s = 0; s <= this.circSegs; s++) {
             const a = (s / this.circSegs) * Math.PI * 2;
-            wavePos.setXYZ(baseIdx + s,
-              this.waveEmitX[i] + Math.cos(a) * radius,
-              cy + Math.sin(a) * radius, 0);
+            const wx = Math.max(x, Math.min(x + w, this.waveEmitX[i] + Math.cos(a) * radius));
+            const wy = Math.max(y, Math.min(y + h, cy + Math.sin(a) * radius));
+            wavePos.setXYZ(baseIdx + s, wx, wy, 0);
           }
         }
       } else {
@@ -165,18 +165,20 @@ export class ShockConeElement extends BaseElement {
     const coneLen = Math.max(w, h) * 0.5;
     const conePos = this.coneMesh.geometry.getAttribute('position') as THREE.BufferAttribute;
     const dir = this.sourceDir;
-    // Two lines from source backward at +/- halfAngle
-    conePos.setXYZ(0, this.sourceX, cy, 0.5);
-    conePos.setXYZ(1, this.sourceX - dir * Math.cos(halfAngle) * coneLen,
-      cy + Math.sin(halfAngle) * coneLen, 0.5);
-    conePos.setXYZ(2, this.sourceX, cy, 0.5);
-    conePos.setXYZ(3, this.sourceX - dir * Math.cos(halfAngle) * coneLen,
-      cy - Math.sin(halfAngle) * coneLen, 0.5);
+    // Two lines from source backward at +/- halfAngle, clamped to tile bounds
+    const sx = Math.max(x, Math.min(x + w, this.sourceX));
+    const cone1x = Math.max(x, Math.min(x + w, this.sourceX - dir * Math.cos(halfAngle) * coneLen));
+    const cone1y = Math.max(y, Math.min(y + h, cy + Math.sin(halfAngle) * coneLen));
+    const cone2y = Math.max(y, Math.min(y + h, cy - Math.sin(halfAngle) * coneLen));
+    conePos.setXYZ(0, sx, cy, 0.5);
+    conePos.setXYZ(1, cone1x, cone1y, 0.5);
+    conePos.setXYZ(2, sx, cy, 0.5);
+    conePos.setXYZ(3, cone1x, cone2y, 0.5);
     conePos.needsUpdate = true;
 
     // Update source point
     const srcPos = this.sourcePoint.geometry.getAttribute('position') as THREE.BufferAttribute;
-    srcPos.setXYZ(0, this.sourceX, cy, 1);
+    srcPos.setXYZ(0, Math.max(x, Math.min(x + w, this.sourceX)), cy, 1);
     srcPos.needsUpdate = true;
 
     (this.waveMesh.material as THREE.LineBasicMaterial).opacity = opacity * 0.4;

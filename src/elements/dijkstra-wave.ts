@@ -65,8 +65,10 @@ export class DijkstraWaveElement extends BaseElement {
 
     this.initGrid();
 
-    const cw = Math.max(64, Math.min(200, Math.round(w)));
-    const ch = Math.max(64, Math.min(200, Math.round(h)));
+    const maxRes = 200;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    const cw = Math.max(64, Math.floor(w * scale));
+    const ch = Math.max(64, Math.floor(h * scale));
     this.canvas = document.createElement('canvas');
     this.canvas.width = cw;
     this.canvas.height = ch;

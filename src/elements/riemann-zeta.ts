@@ -87,7 +87,7 @@ export class RiemannZetaElement extends BaseElement {
       geo.setDrawRange(0, 0);
       this.zeroDots = new THREE.Points(geo, new THREE.PointsMaterial({
         color: this.palette.primary, transparent: true, opacity: 0,
-        size: 4, sizeAttenuation: false,
+        size: Math.max(1, Math.min(w, h) * 0.013), sizeAttenuation: false,
       }));
       this.group.add(this.zeroDots);
     }

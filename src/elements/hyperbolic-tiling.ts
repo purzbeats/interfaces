@@ -22,6 +22,12 @@ export class HyperbolicTilingElement extends BaseElement {
   private rotAngle = 0;
   private rotSpeed = 0;
   private edgeVerts: number[] = [];
+  private edgeDists: number[] = []; // distance from center for each edge segment pair
+  private sortedIndices!: Uint16Array; // edges sorted by distance
+  private totalEdgeSegments = 0;
+  private revealPhase = 0;
+  private revealSpeed = 0.3;
+  private cycleDuration = 8; // seconds for full in-out cycle
 
   build(): void {
     this.glitchAmount = 4;
@@ -33,43 +39,83 @@ export class HyperbolicTilingElement extends BaseElement {
     const variant = this.rng.int(0, 3);
     // {p,q} hyperbolic tilings where 1/p + 1/q < 1/2
     const presets = [
-      { p: 5, q: 4, depth: 4, rotSpd: 0.05 },
-      { p: 7, q: 3, depth: 4, rotSpd: 0.03 },
-      { p: 4, q: 5, depth: 4, rotSpd: 0.07 },
-      { p: 3, q: 8, depth: 5, rotSpd: 0.04 },
+      { p: 5, q: 4, depth: 4, rotSpd: 0.05, revSpd: 0.25 },
+      { p: 7, q: 3, depth: 4, rotSpd: 0.03, revSpd: 0.20 },
+      { p: 4, q: 5, depth: 4, rotSpd: 0.07, revSpd: 0.30 },
+      { p: 3, q: 8, depth: 5, rotSpd: 0.04, revSpd: 0.22 },
     ];
     const pr = presets[variant];
     this.p = pr.p;
     this.q = pr.q;
     this.rotSpeed = pr.rotSpd;
+    this.revealSpeed = pr.revSpd;
 
     // Generate tiling edges
     this.edgeVerts = [];
     this.generateTiling(pr.depth);
 
-    // Disk outline
+    // Disk outline (local coords centered at origin)
     const segs = 96;
     const diskPos = new Float32Array((segs + 1) * 3);
     for (let i = 0; i <= segs; i++) {
       const a = (i / segs) * Math.PI * 2;
-      diskPos[i * 3] = this.cx + Math.cos(a) * this.radius;
-      diskPos[i * 3 + 1] = this.cy + Math.sin(a) * this.radius;
+      diskPos[i * 3] = Math.cos(a) * this.radius;
+      diskPos[i * 3 + 1] = Math.sin(a) * this.radius;
     }
     const diskGeo = new THREE.BufferGeometry();
     diskGeo.setAttribute('position', new THREE.BufferAttribute(diskPos, 3));
     this.diskLine = new THREE.Line(diskGeo, new THREE.LineBasicMaterial({
       color: this.palette.dim, transparent: true, opacity: 0,
     }));
+    this.diskLine.position.set(this.cx, this.cy, 0);
     this.group.add(this.diskLine);
 
-    // Tiling edges
-    const linePos = new Float32Array(this.edgeVerts.length);
-    for (let i = 0; i < this.edgeVerts.length; i++) linePos[i] = this.edgeVerts[i];
+    // Sort edge segments by distance from center (nearest first)
+    this.totalEdgeSegments = this.edgeDists.length;
+    this.sortedIndices = new Uint16Array(this.totalEdgeSegments);
+    for (let i = 0; i < this.totalEdgeSegments; i++) this.sortedIndices[i] = i;
+    this.sortedIndices.sort((a, b) => this.edgeDists[a] - this.edgeDists[b]);
+
+    // Build reordered position + color buffers sorted by distance
+    const linePos = new Float32Array(this.totalEdgeSegments * 6); // 2 verts × 3 coords per segment
+    const lineCol = new Float32Array(this.totalEdgeSegments * 6); // 2 verts × 3 rgb per segment
+    const pri = this.palette.primary;
+    const sec = this.palette.secondary;
+    const dim = this.palette.dim;
+    const maxDist = this.edgeDists.length > 0 ? Math.max(...this.edgeDists) : 1;
+
+    for (let i = 0; i < this.totalEdgeSegments; i++) {
+      const srcIdx = this.sortedIndices[i];
+      const srcOff = srcIdx * 6; // 2 verts × 3 coords in original edgeVerts
+      const dstOff = i * 6;
+      // Copy positions
+      for (let j = 0; j < 6; j++) linePos[dstOff + j] = this.edgeVerts[srcOff + j];
+      // Color: lerp primary→secondary→dim by normalized distance
+      const t = this.edgeDists[srcIdx] / maxDist;
+      let r: number, g: number, b: number;
+      if (t < 0.5) {
+        const f = t * 2;
+        r = pri.r + (sec.r - pri.r) * f;
+        g = pri.g + (sec.g - pri.g) * f;
+        b = pri.b + (sec.b - pri.b) * f;
+      } else {
+        const f = (t - 0.5) * 2;
+        r = sec.r + (dim.r - sec.r) * f;
+        g = sec.g + (dim.g - sec.g) * f;
+        b = sec.b + (dim.b - sec.b) * f;
+      }
+      lineCol[dstOff] = r; lineCol[dstOff + 1] = g; lineCol[dstOff + 2] = b;
+      lineCol[dstOff + 3] = r; lineCol[dstOff + 4] = g; lineCol[dstOff + 5] = b;
+    }
+
     const lineGeo = new THREE.BufferGeometry();
     lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+    lineGeo.setAttribute('color', new THREE.BufferAttribute(lineCol, 3));
+    lineGeo.setDrawRange(0, 0);
     this.linesMesh = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({
-      color: this.palette.primary, transparent: true, opacity: 0,
+      vertexColors: true, transparent: true, opacity: 0,
     }));
+    this.linesMesh.position.set(this.cx, this.cy, 0);
     this.group.add(this.linesMesh);
   }
 
@@ -112,9 +158,13 @@ export class HyperbolicTilingElement extends BaseElement {
           const p0 = this.geodesicPoint(a, b, t0);
           const p1 = this.geodesicPoint(a, b, t1);
           this.edgeVerts.push(
-            this.cx + p0[0] * this.radius, this.cy + p0[1] * this.radius, 0,
-            this.cx + p1[0] * this.radius, this.cy + p1[1] * this.radius, 0,
+            p0[0] * this.radius, p0[1] * this.radius, 0,
+            p1[0] * this.radius, p1[1] * this.radius, 0,
           );
+          // Store normalized distance from center for this segment
+          const mx = (p0[0] + p1[0]) / 2;
+          const my = (p0[1] + p1[1]) / 2;
+          this.edgeDists.push(Math.sqrt(mx * mx + my * my));
         }
       }
 
@@ -161,27 +211,52 @@ export class HyperbolicTilingElement extends BaseElement {
     // Slowly rotate the entire tiling
     this.rotAngle += this.rotSpeed * dt;
     this.linesMesh.rotation.z = this.rotAngle;
-    // Rotate around center
-    this.linesMesh.position.set(this.cx, this.cy, 0);
-    this.linesMesh.geometry.translate(-this.cx, -this.cy, 0);
-    // Reset translation to avoid accumulation — just use group rotation
-    this.linesMesh.geometry.translate(this.cx, this.cy, 0);
 
-    (this.linesMesh.material as THREE.LineBasicMaterial).opacity = opacity * 0.6;
-    (this.diskLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.15;
+    // Animate reveal: smoothly grow out from center then dissolve back
+    // cycle: 0→1 = grow in, hold, 1→2 = dissolve out, hold
+    this.revealPhase = (time * this.revealSpeed) % 2;
+    let reveal: number;
+    if (this.revealPhase < 0.8) {
+      // Grow in: ease out (fast start, slow finish)
+      const t = this.revealPhase / 0.8;
+      reveal = 1 - (1 - t) * (1 - t);
+    } else if (this.revealPhase < 1.0) {
+      // Hold fully visible
+      reveal = 1;
+    } else if (this.revealPhase < 1.8) {
+      // Dissolve out: ease in (slow start, fast finish)
+      const t = (this.revealPhase - 1.0) / 0.8;
+      reveal = 1 - t * t;
+    } else {
+      // Hold empty
+      reveal = 0;
+    }
+
+    // Map reveal to draw range (edges sorted by distance, so this reveals from center)
+    const totalVerts = this.totalEdgeSegments * 2;
+    const drawVerts = Math.floor(reveal * totalVerts);
+    this.linesMesh.geometry.setDrawRange(0, drawVerts);
+
+    (this.linesMesh.material as THREE.LineBasicMaterial).opacity = opacity * 0.7;
+    (this.diskLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.2;
   }
 
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'glitch') {
       this.rotSpeed = this.rng.float(-0.3, 0.3);
+      this.revealSpeed = this.rng.float(0.4, 0.8);
     }
   }
 
   onIntensity(level: number): void {
     super.onIntensity(level);
-    if (level >= 2) {
-      this.rotSpeed = 0.05 * (1 + level * 0.5);
+    if (level === 0) {
+      this.rotSpeed = 0.05;
+      this.revealSpeed = 0.25;
+      return;
     }
+    this.rotSpeed = 0.05 * (1 + level * 0.5);
+    this.revealSpeed = 0.25 + level * 0.08;
   }
 }

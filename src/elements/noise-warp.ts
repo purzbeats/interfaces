@@ -69,7 +69,7 @@ export class NoiseWarpElement extends BaseElement {
     this.canvas.height = this.ch;
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     // Build seeded permutation table
     this.perm = new Uint8Array(512);

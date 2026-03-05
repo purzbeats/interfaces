@@ -93,8 +93,8 @@ export class GelElectrophoresisElement extends BaseElement {
     this.canvas.height = this.canvasH;
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     // Mesh for gel image
     const geo = new THREE.PlaneGeometry(w, h);

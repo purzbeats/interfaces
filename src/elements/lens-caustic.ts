@@ -46,12 +46,14 @@ export class LensCausticElement extends BaseElement {
     this.perturbSpeed = p.speed;
 
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.max(64, Math.min(512, Math.round(w)));
-    this.canvas.height = Math.max(32, Math.min(256, Math.round(h)));
+    const maxRes = 300;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.canvas.width = Math.max(64, Math.floor(w * scale));
+    this.canvas.height = Math.max(64, Math.floor(h * scale));
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(w, h);
     const mat = new THREE.MeshBasicMaterial({ map: this.texture, transparent: true });

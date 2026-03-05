@@ -51,10 +51,10 @@ export class PollenScatterElement extends BaseElement {
 
     const variant = this.rng.int(0, 3);
     const presets = [
-      { pool: 80, windX: 20, windY: -5, brownian: 40, rate: 8 },
-      { pool: 150, windX: 35, windY: -10, brownian: 60, rate: 15 },
-      { pool: 50, windX: 10, windY: -3, brownian: 25, rate: 5 },
-      { pool: 100, windX: 25, windY: 5, brownian: 50, rate: 10 },
+      { pool: 160, windX: 20, windY: -5, brownian: 50, rate: 18 },
+      { pool: 250, windX: 35, windY: -10, brownian: 70, rate: 25 },
+      { pool: 120, windX: 10, windY: -3, brownian: 35, rate: 12 },
+      { pool: 200, windX: 25, windY: 5, brownian: 60, rate: 20 },
     ];
     const p = presets[variant];
     this.poolSize = p.pool;
@@ -63,8 +63,8 @@ export class PollenScatterElement extends BaseElement {
     this.brownian = p.brownian;
     this.emitRate = p.rate;
 
-    // Source position: left-center of region
-    this.sourceX = x + w * 0.15;
+    // Source position: center of region
+    this.sourceX = x + w * 0.45;
     this.sourceY = y + h * 0.5;
 
     // Allocate grain arrays
@@ -98,7 +98,7 @@ export class PollenScatterElement extends BaseElement {
       vertexColors: true,
       transparent: true,
       opacity: 0,
-      size: Math.max(3, Math.min(w, h) * 0.008),
+      size: Math.max(4, Math.min(w, h) * 0.018),
       sizeAttenuation: false,
     });
     this.points = new THREE.Points(pointGeo, this.pointsMat);
@@ -125,8 +125,8 @@ export class PollenScatterElement extends BaseElement {
     // Small circle for source
     for (let i = 0; i < 12; i++) {
       const angle = (i / 12) * Math.PI * 2;
-      srcVerts[i * 3] = this.sourceX + Math.cos(angle) * 4;
-      srcVerts[i * 3 + 1] = this.sourceY + Math.sin(angle) * 4;
+      srcVerts[i * 3] = this.sourceX + Math.cos(angle) * 6;
+      srcVerts[i * 3 + 1] = this.sourceY + Math.sin(angle) * 6;
       srcVerts[i * 3 + 2] = 0;
     }
     const srcGeo = new THREE.BufferGeometry();
@@ -143,8 +143,8 @@ export class PollenScatterElement extends BaseElement {
     for (let i = 0; i < this.poolSize; i++) {
       if (this.grainActive[i]) continue;
 
-      this.grainX[i] = this.sourceX + this.rng.float(-3, 3);
-      this.grainY[i] = this.sourceY + this.rng.float(-3, 3);
+      this.grainX[i] = this.sourceX + this.rng.float(-8, 8);
+      this.grainY[i] = this.sourceY + this.rng.float(-8, 8);
       this.grainPrevX[i] = this.grainX[i];
       this.grainPrevY[i] = this.grainY[i];
 
@@ -244,7 +244,7 @@ export class PollenScatterElement extends BaseElement {
     this.trailLines.geometry.setDrawRange(0, activeCount * 2);
 
     this.pointsMat.opacity = opacity;
-    this.trailMat.opacity = opacity * 0.3;
+    this.trailMat.opacity = opacity * 0.5;
   }
 
   onAction(action: string): void {

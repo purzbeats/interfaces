@@ -111,7 +111,7 @@ export class Harmonograph3dElement extends BaseElement {
     dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPos, 3));
     this.dotMat = new THREE.PointsMaterial({
       color: this.palette.secondary, transparent: true, opacity: 0,
-      size: 5, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     });
     this.dotMesh = new THREE.Points(dotGeo, this.dotMat);
     this.group.add(this.dotMesh);

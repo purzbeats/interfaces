@@ -79,7 +79,7 @@ export class NBodyRingElement extends BaseElement {
     const bodyGeo = new THREE.BufferGeometry();
     bodyGeo.setAttribute('position', new THREE.BufferAttribute(bodyPos, 3));
     this.pointsMesh = new THREE.Points(bodyGeo, new THREE.PointsMaterial({
-      color: this.palette.primary, transparent: true, opacity: 0, size: 4, sizeAttenuation: false,
+      color: this.palette.primary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.013), sizeAttenuation: false,
     }));
     this.group.add(this.pointsMesh);
 
@@ -88,7 +88,7 @@ export class NBodyRingElement extends BaseElement {
     const trailGeo = new THREE.BufferGeometry();
     trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
     this.trailMesh = new THREE.Points(trailGeo, new THREE.PointsMaterial({
-      color: this.palette.dim, transparent: true, opacity: 0, size: 1.5, sizeAttenuation: false,
+      color: this.palette.dim, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.005), sizeAttenuation: false,
     }));
     this.group.add(this.trailMesh);
   }

@@ -54,6 +54,7 @@ export function createElement(
   const factory = REGISTRY[type] ?? REGISTRY['panel'];
   const element = factory(region, palette, rng, screenWidth, screenHeight, emitAudio, intensityConfig);
   element.build();
+  element._built = true;
   return element;
 }
 

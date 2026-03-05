@@ -88,8 +88,8 @@ export class AntColonyElement extends BaseElement {
     this.pheromoneCanvas.height = this.gridH;
     this.pheromoneCtx = this.get2DContext(this.pheromoneCanvas);
     this.pheromoneTex = new THREE.CanvasTexture(this.pheromoneCanvas);
-    this.pheromoneTex.minFilter = THREE.LinearFilter;
-    this.pheromoneTex.magFilter = THREE.LinearFilter;
+    this.pheromoneTex.minFilter = THREE.NearestFilter;
+    this.pheromoneTex.magFilter = THREE.NearestFilter;
 
     const qg = new THREE.PlaneGeometry(w, h);
     this.pheromoneQuad = new THREE.Mesh(qg, new THREE.MeshBasicMaterial({ map: this.pheromoneTex, transparent: true, opacity: 0 }));
@@ -100,14 +100,14 @@ export class AntColonyElement extends BaseElement {
     const ap = new Float32Array(this.antCount * 3);
     const ag = new THREE.BufferGeometry();
     ag.setAttribute('position', new THREE.BufferAttribute(ap, 3));
-    this.antMesh = new THREE.Points(ag, new THREE.PointsMaterial({ color: this.palette.primary, transparent: true, opacity: 0, size: 1.5, sizeAttenuation: false }));
+    this.antMesh = new THREE.Points(ag, new THREE.PointsMaterial({ color: this.palette.primary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.005), sizeAttenuation: false }));
     this.group.add(this.antMesh);
 
     // Nest point
     const np = new Float32Array([this.nestX, this.nestY, 1]);
     const ng = new THREE.BufferGeometry();
     ng.setAttribute('position', new THREE.BufferAttribute(np, 3));
-    this.nestMesh = new THREE.Points(ng, new THREE.PointsMaterial({ color: this.palette.secondary, transparent: true, opacity: 0, size: 6, sizeAttenuation: false }));
+    this.nestMesh = new THREE.Points(ng, new THREE.PointsMaterial({ color: this.palette.secondary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.02), sizeAttenuation: false }));
     this.group.add(this.nestMesh);
 
     // Food points
@@ -117,7 +117,7 @@ export class AntColonyElement extends BaseElement {
     }
     const fg = new THREE.BufferGeometry();
     fg.setAttribute('position', new THREE.BufferAttribute(fp, 3));
-    this.foodMesh = new THREE.Points(fg, new THREE.PointsMaterial({ color: this.palette.secondary, transparent: true, opacity: 0, size: 5, sizeAttenuation: false }));
+    this.foodMesh = new THREE.Points(fg, new THREE.PointsMaterial({ color: this.palette.secondary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false }));
     this.group.add(this.foodMesh);
   }
 

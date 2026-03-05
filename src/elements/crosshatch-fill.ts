@@ -41,13 +41,13 @@ export class CrosshatchFillElement extends BaseElement {
 
     const presets = [
       // Variant 0: Single diagonal direction, slow drift
-      { angles: [Math.PI / 4], spacingRange: [10, 20] as const, driftSpeed: 0.3, driftRange: 1.0, breatheSpeed: 0.6, rotate: false, opacities: [0.35] },
+      { angles: [Math.PI / 4], spacingRange: [10, 20] as const, driftSpeed: 0.3, driftRange: 1.0, breatheSpeed: 0.6, rotate: false, opacities: [0.7] },
       // Variant 1: Cross-hatch (two directions), moderate drift
-      { angles: [Math.PI / 4, -Math.PI / 4], spacingRange: [12, 22] as const, driftSpeed: 0.5, driftRange: 0.7, breatheSpeed: 0.9, rotate: false, opacities: [0.28, 0.22] },
+      { angles: [Math.PI / 4, -Math.PI / 4], spacingRange: [12, 22] as const, driftSpeed: 0.5, driftRange: 0.7, breatheSpeed: 0.9, rotate: false, opacities: [0.6, 0.5] },
       // Variant 2: Triple-hatch (three directions), fast drift
-      { angles: [Math.PI / 6, Math.PI / 2, -Math.PI / 6], spacingRange: [14, 28] as const, driftSpeed: 0.8, driftRange: 0.5, breatheSpeed: 1.2, rotate: false, opacities: [0.25, 0.18, 0.20] },
+      { angles: [Math.PI / 6, Math.PI / 2, -Math.PI / 6], spacingRange: [14, 28] as const, driftSpeed: 0.8, driftRange: 0.5, breatheSpeed: 1.2, rotate: false, opacities: [0.55, 0.45, 0.5] },
       // Variant 3: Slowly rotating single hatch, varying density
-      { angles: [0], spacingRange: [8, 18] as const, driftSpeed: 0.2, driftRange: 1.2, breatheSpeed: 0.4, rotate: true, opacities: [0.4] },
+      { angles: [0], spacingRange: [8, 18] as const, driftSpeed: 0.2, driftRange: 1.2, breatheSpeed: 0.4, rotate: true, opacities: [0.75] },
     ];
 
     const p = presets[this.variant];
@@ -183,11 +183,11 @@ export class CrosshatchFillElement extends BaseElement {
         ? 0.5 + 0.5 * Math.sin(time * this.breatheSpeed * 0.7 + si * 2.1)
         : 1;
 
-      mat.opacity = opacity * set.baseOpacity * (0.4 + 0.6 * breathe) * variantModulation;
+      mat.opacity = opacity * set.baseOpacity * (0.6 + 0.4 * breathe) * variantModulation;
     }
 
     // Border
-    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.15;
+    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.35;
   }
 
   onAction(action: string): void {

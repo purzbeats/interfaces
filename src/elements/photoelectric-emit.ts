@@ -46,10 +46,10 @@ export class PhotoelectricEmitElement extends BaseElement {
     this.glitchAmount = 4;
     const variant = this.rng.int(0, 3);
     const presets = [
-      { photons: 30, electrons: 20, threshold: 0.4, sweep: true },
-      { photons: 50, electrons: 35, threshold: 0.3, sweep: true },
-      { photons: 20, electrons: 15, threshold: 0.5, sweep: false },
-      { photons: 40, electrons: 25, threshold: 0.35, sweep: true },
+      { photons: 60, electrons: 40, threshold: 0.4, sweep: true },
+      { photons: 80, electrons: 55, threshold: 0.3, sweep: true },
+      { photons: 45, electrons: 30, threshold: 0.5, sweep: false },
+      { photons: 70, electrons: 45, threshold: 0.35, sweep: true },
     ];
     const p = presets[variant];
 
@@ -76,8 +76,8 @@ export class PhotoelectricEmitElement extends BaseElement {
     const phGeo = new THREE.BufferGeometry();
     phGeo.setAttribute('position', new THREE.BufferAttribute(phPositions, 3));
     this.photonPoints = new THREE.Points(phGeo, new THREE.PointsMaterial({
-      color: this.palette.secondary, transparent: true, opacity: 0,
-      size: 3, sizeAttenuation: false,
+      color: this.palette.primary, transparent: true, opacity: 0,
+      size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     }));
     this.group.add(this.photonPoints);
 
@@ -86,8 +86,8 @@ export class PhotoelectricEmitElement extends BaseElement {
     const elGeo = new THREE.BufferGeometry();
     elGeo.setAttribute('position', new THREE.BufferAttribute(elPositions, 3));
     this.electronPoints = new THREE.Points(elGeo, new THREE.PointsMaterial({
-      color: this.palette.primary, transparent: true, opacity: 0,
-      size: 4, sizeAttenuation: false,
+      color: this.palette.secondary, transparent: true, opacity: 0,
+      size: Math.max(1, Math.min(w, h) * 0.02), sizeAttenuation: false,
     }));
     this.group.add(this.electronPoints);
 
@@ -138,15 +138,16 @@ export class PhotoelectricEmitElement extends BaseElement {
 
     // Emit photons from left
     this.emitAccum += cdt;
-    if (this.emitAccum > 0.05) {
+    if (this.emitAccum > 0.02) {
       this.emitAccum = 0;
-      for (let i = 0; i < this.maxPhotons; i++) {
+      let emitted = 0;
+      for (let i = 0; i < this.maxPhotons && emitted < 3; i++) {
         if (!this.phActive[i]) {
           this.phActive[i] = 1;
           this.phX[i] = x + this.rng.float(0, w * 0.05);
           this.phY[i] = y + h * 0.05 + this.rng.float(0, h * 0.9);
-          this.phSpeed[i] = w * this.rng.float(0.6, 1.0);
-          break;
+          this.phSpeed[i] = w * this.rng.float(0.6, 1.2);
+          emitted++;
         }
       }
     }
@@ -227,9 +228,9 @@ export class PhotoelectricEmitElement extends BaseElement {
 
     phMat.opacity = opacity;
     (this.electronPoints.material as THREE.PointsMaterial).opacity = opacity;
-    (this.surfaceLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
-    (this.freqBar.material as THREE.LineBasicMaterial).opacity = opacity * 0.6;
-    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.25;
+    (this.surfaceLine.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
+    (this.freqBar.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
+    (this.borderLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.4;
   }
 
   onAction(action: string): void {

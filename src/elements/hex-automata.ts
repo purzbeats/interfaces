@@ -54,13 +54,13 @@ export class HexAutomataElement extends BaseElement {
     const variant = this.rng.int(0, 3);
     const presets = [
       // Snowflake: birth on exactly 2 neighbors, survive on 3,5
-      { hexSz: 6, maxAge: 8, birth: [2], survive: [3, 5], interval: 0.12, maxGen: 150, seed: 'single' as const },
+      { hexSz: 5, maxAge: 8, birth: [2], survive: [3, 5], interval: 0.08, maxGen: 200, seed: 'multi' as const },
       // Organic growth: birth 1,2, survive 1,2,3,4
-      { hexSz: 5, maxAge: 12, birth: [1, 2], survive: [1, 2, 3, 4], interval: 0.08, maxGen: 200, seed: 'multi' as const },
+      { hexSz: 4, maxAge: 12, birth: [1, 2], survive: [1, 2, 3, 4], interval: 0.06, maxGen: 250, seed: 'random' as const },
       // Crystal: birth 2, survive 3,4,5
-      { hexSz: 7, maxAge: 6, birth: [2], survive: [3, 4, 5], interval: 0.15, maxGen: 120, seed: 'single' as const },
+      { hexSz: 5, maxAge: 6, birth: [2], survive: [3, 4, 5], interval: 0.1, maxGen: 180, seed: 'multi' as const },
       // Chaotic: birth 2,3, survive 2,3,4
-      { hexSz: 4, maxAge: 16, birth: [2, 3], survive: [2, 3, 4], interval: 0.06, maxGen: 250, seed: 'random' as const },
+      { hexSz: 3, maxAge: 16, birth: [2, 3], survive: [2, 3, 4], interval: 0.04, maxGen: 300, seed: 'random' as const },
     ];
     const p = presets[variant];
     this.hexSize = p.hexSz;
@@ -90,8 +90,8 @@ export class HexAutomataElement extends BaseElement {
     this.ctx = this.get2DContext(this.canvas);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
     const geo = new THREE.PlaneGeometry(w, h);
     this.meshMat = new THREE.MeshBasicMaterial({
       map: this.texture, transparent: true, opacity: 0, depthWrite: false,
@@ -125,29 +125,41 @@ export class HexAutomataElement extends BaseElement {
 
     switch (this.seedMode) {
       case 'single':
-        // Single center seed with small cross pattern
-        this.grid[cy * this.gridCols + cx] = 1;
-        if (cx > 0) this.grid[cy * this.gridCols + cx - 1] = 1;
-        if (cx < this.gridCols - 1) this.grid[cy * this.gridCols + cx + 1] = 1;
-        if (cy > 0) this.grid[(cy - 1) * this.gridCols + cx] = 1;
-        if (cy < this.gridRows - 1) this.grid[(cy + 1) * this.gridCols + cx] = 1;
+        // Center seed with larger hex-ring pattern
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const gx = cx + dx, gy = cy + dy;
+            if (gx >= 0 && gx < this.gridCols && gy >= 0 && gy < this.gridRows) {
+              if (Math.abs(dx) + Math.abs(dy) <= 3) {
+                this.grid[gy * this.gridCols + gx] = 1;
+              }
+            }
+          }
+        }
         break;
       case 'multi':
-        // Multiple seed points
-        for (let i = 0; i < 5; i++) {
-          const sx = this.rng.int(3, this.gridCols - 4);
-          const sy = this.rng.int(3, this.gridRows - 4);
+        // Multiple seed clusters
+        for (let i = 0; i < 12; i++) {
+          const sx = this.rng.int(2, this.gridCols - 3);
+          const sy = this.rng.int(2, this.gridRows - 3);
           this.grid[sy * this.gridCols + sx] = 1;
+          // Add neighbors for each seed
+          if (sx > 0) this.grid[sy * this.gridCols + sx - 1] = 1;
+          if (sx < this.gridCols - 1) this.grid[sy * this.gridCols + sx + 1] = 1;
+          if (sy > 0) this.grid[(sy - 1) * this.gridCols + sx] = 1;
         }
         break;
       case 'random':
-        // Random center region
-        for (let dy = -4; dy <= 4; dy++) {
-          for (let dx = -4; dx <= 4; dx++) {
-            const gx = cx + dx, gy = cy + dy;
-            if (gx >= 0 && gx < this.gridCols && gy >= 0 && gy < this.gridRows) {
-              if (this.rng.chance(0.35)) {
-                this.grid[gy * this.gridCols + gx] = 1;
+        // Random scattered region, wider area
+        {
+          const spread = Math.max(5, Math.floor(Math.min(this.gridCols, this.gridRows) * 0.35));
+          for (let dy = -spread; dy <= spread; dy++) {
+            for (let dx = -spread; dx <= spread; dx++) {
+              const gx = cx + dx, gy = cy + dy;
+              if (gx >= 0 && gx < this.gridCols && gy >= 0 && gy < this.gridRows) {
+                if (this.rng.chance(0.3)) {
+                  this.grid[gy * this.gridCols + gx] = 1;
+                }
               }
             }
           }
@@ -227,7 +239,7 @@ export class HexAutomataElement extends BaseElement {
           }
           this.ctx.fillStyle = `rgb(${Math.floor(r * 255)},${Math.floor(g * 255)},${Math.floor(b * 255)})`;
         } else {
-          this.ctx.fillStyle = `rgba(${Math.floor(dm.r * 255)},${Math.floor(dm.g * 255)},${Math.floor(dm.b * 255)},0.08)`;
+          this.ctx.fillStyle = `rgba(${Math.floor(dm.r * 255)},${Math.floor(dm.g * 255)},${Math.floor(dm.b * 255)},0.18)`;
         }
 
         this.ctx.beginPath();

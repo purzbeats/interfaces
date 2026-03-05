@@ -90,8 +90,8 @@ export class PendulumPhaseElement extends BaseElement {
     this.drawAxes();
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     this.material = new THREE.MeshBasicMaterial({
       map: this.texture,

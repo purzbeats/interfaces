@@ -1,5 +1,28 @@
 # Changelog
 
+## v5.2.0
+
+Visual quality pass, overscan fixes, and element scaling audit.
+
+### Fixed
+- **Overscan crash**: adjusting overscan padding in rolling sync mode crashed due to `dispose()` being called on elements that hadn't finished building yet. Added `_built` flag to skip dispose for unbuilt elements.
+- **Overscan X/Y nudge (Shift+Arrow)**: never worked — arrow key cases used `'ArrowLeft'` but the switch lowercased all keys to `'arrowleft'`. Fixed case labels.
+- **Zero-dimension crashes**: overscan could produce zero-width/height layouts, crashing elements that divide by `w` or `h`. Added minimum dimension guards in `computeAspectSize`, `regionToPixels`, `resizeRenderer`, and `pipeline.resize`.
+- **Audio blip crash**: `blip(0, 0)` used for AudioContext resume passed `freq=0` to `exponentialRampToValueAtTime`, which throws. Now early-returns for zero frequency.
+- **Canvas aspect ratio stretching**: 13 elements had width/height capped independently, causing stretched rendering on non-square tiles. All now use uniform scale pattern.
+- **Logic cascade gate distortion**: gates were stretched because canvas aspect didn't match tile aspect. Fixed canvas sizing and gate dimensions to use `Math.min(colW, rowH)`.
+
+### Changed
+- **All canvas textures now use `NearestFilter`** (87 files, 134 occurrences) instead of `LinearFilter` for crisp nearest-neighbor pixel rendering.
+- **Burning ship text overlay**: zoom indicator text now renders on a separate high-res canvas mesh instead of the low-res fractal canvas.
+- **~35 elements**: hardcoded point sizes replaced with proportional `Math.min(w, h) * factor` scaling.
+- **14 boring/empty elements** improved with more particles, larger sizes, better positioning, and more visual density (capillary-network, cellular-morph, compass-rose, hex-automata, klein-bottle, moth-flame, photoelectric-emit, pollen-scatter, pressure-gauge, rain-ripples, seed-disperse, smoke-rise, thermal-gradient, turmite).
+- **Bounds fixes**: ford-circles, involute-gear, lsystem-grow, lorenz-section, prism-split, hyperbolic-tiling, chain-link, cantor-dust, shock-cone — all now stay within tile bounds.
+- **Hyperbolic tiling**: rewritten with local-coord geometry, progressive reveal animation, and vertex colors.
+- **Brightness/contrast**: crosshatch-fill and maze-solver improved. monte-carlo-pi text scaling fixed.
+
+---
+
 ## v5.1.0
 
 Performance optimization pass across 28 elements, showcase perf overlay, and bug fixes.

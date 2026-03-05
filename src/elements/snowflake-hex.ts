@@ -69,8 +69,10 @@ export class SnowflakeHexElement extends BaseElement {
     this.initCrystal();
 
     // Canvas
-    const cw = Math.max(64, Math.min(512, Math.round(w)));
-    const ch = Math.max(64, Math.min(512, Math.round(h)));
+    const maxRes = 300;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    const cw = Math.max(64, Math.floor(w * scale));
+    const ch = Math.max(64, Math.floor(h * scale));
     this.canvas = document.createElement('canvas');
     this.canvas.width = cw;
     this.canvas.height = ch;

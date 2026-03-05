@@ -64,7 +64,7 @@ export class SpectrogramElement extends BaseElement {
 
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.NearestFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     // Pre-fill waterfall with historical data so it's not empty on first view
     for (let row = 0; row < this.scrollRows; row++) {

@@ -61,7 +61,7 @@ export class CayleyGraphElement extends BaseElement {
     const nodeGeo = new THREE.BufferGeometry();
     nodeGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3));
     this.nodeDots = new THREE.Points(nodeGeo, new THREE.PointsMaterial({
-      color: this.palette.secondary, size: 6, transparent: true, opacity: 0, sizeAttenuation: false,
+      color: this.palette.secondary, size: Math.max(1, Math.min(w, h) * 0.02), transparent: true, opacity: 0, sizeAttenuation: false,
     }));
     this.group.add(this.nodeDots);
 

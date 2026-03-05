@@ -79,7 +79,7 @@ export class SpringPendulumElement extends BaseElement {
     bobGeo.setAttribute('position', new THREE.BufferAttribute(bobPos, 3));
     this.bob = new THREE.Points(bobGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 8, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.025), sizeAttenuation: false,
     }));
     this.group.add(this.bob);
 

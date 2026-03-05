@@ -78,7 +78,7 @@ export class BezierConstructElement extends BaseElement {
     const dotGeo = new THREE.BufferGeometry();
     dotGeo.setAttribute('position', new THREE.BufferAttribute(ctrlPos.slice(), 3));
     this.controlDots = new THREE.Points(dotGeo, new THREE.PointsMaterial({
-      color: this.palette.secondary, size: 5, transparent: true, opacity: 0, sizeAttenuation: false,
+      color: this.palette.secondary, size: Math.max(1, Math.min(w, h) * 0.016), transparent: true, opacity: 0, sizeAttenuation: false,
     }));
     this.group.add(this.controlDots);
 
@@ -113,7 +113,7 @@ export class BezierConstructElement extends BaseElement {
       const dGeo = new THREE.BufferGeometry();
       dGeo.setAttribute('position', new THREE.BufferAttribute(dPos, 3));
       const dots = new THREE.Points(dGeo, new THREE.PointsMaterial({
-        color: col, size: 3, transparent: true, opacity: 0, sizeAttenuation: false,
+        color: col, size: Math.max(1, Math.min(w, h) * 0.01), transparent: true, opacity: 0, sizeAttenuation: false,
       }));
       this.group.add(dots);
       this.interpDots.push(dots);
@@ -143,7 +143,7 @@ export class BezierConstructElement extends BaseElement {
     const cursorGeo = new THREE.BufferGeometry();
     cursorGeo.setAttribute('position', new THREE.BufferAttribute(cursorPos, 3));
     this.cursorDot = new THREE.Points(cursorGeo, new THREE.PointsMaterial({
-      color: this.palette.primary, size: 7, transparent: true, opacity: 0, sizeAttenuation: false,
+      color: this.palette.primary, size: Math.max(1, Math.min(w, h) * 0.023), transparent: true, opacity: 0, sizeAttenuation: false,
     }));
     this.group.add(this.cursorDot);
   }

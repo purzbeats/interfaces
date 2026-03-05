@@ -72,7 +72,7 @@ export class BlackbodySpectrumElement extends BaseElement {
     markerGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
     this.wienMarker = new THREE.Points(markerGeo, new THREE.PointsMaterial({
       color: this.palette.secondary, transparent: true, opacity: 0,
-      size: 6, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.02), sizeAttenuation: false,
     }));
     this.group.add(this.wienMarker);
 

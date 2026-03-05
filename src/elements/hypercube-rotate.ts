@@ -97,7 +97,7 @@ export class HypercubeRotateElement extends BaseElement {
     const vertGeo = new THREE.BufferGeometry();
     vertGeo.setAttribute('position', new THREE.BufferAttribute(vertPos, 3));
     this.vertDots = new THREE.Points(vertGeo, new THREE.PointsMaterial({
-      color: this.palette.secondary, size: 4, transparent: true, opacity: 0, sizeAttenuation: false,
+      color: this.palette.secondary, size: Math.max(1, Math.min(w, h) * 0.013), transparent: true, opacity: 0, sizeAttenuation: false,
     }));
     this.group.add(this.vertDots);
   }

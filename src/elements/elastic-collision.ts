@@ -71,7 +71,7 @@ export class ElasticCollisionElement extends BaseElement {
     pointGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
     this.pointsMesh = new THREE.Points(pointGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 4, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.013), sizeAttenuation: false,
     }));
     this.group.add(this.pointsMesh);
 

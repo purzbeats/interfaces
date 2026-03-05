@@ -71,7 +71,7 @@ export class EddyCurrentElement extends BaseElement {
     this.ctx = this.get2DContext(this.canvas);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
     const geo = new THREE.PlaneGeometry(w, h);
     this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
       map: this.texture, transparent: true, opacity: 0,
@@ -84,7 +84,7 @@ export class EddyCurrentElement extends BaseElement {
     magGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
     this.magnetPoint = new THREE.Points(magGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 8, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.025), sizeAttenuation: false,
     }));
     this.group.add(this.magnetPoint);
 

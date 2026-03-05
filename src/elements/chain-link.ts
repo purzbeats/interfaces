@@ -71,13 +71,15 @@ export class ChainLinkElement extends BaseElement {
     this.linkW = (this.isVertical ? w : w / this.numLinks) * p.linkWFrac * this.numLinks;
     this.linkH = (this.isVertical ? h / this.numLinks : h) * p.linkHFrac * this.numLinks;
 
-    // Clamp link dimensions sensibly
+    // Clamp link dimensions to fit within tile with room for sway/vibration
     if (this.isVertical) {
-      this.linkH = Math.min(h / this.numLinks * 0.85, Math.max(8, h * p.linkHFrac));
-      this.linkW = Math.min(w * 0.6, Math.max(10, w * p.linkWFrac * 4));
+      const step = h / (this.numLinks + 1);
+      this.linkH = Math.min(step * 0.7, Math.max(8, h * p.linkHFrac));
+      this.linkW = Math.min(w * 0.3, Math.max(10, w * p.linkWFrac * 4));
     } else {
-      this.linkW = Math.min(w / this.numLinks * 0.85, Math.max(8, w * p.linkWFrac * 4));
-      this.linkH = Math.min(h * 0.6, Math.max(10, h * p.linkHFrac * 4));
+      const step = w / (this.numLinks + 1);
+      this.linkW = Math.min(step * 0.7, Math.max(8, w * p.linkWFrac * 4));
+      this.linkH = Math.min(h * 0.3, Math.max(10, h * p.linkHFrac * 4));
     }
 
     this.linkSwayPhase = new Float32Array(this.numLinks);
@@ -161,16 +163,18 @@ export class ChainLinkElement extends BaseElement {
       ? Math.sin(time * 14 + i * 1.7) * this.linkW * 0.06 * this.intensityBoost
       : 0;
 
+    // Clamp centers so ellipses (with max semi-axis) stay within tile
+    const margin = Math.max(this.linkW, this.linkH);
     if (this.isVertical) {
       const step = h / (this.numLinks + 1);
-      const cx = cx0 + swayDisp + vibDisp + jitter;
-      const cy = y + step * (i + 1) + sag;
+      const cx = Math.max(x + margin, Math.min(x + w - margin, cx0 + swayDisp + vibDisp + jitter));
+      const cy = Math.max(y + margin, Math.min(y + h - margin, y + step * (i + 1) + sag));
       const tiltAngle = Math.atan2(swayDisp + vibDisp, step) * 0.5;
       return { cx, cy, tiltAngle };
     } else {
       const step = w / (this.numLinks + 1);
-      const cx = x + step * (i + 1);
-      const cy = cy0 + swayDisp + sag + vibDisp + jitter;
+      const cx = Math.max(x + margin, Math.min(x + w - margin, x + step * (i + 1)));
+      const cy = Math.max(y + margin, Math.min(y + h - margin, cy0 + swayDisp + sag + vibDisp + jitter));
       const tiltAngle = Math.atan2(swayDisp + vibDisp, step) * 0.5;
       return { cx, cy, tiltAngle };
     }
@@ -190,6 +194,12 @@ export class ChainLinkElement extends BaseElement {
     // Whether links are interlocked — every other link is rotated 90deg
     const interlockRot = Math.PI / 2;
 
+    const { x, y, w, h } = this.px;
+    const xMin = x;
+    const xMax = x + w;
+    const yMin = y;
+    const yMax = y + h;
+
     for (let i = 0; i < this.numLinks; i++) {
       const { cx, cy, tiltAngle } = this.getLinkCenter(i, time);
 
@@ -203,10 +213,12 @@ export class ChainLinkElement extends BaseElement {
         const angle = (s / this.SEGS) * Math.PI * 2;
         const lx = Math.cos(angle) * this.linkW;
         const ly = Math.sin(angle) * this.linkH;
-        // Apply rotation
+        // Apply rotation and clamp to tile bounds
         const rx = lx * cosR - ly * sinR;
         const ry = lx * sinR + ly * cosR;
-        pos.setXYZ(s, cx + rx, cy + ry, i % 2 === 0 ? 0.3 : 0.1);
+        const px = Math.max(xMin, Math.min(xMax, cx + rx));
+        const py = Math.max(yMin, Math.min(yMax, cy + ry));
+        pos.setXYZ(s, px, py, i % 2 === 0 ? 0.3 : 0.1);
       }
       pos.needsUpdate = true;
 
@@ -231,8 +243,14 @@ export class ChainLinkElement extends BaseElement {
         const ry0 = lx0 * sinR + ly0 * cosR;
         const rx1 = lx1 * cosR - ly1 * sinR;
         const ry1 = lx1 * sinR + ly1 * cosR;
-        hlPos.setXYZ(s * 2, cx + rx0, cy + ry0, i % 2 === 0 ? 0.4 : 0.2);
-        hlPos.setXYZ(s * 2 + 1, cx + rx1, cy + ry1, i % 2 === 0 ? 0.4 : 0.2);
+        hlPos.setXYZ(s * 2,
+          Math.max(xMin, Math.min(xMax, cx + rx0)),
+          Math.max(yMin, Math.min(yMax, cy + ry0)),
+          i % 2 === 0 ? 0.4 : 0.2);
+        hlPos.setXYZ(s * 2 + 1,
+          Math.max(xMin, Math.min(xMax, cx + rx1)),
+          Math.max(yMin, Math.min(yMax, cy + ry1)),
+          i % 2 === 0 ? 0.4 : 0.2);
       }
       hlPos.needsUpdate = true;
       (this.linkHighlights[i].material as THREE.LineBasicMaterial).opacity =

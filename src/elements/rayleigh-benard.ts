@@ -39,8 +39,10 @@ export class RayleighBenardElement extends BaseElement {
     this.flowSpeed = p.speed;
 
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.max(64, Math.min(512, Math.round(w)));
-    this.canvas.height = Math.max(32, Math.min(256, Math.round(h)));
+    const maxRes = 300;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.canvas.width = Math.max(64, Math.floor(w * scale));
+    this.canvas.height = Math.max(64, Math.floor(h * scale));
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.NearestFilter;

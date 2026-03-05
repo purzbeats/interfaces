@@ -64,10 +64,10 @@ export class MothFlameElement extends BaseElement {
 
     const variant = this.rng.int(0, 4);
     const presets: MothPreset[] = [
-      { mothCount: 5,  spiralRate: 8,  escapeChance: 0.3, trailLength: 30 },
-      { mothCount: 8,  spiralRate: 5,  escapeChance: 0.2, trailLength: 20 },
-      { mothCount: 3,  spiralRate: 12, escapeChance: 0.5, trailLength: 40 },
-      { mothCount: 6,  spiralRate: 6,  escapeChance: 0.15, trailLength: 35 },
+      { mothCount: 12, spiralRate: 8,  escapeChance: 0.3, trailLength: 35 },
+      { mothCount: 16, spiralRate: 5,  escapeChance: 0.2, trailLength: 25 },
+      { mothCount: 8,  spiralRate: 12, escapeChance: 0.5, trailLength: 45 },
+      { mothCount: 14, spiralRate: 6,  escapeChance: 0.15, trailLength: 40 },
     ];
     const p = presets[variant];
     this.mothCount = p.mothCount;
@@ -88,7 +88,7 @@ export class MothFlameElement extends BaseElement {
       color: this.palette.primary,
       transparent: true,
       opacity: 0,
-      size: Math.max(6, this.maxRadius * 0.05),
+      size: Math.max(10, this.maxRadius * 0.12),
       sizeAttenuation: false,
     });
     this.flamePoint = new THREE.Points(flameGeo, this.flameMat);
@@ -103,7 +103,7 @@ export class MothFlameElement extends BaseElement {
       color: this.palette.secondary,
       transparent: true,
       opacity: 0,
-      size: Math.max(3, this.maxRadius * 0.025),
+      size: Math.max(4, this.maxRadius * 0.04),
       sizeAttenuation: false,
     });
     this.mothPoints = new THREE.Points(mothGeo, this.mothMat);
@@ -229,8 +229,8 @@ export class MothFlameElement extends BaseElement {
     trailPos.needsUpdate = true;
 
     this.flameMat.opacity = opacity;
-    this.mothMat.opacity = opacity * 0.9;
-    this.trailMat.opacity = opacity * 0.3;
+    this.mothMat.opacity = opacity * 0.95;
+    this.trailMat.opacity = opacity * 0.5;
   }
 
   onAction(action: string): void {

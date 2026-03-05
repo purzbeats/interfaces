@@ -43,7 +43,8 @@ export function createTieredRegion(
   return { id, x, y, width, height, padding, tier };
 }
 
-/** Convert normalized region coords to pixel coords */
+/** Convert normalized region coords to pixel coords.
+ *  Guarantees w >= 1 and h >= 1 to prevent division-by-zero in elements. */
 export function regionToPixels(
   region: Region,
   screenWidth: number,
@@ -53,8 +54,8 @@ export function regionToPixels(
   return {
     x: (region.x + pad) * screenWidth,
     y: (region.y + pad) * screenHeight,
-    w: (region.width - pad * 2) * screenWidth,
-    h: (region.height - pad * 2) * screenHeight,
+    w: Math.max(1, (region.width - pad * 2) * screenWidth),
+    h: Math.max(1, (region.height - pad * 2) * screenHeight),
   };
 }
 

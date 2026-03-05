@@ -78,7 +78,7 @@ export class StringVibrationElement extends BaseElement {
     const ng = new THREE.BufferGeometry();
     ng.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nodePoints), 3));
     this.nodeMesh = new THREE.Points(ng, new THREE.PointsMaterial({
-      color: this.palette.dim, transparent: true, opacity: 0, size: 3, sizeAttenuation: false,
+      color: this.palette.dim, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.01), sizeAttenuation: false,
     }));
     this.group.add(this.nodeMesh);
   }

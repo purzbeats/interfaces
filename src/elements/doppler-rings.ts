@@ -75,7 +75,7 @@ export class DopplerRingsElement extends BaseElement {
     srcGeo.setAttribute('position', new THREE.BufferAttribute(srcPos, 3));
     this.sourcePoint = new THREE.Points(srcGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 5, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     }));
     this.group.add(this.sourcePoint);
   }

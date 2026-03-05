@@ -65,7 +65,7 @@ export class LissajousCurveElement extends BaseElement {
     const dg = new THREE.BufferGeometry();
     dg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
     this.dotMesh = new THREE.Points(dg, new THREE.PointsMaterial({
-      color: this.palette.secondary, transparent: true, opacity: 0, size: 4, sizeAttenuation: false,
+      color: this.palette.secondary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.013), sizeAttenuation: false,
     }));
     this.group.add(this.dotMesh);
 

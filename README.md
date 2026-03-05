@@ -33,6 +33,8 @@ npm run preview
 | E | Edit/Performance mode (bespoke interface building) |
 | M | Toggle sound |
 | 1–5 | Intensity broadcast (tap = one-shot, hold = sustained, release = baseline) |
+| +/− | Adjust overscan padding (for CRT TVs) |
+| Shift+Arrow | Nudge canvas X/Y offset |
 
 On mobile (<768px), a bottom toolbar provides touch-friendly buttons for all controls.
 

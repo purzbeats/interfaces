@@ -40,7 +40,7 @@ export class SmokeRiseElement extends BaseElement {
   build(): void {
     const { x, y, w, h } = this.px;
 
-    this.maxParticles = 30 + this.rng.int(0, 20);
+    this.maxParticles = 60 + this.rng.int(0, 40);
     this.spawnRate = this.maxParticles / 3; // fill up over ~3 seconds
 
     // Preallocate points geometry
@@ -55,7 +55,7 @@ export class SmokeRiseElement extends BaseElement {
       vertexColors: true,
       transparent: true,
       opacity: 0,
-      size: Math.max(2, Math.min(w, h) * 0.015),
+      size: Math.max(3, Math.min(w, h) * 0.025),
       sizeAttenuation: false,
     }));
     this.group.add(this.meshPoints);
@@ -73,7 +73,7 @@ export class SmokeRiseElement extends BaseElement {
   private createParticle(): SmokeParticle {
     const { x, y, w, h } = this.px;
 
-    const baseX = x + w * 0.2 + this.rng.float(0, w * 0.6);
+    const baseX = x + w * 0.05 + this.rng.float(0, w * 0.9);
     const lifetime = h / (15 + this.rng.float(0, 25)) ; // based on rise speed
 
     return {
@@ -82,12 +82,12 @@ export class SmokeRiseElement extends BaseElement {
       baseX,
       speed: 15 + this.rng.float(0, 25),
       sineFreq: this.rng.float(0.5, 2.0),
-      sineAmp: this.rng.float(3, w * 0.06),
+      sineAmp: this.rng.float(5, w * 0.12),
       phase: this.rng.float(0, Math.PI * 2),
       size: this.rng.float(0.7, 1.3),
       age: 0,
       lifetime,
-      isSecondary: this.rng.chance(0.15),
+      isSecondary: this.rng.chance(0.3),
     };
   }
 

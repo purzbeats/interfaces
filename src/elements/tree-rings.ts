@@ -63,8 +63,10 @@ export class TreeRingsElement extends BaseElement {
     this.wobbleAmount = p.wobble;
 
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.min(w, 512);
-    this.canvas.height = Math.min(h, 512);
+    const maxRes = 300;
+    const canvasScale = Math.min(1, maxRes / Math.max(w, h));
+    this.canvas.width = Math.max(64, Math.floor(w * canvasScale));
+    this.canvas.height = Math.max(64, Math.floor(h * canvasScale));
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
 

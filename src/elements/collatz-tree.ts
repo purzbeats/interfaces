@@ -70,8 +70,8 @@ export class CollatzTreeElement extends BaseElement {
     this.ctx.fillRect(0, 0, this.cw, this.ch);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     this.material = new THREE.MeshBasicMaterial({
       map: this.texture,

@@ -56,7 +56,7 @@ export class LorenzSectionElement extends BaseElement {
     this.rho = pr.rho;
 
     this.scaleX = w / 50;
-    this.scaleY = h / 50;
+    this.scaleY = h / 70;
 
     // Initial conditions
     this.lx = 1 + this.rng.float(-0.1, 0.1);
@@ -124,7 +124,7 @@ export class LorenzSectionElement extends BaseElement {
       if (this.prevZ < this.sectionPlane && this.lz >= this.sectionPlane && this.head < this.maxPoints) {
         const idx = this.head * 3;
         this.positions[idx] = this.cx + this.lx * this.scaleX;
-        this.positions[idx + 1] = this.cy + (this.ly - 25) * this.scaleY;
+        this.positions[idx + 1] = this.cy + this.ly * this.scaleY;
         this.positions[idx + 2] = 0;
         this.head++;
       }

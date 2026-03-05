@@ -54,13 +54,13 @@ export class CellularMorphElement extends BaseElement {
     const variant = this.rng.int(0, 3);
     const presets: MorphPreset[] = [
       // Spots
-      { activatorDiffuse: 0.16, inhibitorDiffuse: 0.08, feedRate: 0.055, killRate: 0.062, stepsPerFrame: 4 },
+      { activatorDiffuse: 0.16, inhibitorDiffuse: 0.08, feedRate: 0.055, killRate: 0.062, stepsPerFrame: 8 },
       // Stripes
-      { activatorDiffuse: 0.14, inhibitorDiffuse: 0.06, feedRate: 0.035, killRate: 0.065, stepsPerFrame: 6 },
+      { activatorDiffuse: 0.14, inhibitorDiffuse: 0.06, feedRate: 0.035, killRate: 0.065, stepsPerFrame: 10 },
       // Coral/maze
-      { activatorDiffuse: 0.16, inhibitorDiffuse: 0.08, feedRate: 0.060, killRate: 0.062, stepsPerFrame: 4 },
+      { activatorDiffuse: 0.16, inhibitorDiffuse: 0.08, feedRate: 0.060, killRate: 0.062, stepsPerFrame: 8 },
       // Bubbles
-      { activatorDiffuse: 0.12, inhibitorDiffuse: 0.06, feedRate: 0.040, killRate: 0.060, stepsPerFrame: 5 },
+      { activatorDiffuse: 0.12, inhibitorDiffuse: 0.06, feedRate: 0.040, killRate: 0.060, stepsPerFrame: 9 },
     ];
     const p = presets[variant];
     this.activatorDiffuse = p.activatorDiffuse;
@@ -69,8 +69,8 @@ export class CellularMorphElement extends BaseElement {
     this.killRate = p.killRate;
     this.stepsPerFrame = p.stepsPerFrame;
 
-    this.gw = Math.min(Math.round(w / 2), 128);
-    this.gh = Math.min(Math.round(h / 2), 128);
+    this.gw = Math.min(Math.round(w / 1.5), 160);
+    this.gh = Math.min(Math.round(h / 1.5), 160);
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.gw;
@@ -91,11 +91,11 @@ export class CellularMorphElement extends BaseElement {
     this.v.fill(0);
 
     // Seed some patches of v
-    const seedCount = 3 + this.rng.int(0, 4);
+    const seedCount = 8 + this.rng.int(0, 8);
     for (let s = 0; s < seedCount; s++) {
-      const sx = this.rng.int(this.gw * 0.2, this.gw * 0.8);
-      const sy = this.rng.int(this.gh * 0.2, this.gh * 0.8);
-      const sr = this.rng.int(3, 8);
+      const sx = this.rng.int(this.gw * 0.1, this.gw * 0.9);
+      const sy = this.rng.int(this.gh * 0.1, this.gh * 0.9);
+      const sr = this.rng.int(4, 12);
       for (let dy = -sr; dy <= sr; dy++) {
         for (let dx = -sr; dx <= sr; dx++) {
           const px = sx + dx;
@@ -187,7 +187,7 @@ export class CellularMorphElement extends BaseElement {
       data[pidx] = Math.floor((bg.r + (pri.r - bg.r) * t + (sec.r - bg.r) * t * t * 0.5) * 255);
       data[pidx + 1] = Math.floor((bg.g + (pri.g - bg.g) * t + (sec.g - bg.g) * t * t * 0.5) * 255);
       data[pidx + 2] = Math.floor((bg.b + (pri.b - bg.b) * t + (sec.b - bg.b) * t * t * 0.5) * 255);
-      data[pidx + 3] = Math.floor((0.3 + t * 0.7) * 255);
+      data[pidx + 3] = Math.floor((0.6 + t * 0.4) * 255);
     }
 
     ctx.putImageData(imgData, 0, 0);

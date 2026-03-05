@@ -81,7 +81,7 @@ export class OrbitRingsElement extends BaseElement {
     const sg = new THREE.BufferGeometry();
     sg.setAttribute('position', new THREE.BufferAttribute(this.satPositions, 3));
     this.satMesh = new THREE.Points(sg, new THREE.PointsMaterial({
-      color: this.palette.secondary, transparent: true, opacity: 0, size: 3, sizeAttenuation: false,
+      color: this.palette.secondary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.01), sizeAttenuation: false,
     }));
     this.group.add(this.satMesh);
 
@@ -89,7 +89,7 @@ export class OrbitRingsElement extends BaseElement {
     const cg = new THREE.BufferGeometry();
     cg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([this.cx, this.cy, 1]), 3));
     this.centerDot = new THREE.Points(cg, new THREE.PointsMaterial({
-      color: this.palette.secondary, transparent: true, opacity: 0, size: 5, sizeAttenuation: false,
+      color: this.palette.secondary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     }));
     this.group.add(this.centerDot);
   }

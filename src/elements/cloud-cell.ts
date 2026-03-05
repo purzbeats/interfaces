@@ -68,8 +68,10 @@ export class CloudCellElement extends BaseElement {
     this.turbulence = p.turbulence;
 
     this.canvas = document.createElement('canvas');
-    this.cw = Math.min(w, 160);
-    this.ch = Math.min(h, 160);
+    const maxRes = 160;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.cw = Math.max(64, Math.floor(w * scale));
+    this.ch = Math.max(64, Math.floor(h * scale));
     this.canvas.width = this.cw;
     this.canvas.height = this.ch;
     this.ctx = this.get2DContext(this.canvas);

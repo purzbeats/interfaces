@@ -67,10 +67,10 @@ export class SeedDisperseElement extends BaseElement {
 
     const variant = this.rng.int(0, 4);
     const presets: SeedPreset[] = [
-      { seedCount: 30, launchInterval: 0.5, windStrength: 30, seedType: 'dandelion' },
-      { seedCount: 20, launchInterval: 0.8, windStrength: 15, seedType: 'maple' },
-      { seedCount: 40, launchInterval: 0.3, windStrength: 40, seedType: 'thistle' },
-      { seedCount: 25, launchInterval: 0.6, windStrength: 25, seedType: 'milkweed' },
+      { seedCount: 50, launchInterval: 0.3, windStrength: 30, seedType: 'dandelion' },
+      { seedCount: 35, launchInterval: 0.5, windStrength: 15, seedType: 'maple' },
+      { seedCount: 60, launchInterval: 0.2, windStrength: 40, seedType: 'thistle' },
+      { seedCount: 45, launchInterval: 0.35, windStrength: 25, seedType: 'milkweed' },
     ];
     const p = presets[variant];
     this.seedCount = p.seedCount;
@@ -78,8 +78,8 @@ export class SeedDisperseElement extends BaseElement {
     this.windStrength = p.windStrength * (w / 300);
     this.seedType = p.seedType;
 
-    this.plantX = x + w * 0.3;
-    this.plantY = y + h * 0.8;
+    this.plantX = x + w * 0.5;
+    this.plantY = y + h * 0.15;
 
     // ── Plant stem ──
     const stemVerts = new Float32Array([
@@ -161,40 +161,42 @@ export class SeedDisperseElement extends BaseElement {
     for (const seed of this.seeds) {
       if (seed.active) continue;
 
-      seed.x = this.plantX + this.rng.float(-3, 3);
+      const { w } = this.px;
+      seed.x = this.plantX + this.rng.float(-w * 0.15, w * 0.15);
       seed.y = this.plantY;
       seed.active = true;
       seed.trailHead = 0;
       seed.trailCount = 0;
 
+      const windDir = this.rng.chance(0.5) ? 1 : -1;
       switch (this.seedType) {
         case 'dandelion':
-          // Floaty — mostly horizontal with gentle rise then slow fall
-          seed.vx = this.windStrength * this.rng.float(0.5, 1.5);
-          seed.vy = this.rng.float(-20, -5);
-          seed.spin = 0;
-          seed.life = this.rng.float(3, 6);
-          break;
-        case 'maple':
-          // Spinning — helical descent
-          seed.vx = this.windStrength * this.rng.float(0.3, 0.8);
-          seed.vy = this.rng.float(-10, 5);
-          seed.spin = this.rng.float(5, 12) * (this.rng.chance(0.5) ? 1 : -1);
-          seed.life = this.rng.float(2, 4);
-          break;
-        case 'thistle':
-          // Light, erratic — lots of wind influence
-          seed.vx = this.windStrength * this.rng.float(0.8, 2.0);
-          seed.vy = this.rng.float(-30, -10);
+          // Floaty — horizontal drift with gentle fall
+          seed.vx = this.windStrength * this.rng.float(0.5, 1.5) * windDir;
+          seed.vy = this.rng.float(5, 20);
           seed.spin = 0;
           seed.life = this.rng.float(4, 8);
           break;
+        case 'maple':
+          // Spinning — helical descent
+          seed.vx = this.windStrength * this.rng.float(0.3, 0.8) * windDir;
+          seed.vy = this.rng.float(5, 15);
+          seed.spin = this.rng.float(5, 12) * (this.rng.chance(0.5) ? 1 : -1);
+          seed.life = this.rng.float(3, 6);
+          break;
+        case 'thistle':
+          // Light, erratic — lots of wind influence
+          seed.vx = this.windStrength * this.rng.float(0.8, 2.0) * windDir;
+          seed.vy = this.rng.float(5, 25);
+          seed.spin = 0;
+          seed.life = this.rng.float(5, 10);
+          break;
         case 'milkweed':
           // Slow float with gentle oscillation
-          seed.vx = this.windStrength * this.rng.float(0.4, 1.0);
-          seed.vy = this.rng.float(-15, -5);
+          seed.vx = this.windStrength * this.rng.float(0.4, 1.0) * windDir;
+          seed.vy = this.rng.float(5, 15);
           seed.spin = this.rng.float(1, 3);
-          seed.life = this.rng.float(3, 7);
+          seed.life = this.rng.float(4, 9);
           break;
       }
 
@@ -306,7 +308,7 @@ export class SeedDisperseElement extends BaseElement {
 
     this.stemMat.opacity = opacity * 0.5;
     this.seedMat.opacity = opacity;
-    this.trailMat.opacity = opacity * 0.25;
+    this.trailMat.opacity = opacity * 0.4;
   }
 
   onAction(action: string): void {

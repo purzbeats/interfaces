@@ -70,7 +70,7 @@ export class MazeSolverElement extends BaseElement {
     const wallPos = new Float32Array(maxSegs * 6);
     const wallGeo = new THREE.BufferGeometry();
     wallGeo.setAttribute('position', new THREE.BufferAttribute(wallPos, 3));
-    this.wallMat = new THREE.LineBasicMaterial({ color: this.palette.dim, transparent: true, opacity: 0 });
+    this.wallMat = new THREE.LineBasicMaterial({ color: this.palette.secondary, transparent: true, opacity: 0 });
     this.wallLines = new THREE.LineSegments(wallGeo, this.wallMat);
     this.group.add(this.wallLines);
 
@@ -80,7 +80,7 @@ export class MazeSolverElement extends BaseElement {
     const pathGeo = new THREE.BufferGeometry();
     pathGeo.setAttribute('position', new THREE.BufferAttribute(pathPos, 3));
     pathGeo.setDrawRange(0, 0);
-    this.pathMat = new THREE.LineBasicMaterial({ color: this.palette.secondary, transparent: true, opacity: 0 });
+    this.pathMat = new THREE.LineBasicMaterial({ color: this.palette.primary, transparent: true, opacity: 0 });
     this.pathLine = new THREE.Line(pathGeo, this.pathMat);
     this.group.add(this.pathLine);
 
@@ -89,7 +89,7 @@ export class MazeSolverElement extends BaseElement {
     const dotGeo = new THREE.BufferGeometry();
     dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPos, 3));
     this.solverDot = new THREE.Points(dotGeo, new THREE.PointsMaterial({
-      color: this.palette.primary, transparent: true, opacity: 0, size: 4, sizeAttenuation: false,
+      color: this.palette.primary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.013), sizeAttenuation: false,
     }));
     this.group.add(this.solverDot);
 
@@ -247,8 +247,8 @@ export class MazeSolverElement extends BaseElement {
       }
     }
 
-    this.wallMat.opacity = opacity * 0.6;
-    this.pathMat.opacity = opacity * 0.9;
+    this.wallMat.opacity = opacity * 0.55;
+    this.pathMat.opacity = opacity * 0.95;
     (this.solverDot.material as THREE.PointsMaterial).opacity = this.phase === 'solve' ? opacity : 0;
   }
 

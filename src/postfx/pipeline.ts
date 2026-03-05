@@ -98,12 +98,14 @@ export function createPostFXPipeline(
     },
 
     resize(w: number, h: number) {
-      composer.setSize(w, h);
+      const sw = Math.max(w, 1);
+      const sh = Math.max(h, 1);
+      composer.setSize(sw, sh);
       if (crtPass.uniforms['resolution']) {
-        crtPass.uniforms['resolution'].value.set(w, h);
+        crtPass.uniforms['resolution'].value.set(sw, sh);
       }
       if (chromaticPass.uniforms['resolution']) {
-        chromaticPass.uniforms['resolution'].value.set(w, h);
+        chromaticPass.uniforms['resolution'].value.set(sw, sh);
       }
     },
   };

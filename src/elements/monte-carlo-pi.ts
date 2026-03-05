@@ -125,19 +125,25 @@ export class MonteCarloElement extends BaseElement {
     this.pointsMesh = new THREE.Points(pointsGeo, this.pointsMat);
     this.group.add(this.pointsMesh);
 
-    // Label canvas for pi estimate
+    // Label canvas for pi estimate — scale with tile size
+    const labelW = Math.max(128, Math.round(w * 0.5));
+    const labelH = Math.max(24, Math.round(labelW * 0.2));
     this.labelCanvas = document.createElement('canvas');
-    this.labelCanvas.width = 128;
-    this.labelCanvas.height = 32;
+    this.labelCanvas.width = labelW;
+    this.labelCanvas.height = labelH;
     this.labelCtx = this.get2DContext(this.labelCanvas);
     this.labelTexture = new THREE.CanvasTexture(this.labelCanvas);
-    this.labelTexture.minFilter = THREE.LinearFilter;
-    const labelGeo = new THREE.PlaneGeometry(w * 0.5, h * 0.08);
+    this.labelTexture.minFilter = THREE.NearestFilter;
+    const planeW = Math.min(w * 0.7, this.side);
+    const planeH = planeW * (labelH / labelW);
+    const labelGeo = new THREE.PlaneGeometry(planeW, planeH);
     const labelMat = new THREE.MeshBasicMaterial({
       map: this.labelTexture, transparent: true, opacity: 0,
     });
     this.labelMesh = new THREE.Mesh(labelGeo, labelMat);
-    this.labelMesh.position.set(x + w / 2, y + h * 0.05, 1);
+    // Position below the square region, clamped within tile bounds
+    const labelYPos = Math.max(y + planeH / 2, Math.min(y + h - planeH / 2, this.ry - planeH * 0.6));
+    this.labelMesh.position.set(x + w / 2, labelYPos, 1);
     this.group.add(this.labelMesh);
   }
 
@@ -182,7 +188,8 @@ export class MonteCarloElement extends BaseElement {
     const lh = this.labelCanvas.height;
     this.labelCtx.clearRect(0, 0, lw, lh);
     this.labelCtx.fillStyle = '#' + this.palette.primary.getHexString();
-    this.labelCtx.font = '14px monospace';
+    const fontSize = Math.max(10, Math.floor(lh * 0.55));
+    this.labelCtx.font = `${fontSize}px monospace`;
     this.labelCtx.textAlign = 'center';
     this.labelCtx.fillText(
       `\u03C0 \u2248 ${piEstimate.toFixed(4)}  n=${this.currentCount}`,

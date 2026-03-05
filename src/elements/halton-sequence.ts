@@ -92,11 +92,11 @@ export class HaltonSequenceElement extends BaseElement {
       this.group.add(new THREE.Line(dGeo, this.dividerMat));
     }
     this.labelCanvas = document.createElement('canvas');
-    this.labelCanvas.width = 256;
-    this.labelCanvas.height = 24;
+    this.labelCanvas.width = Math.min(512, Math.round(w * 0.8));
+    this.labelCanvas.height = Math.max(16, Math.round(w * 0.05));
     this.labelCtx = this.get2DContext(this.labelCanvas);
     this.labelTexture = new THREE.CanvasTexture(this.labelCanvas);
-    this.labelTexture.minFilter = THREE.LinearFilter;
+    this.labelTexture.minFilter = THREE.NearestFilter;
     const labelGeo = new THREE.PlaneGeometry(w * 0.8, h * 0.06);
     const labelMat = new THREE.MeshBasicMaterial({
       map: this.labelTexture, transparent: true, opacity: 0,
@@ -190,7 +190,7 @@ export class HaltonSequenceElement extends BaseElement {
     const lh = this.labelCanvas.height;
     this.labelCtx.clearRect(0, 0, lw, lh);
     this.labelCtx.fillStyle = '#' + this.palette.dim.getHexString();
-    this.labelCtx.font = '11px monospace';
+    this.labelCtx.font = `${Math.max(9, Math.floor(lh * 0.6))}px monospace`;
     this.labelCtx.textAlign = 'center';
     if (this.showComparison) {
       this.labelCtx.fillText(`HALTON(2,3)  n=${this.currentCount}  |  PSEUDO-RANDOM`, lw / 2, lh * 0.7);

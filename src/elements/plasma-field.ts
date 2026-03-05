@@ -67,8 +67,8 @@ export class PlasmaFieldElement extends BaseElement {
     this.canvas.height = this.resH;
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(w, h);
     this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({

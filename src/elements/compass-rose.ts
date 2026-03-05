@@ -36,8 +36,8 @@ export class CompassRoseElement extends BaseElement {
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
       const isCardinal = i % 2 === 0;
-      const innerR = isCardinal ? radius * 0.15 : radius * 0.35;
-      const outerR = isCardinal ? radius * 0.95 : radius * 0.7;
+      const innerR = isCardinal ? radius * 0.1 : radius * 0.2;
+      const outerR = isCardinal ? radius * 0.95 : radius * 0.85;
       lineVerts.push(
         cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR, 0,
         cx + Math.cos(angle) * outerR, cy + Math.sin(angle) * outerR, 0,
@@ -49,10 +49,40 @@ export class CompassRoseElement extends BaseElement {
       if (i % 3 === 0) continue; // skip cardinal/intercardinal positions
       const angle = (i / 24) * Math.PI * 2;
       lineVerts.push(
-        cx + Math.cos(angle) * radius * 0.85, cy + Math.sin(angle) * radius * 0.85, 0,
+        cx + Math.cos(angle) * radius * 0.82, cy + Math.sin(angle) * radius * 0.82, 0,
         cx + Math.cos(angle) * radius * 0.95, cy + Math.sin(angle) * radius * 0.95, 0,
       );
     }
+
+    // Fine tick marks at 5-degree intervals
+    for (let i = 0; i < 72; i++) {
+      if (i % 3 === 0) continue; // skip 15-degree positions
+      const angle = (i / 72) * Math.PI * 2;
+      lineVerts.push(
+        cx + Math.cos(angle) * radius * 0.9, cy + Math.sin(angle) * radius * 0.9, 0,
+        cx + Math.cos(angle) * radius * 0.95, cy + Math.sin(angle) * radius * 0.95, 0,
+      );
+    }
+
+    // Inner circle at 0.3 radius
+    const innerSegs = 48;
+    for (let i = 0; i < innerSegs; i++) {
+      const a1 = (i / innerSegs) * Math.PI * 2;
+      const a2 = ((i + 1) / innerSegs) * Math.PI * 2;
+      lineVerts.push(
+        cx + Math.cos(a1) * radius * 0.3, cy + Math.sin(a1) * radius * 0.3, 0,
+        cx + Math.cos(a2) * radius * 0.3, cy + Math.sin(a2) * radius * 0.3, 0,
+      );
+    }
+
+    // Diamond shape at center (decorative)
+    const dSize = radius * 0.12;
+    lineVerts.push(
+      cx, cy + dSize, 0, cx + dSize, cy, 0,
+      cx + dSize, cy, 0, cx, cy - dSize, 0,
+      cx, cy - dSize, 0, cx - dSize, cy, 0,
+      cx - dSize, cy, 0, cx, cy + dSize, 0,
+    );
 
     const cardGeo = new THREE.BufferGeometry();
     cardGeo.setAttribute('position', new THREE.Float32BufferAttribute(lineVerts, 3));
@@ -85,10 +115,10 @@ export class CompassRoseElement extends BaseElement {
     }));
     this.group.add(this.borderCircle);
 
-    // Needle line (from center outward)
+    // Needle line (from center outward, with tail)
     const needleGeo = new THREE.BufferGeometry();
     needleGeo.setAttribute('position', new THREE.Float32BufferAttribute([
-      cx, cy, 2, cx + radius * 0.8, cy, 2,
+      cx - radius * 0.2, cy, 2, cx + radius * 0.85, cy, 2,
     ], 3));
     this.needleLine = new THREE.Line(needleGeo, new THREE.LineBasicMaterial({
       color: this.palette.primary,
@@ -116,15 +146,15 @@ export class CompassRoseElement extends BaseElement {
 
     // Update needle endpoint
     const positions = this.needleLine.geometry.getAttribute('position') as THREE.BufferAttribute;
-    positions.setXYZ(0, cx, cy, 2);
-    positions.setXYZ(1, cx + Math.cos(this.needleAngle) * radius * 0.8, cy + Math.sin(this.needleAngle) * radius * 0.8, 2);
+    positions.setXYZ(0, cx + Math.cos(this.needleAngle + Math.PI) * radius * 0.2, cy + Math.sin(this.needleAngle + Math.PI) * radius * 0.2, 2);
+    positions.setXYZ(1, cx + Math.cos(this.needleAngle) * radius * 0.85, cy + Math.sin(this.needleAngle) * radius * 0.85, 2);
     positions.needsUpdate = true;
 
     const needleColor = this.alertMode ? this.palette.alert : this.palette.primary;
     (this.needleLine.material as THREE.LineBasicMaterial).color.copy(needleColor);
     (this.needleLine.material as THREE.LineBasicMaterial).opacity = opacity;
-    (this.cardinalLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
-    (this.borderCircle.material as THREE.LineBasicMaterial).opacity = opacity * 0.4;
+    (this.cardinalLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
+    (this.borderCircle.material as THREE.LineBasicMaterial).opacity = opacity * 0.7;
   }
 
   onAction(action: string): void {

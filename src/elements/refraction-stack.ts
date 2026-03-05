@@ -96,7 +96,7 @@ export class RefractionStackElement extends BaseElement {
     dotGeo.setDrawRange(0, 0);
     this.labelDots = new THREE.Points(dotGeo, new THREE.PointsMaterial({
       color: this.palette.secondary, transparent: true, opacity: 0,
-      size: 4, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.013), sizeAttenuation: false,
     }));
     this.group.add(this.labelDots);
 

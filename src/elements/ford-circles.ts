@@ -108,8 +108,8 @@ export class FordCirclesElement extends BaseElement {
       return x + ((frac - left) / (right - left)) * w;
     };
 
-    // Scale radius to screen
-    const scaleR = (h * 0.9) / (1 / 2); // Scale so q=1 circle fits in region
+    // Scale radius to screen — largest circle (q=1, radius=0.5) must fit in region height
+    const scaleR = Math.max(1, h - 4);
 
     const maxVerts = pos.count;
 
@@ -129,13 +129,21 @@ export class FordCirclesElement extends BaseElement {
 
         const cy = y + h - 2 - screenR;
 
-        // Draw circle as line segments
+        // Skip circles entirely outside tile bounds
+        if (screenX + screenR < x || screenX - screenR > x + w ||
+            cy + screenR < y || cy - screenR > y + h) continue;
+
+        // Draw circle as line segments, clamping vertices to tile bounds
         for (let s = 0; s < this.circleRes; s++) {
           if (vi + 2 > maxVerts) break;
           const a1 = (s / this.circleRes) * Math.PI * 2;
           const a2 = ((s + 1) / this.circleRes) * Math.PI * 2;
-          pos.setXYZ(vi++, screenX + Math.cos(a1) * screenR, cy + Math.sin(a1) * screenR, 0);
-          pos.setXYZ(vi++, screenX + Math.cos(a2) * screenR, cy + Math.sin(a2) * screenR, 0);
+          const vx1 = Math.max(x, Math.min(x + w, screenX + Math.cos(a1) * screenR));
+          const vy1 = Math.max(y, Math.min(y + h, cy + Math.sin(a1) * screenR));
+          const vx2 = Math.max(x, Math.min(x + w, screenX + Math.cos(a2) * screenR));
+          const vy2 = Math.max(y, Math.min(y + h, cy + Math.sin(a2) * screenR));
+          pos.setXYZ(vi++, vx1, vy1, 0);
+          pos.setXYZ(vi++, vx2, vy2, 0);
         }
       }
     }

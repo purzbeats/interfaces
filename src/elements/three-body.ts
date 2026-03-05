@@ -102,7 +102,7 @@ export class ThreeBodyElement extends BaseElement {
     bodyGeo.setAttribute('position', new THREE.BufferAttribute(bodyPos, 3));
     this.bodyPoints = new THREE.Points(bodyGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 5, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     }));
     this.group.add(this.bodyPoints);
   }

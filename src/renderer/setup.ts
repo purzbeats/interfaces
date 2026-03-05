@@ -29,9 +29,11 @@ export function createRenderer(width: number, height: number): RendererContext {
 }
 
 export function resizeRenderer(ctx: RendererContext, width: number, height: number): void {
-  ctx.renderer.setSize(width, height);
-  ctx.camera.right = width;
-  ctx.camera.top = height;
+  const w = Math.max(width, 1);
+  const h = Math.max(height, 1);
+  ctx.renderer.setSize(w, h);
+  ctx.camera.right = w;
+  ctx.camera.top = h;
   ctx.camera.left = 0;
   ctx.camera.bottom = 0;
   ctx.camera.updateProjectionMatrix();

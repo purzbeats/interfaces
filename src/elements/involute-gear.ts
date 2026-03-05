@@ -50,7 +50,6 @@ export class InvoluteGearElement extends BaseElement {
 
     this.cx = x + w / 2;
     this.cy = y + h / 2;
-    this.baseRadius = Math.min(w, h) * 0.18;
 
     const presets = [
       { points: 300, turns: 2.5, speed: 0.4,  teeth: 12, depth: 0.35 },
@@ -65,6 +64,11 @@ export class InvoluteGearElement extends BaseElement {
     this.animSpeed = p.speed;
     this.numTeeth = p.teeth;
     this.toothDepth = p.depth;
+
+    // Size base radius so max involute extent fits within region
+    // Involute distance from center ≈ r * t, max t = maxTurns * 2π
+    const maxT = this.maxTurns * Math.PI * 2;
+    this.baseRadius = Math.min(w, h) * 0.45 / maxT;
 
     // Base circle
     const circlePositions = new Float32Array((this.circleSegments + 1) * 3);

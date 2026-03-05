@@ -117,7 +117,11 @@ export class PrismSplitElement extends BaseElement {
     (this.prismOutline.material as THREE.LineBasicMaterial).opacity = opacity * 0.8;
     (this.inBeam.material as THREE.LineBasicMaterial).opacity = opacity * 0.7;
 
-    const halfSpread = this.fanSpread * Math.PI;
+    const { y, h } = this.px;
+    // Clamp spread so fan lines stay within region bounds vertically
+    const maxVertical = Math.min(this.fanBaseY - y, y + h - this.fanBaseY);
+    const maxSpread = Math.atan2(maxVertical * 0.9, this.fanLength);
+    const halfSpread = Math.min(this.fanSpread * Math.PI, maxSpread);
 
     for (let i = 0; i < this.fanCount; i++) {
       const t = i / (this.fanCount - 1);

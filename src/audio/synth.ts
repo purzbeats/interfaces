@@ -108,6 +108,7 @@ export class AudioSynth {
    * Used for element activation.
    */
   blip(freq: number = 300, _duration: number = 0.08): void {
+    if (freq <= 0) { this.ensureCtx(); return; }
     const ctx = this.ensureCtx();
     const t = ctx.currentTime;
 

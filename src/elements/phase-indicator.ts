@@ -99,7 +99,7 @@ export class PhaseIndicatorElement extends BaseElement {
     this.canvas.height = Math.ceil(labelH * scale);
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
     const labelGeo = new THREE.PlaneGeometry(labelW, labelH);
     this.labelMesh = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
       map: this.texture,

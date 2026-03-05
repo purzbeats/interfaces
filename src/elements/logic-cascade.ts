@@ -64,14 +64,17 @@ export class LogicCascadeElement extends BaseElement {
     this.inputCount = p.inputs;
     this.clockInterval = p.clock;
 
-    this.buildCircuit();
-
-    const cw = Math.max(128, Math.min(512, Math.round(w)));
-    const ch = Math.max(128, Math.min(512, Math.round(h)));
+    // Cap resolution while preserving tile aspect ratio to prevent stretching
+    const maxRes = 400;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    const cw = Math.max(64, Math.floor(w * scale));
+    const ch = Math.max(64, Math.floor(h * scale));
     this.canvas = document.createElement('canvas');
     this.canvas.width = cw;
     this.canvas.height = ch;
     this.ctx = this.get2DContext(this.canvas);
+
+    this.buildCircuit();
 
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.NearestFilter;
@@ -91,16 +94,18 @@ export class LogicCascadeElement extends BaseElement {
   private buildCircuit(): void {
     this.gates = [];
     const gateTypes: GateType[] = ['AND', 'OR', 'XOR', 'NOT'];
-    const cw = this.canvas ? this.canvas.width : 512;
-    const ch = this.canvas ? this.canvas.height : 512;
+    const cw = this.canvas ? this.canvas.width : Math.round(this.px.w);
+    const ch = this.canvas ? this.canvas.height : Math.round(this.px.h);
 
     const totalCols = this.layers + 1; // inputs + layers
     const colW = cw / (totalCols + 1);
     const maxRows = Math.max(this.inputCount, this.gatesPerLayer);
     const rowH = ch / (maxRows + 1);
 
-    this.gateW = colW * 0.5;
-    this.gateH = rowH * 0.5;
+    // Keep gates proportional regardless of tile aspect ratio
+    const cellSize = Math.min(colW, rowH);
+    this.gateW = cellSize * 0.7;
+    this.gateH = cellSize * 0.5;
 
     // Primary inputs (not real gates, but stored for wiring)
     this.primaryInputs = [];

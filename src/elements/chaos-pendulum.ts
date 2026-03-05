@@ -81,7 +81,7 @@ export class ChaosPendulumElement extends BaseElement {
     this.basinData = new Uint8Array(this.canvasW * this.canvasH);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
     this.texture.magFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(w, h);
@@ -107,7 +107,7 @@ export class ChaosPendulumElement extends BaseElement {
     dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPos, 3));
     this.pendulumDot = new THREE.Points(dotGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: 5, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * 0.016), sizeAttenuation: false,
     }));
     this.group.add(this.pendulumDot);
 

@@ -35,7 +35,7 @@ export class KleinBottleElement extends BaseElement {
     const { x, y, w, h } = this.px;
     this.cx = x + w / 2;
     this.cy = y + h / 2;
-    this.scl = Math.min(w, h) * 0.035;
+    this.scl = Math.min(w, h) * 0.08;
 
     const variant = this.rng.int(0, 3);
     const presets = [
@@ -138,7 +138,7 @@ export class KleinBottleElement extends BaseElement {
         attr.setXYZ(j, sx, sy, 0);
       }
       attr.needsUpdate = true;
-      (this.uLines[i].material as THREE.LineBasicMaterial).opacity = opacity * 0.5;
+      (this.uLines[i].material as THREE.LineBasicMaterial).opacity = opacity * 0.7;
     }
 
     // Update v-lines
@@ -152,7 +152,7 @@ export class KleinBottleElement extends BaseElement {
         attr.setXYZ(i, sx, sy, 0);
       }
       attr.needsUpdate = true;
-      (this.vLines[j].material as THREE.LineBasicMaterial).opacity = opacity * 0.35;
+      (this.vLines[j].material as THREE.LineBasicMaterial).opacity = opacity * 0.55;
     }
   }
 

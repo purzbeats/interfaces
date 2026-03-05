@@ -53,16 +53,16 @@ export class TurmiteElement extends BaseElement {
     const variant = this.rng.int(0, 3);
     const presets: Array<{ cellSize: number; stepsPerFrame: number; numColors: number; numStates: number; rules: TurmiteRule[][] }> = [
       // Langton's ant (RL) - produces highway after chaos
-      { cellSize: 3, stepsPerFrame: 40, numColors: 2, numStates: 1,
+      { cellSize: 2, stepsPerFrame: 150, numColors: 2, numStates: 1,
         rules: [[[1, 1, 0], [0, -1, 0]]] },
       // Spiral turmite - produces spiral patterns
-      { cellSize: 3, stepsPerFrame: 30, numColors: 2, numStates: 2,
+      { cellSize: 2, stepsPerFrame: 120, numColors: 2, numStates: 2,
         rules: [[[1, 1, 1], [1, -1, 0]], [[1, 0, 0], [0, 0, 1]]] },
       // Chaotic turmite - fills space chaotically
-      { cellSize: 4, stepsPerFrame: 25, numColors: 2, numStates: 2,
+      { cellSize: 2, stepsPerFrame: 100, numColors: 2, numStates: 2,
         rules: [[[1, 1, 0], [1, -1, 1]], [[0, 1, 1], [0, -1, 0]]] },
       // Symmetric highway builder
-      { cellSize: 3, stepsPerFrame: 35, numColors: 2, numStates: 2,
+      { cellSize: 2, stepsPerFrame: 130, numColors: 2, numStates: 2,
         rules: [[[1, 1, 1], [0, 1, 1]], [[1, -1, 0], [0, -1, 0]]] },
     ];
     const p = presets[variant];
@@ -90,10 +90,11 @@ export class TurmiteElement extends BaseElement {
     // Build color palette
     const bgHex = '#' + this.palette.bg.getHexString();
     const priHex = '#' + this.palette.primary.getHexString();
-    this.colorHexes = [bgHex, priHex];
+    const dimHex = '#' + this.palette.dim.getHexString();
+    this.colorHexes = [dimHex, priHex];
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
     this.texture.magFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(w, h);

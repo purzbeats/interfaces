@@ -28,6 +28,13 @@ export class BurningShipElement extends BaseElement {
   private cw = 0;
   private ch = 0;
 
+  // High-res label overlay
+  private labelCanvas!: HTMLCanvasElement;
+  private labelCtx!: CanvasRenderingContext2D;
+  private labelTexture!: THREE.CanvasTexture;
+  private labelMesh!: THREE.Mesh;
+  private currentZoom = 0;
+
   private maxIter = 80;
   private centerX = -1.76;
   private centerY = -0.028;
@@ -76,13 +83,29 @@ export class BurningShipElement extends BaseElement {
     this.imageData = this.ctx.createImageData(this.cw, this.ch);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
     const geo = new THREE.PlaneGeometry(w, h);
     this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
       map: this.texture, transparent: true, opacity: 0,
     }));
     this.mesh.position.set(x + w / 2, y + h / 2, 0);
     this.group.add(this.mesh);
+
+    // High-res label overlay for zoom indicator text
+    this.labelCanvas = document.createElement('canvas');
+    this.labelCanvas.width = Math.max(64, Math.floor(w));
+    this.labelCanvas.height = Math.max(16, Math.floor(h));
+    this.labelCtx = this.get2DContext(this.labelCanvas);
+    this.labelTexture = new THREE.CanvasTexture(this.labelCanvas);
+    this.labelTexture.minFilter = THREE.NearestFilter;
+    this.labelTexture.magFilter = THREE.NearestFilter;
+    const labelGeo = new THREE.PlaneGeometry(w, h);
+    this.labelMesh = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
+      map: this.labelTexture, transparent: true, opacity: 0,
+    }));
+    this.labelMesh.position.set(x + w / 2, y + h / 2, 0.1);
+    this.group.add(this.labelMesh);
   }
 
   /** Map iteration count to color */
@@ -193,17 +216,25 @@ export class BurningShipElement extends BaseElement {
     }
 
     this.ctx.putImageData(this.imageData, 0, 0);
+    this.currentZoom = zoom;
+  }
 
-    // Draw border
+  private renderLabel(): void {
+    const lw = this.labelCanvas.width;
+    const lh = this.labelCanvas.height;
+    this.labelCtx.clearRect(0, 0, lw, lh);
+
+    // Border
     const dimC = this.palette.dim;
-    this.ctx.strokeStyle = `rgba(${(dimC.r * 255) | 0},${(dimC.g * 255) | 0},${(dimC.b * 255) | 0},0.5)`;
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(0, 0, this.cw, this.ch);
-    // Zoom indicator
+    this.labelCtx.strokeStyle = `rgba(${(dimC.r * 255) | 0},${(dimC.g * 255) | 0},${(dimC.b * 255) | 0},0.5)`;
+    this.labelCtx.lineWidth = 1;
+    this.labelCtx.strokeRect(0, 0, lw, lh);
+
+    // Zoom indicator text at high resolution
     const primC = this.palette.primary;
-    this.ctx.fillStyle = `rgba(${(primC.r * 255) | 0},${(primC.g * 255) | 0},${(primC.b * 255) | 0},0.5)`;
-    this.ctx.font = `${Math.max(7, this.ch * 0.06)}px monospace`;
-    this.ctx.fillText(`z:${zoom.toExponential(1)}`, 2, this.ch - 3);
+    this.labelCtx.fillStyle = `rgba(${(primC.r * 255) | 0},${(primC.g * 255) | 0},${(primC.b * 255) | 0},0.7)`;
+    this.labelCtx.font = `${Math.max(10, Math.floor(lh * 0.06))}px monospace`;
+    this.labelCtx.fillText(`z:${this.currentZoom.toExponential(1)}`, 3, lh - 4);
   }
 
   update(dt: number, time: number): void {
@@ -212,11 +243,14 @@ export class BurningShipElement extends BaseElement {
     if (time - this.lastDrawnTime > this.redrawInterval || this.needsRedraw) {
       this.renderFractal(time);
       this.texture.needsUpdate = true;
+      this.renderLabel();
+      this.labelTexture.needsUpdate = true;
       this.lastDrawnTime = time;
       this.needsRedraw = false;
     }
 
     (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
+    (this.labelMesh.material as THREE.MeshBasicMaterial).opacity = opacity;
   }
 
   onAction(action: string): void {

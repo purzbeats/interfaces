@@ -30,10 +30,10 @@ export class BrownianMotionElement extends BaseElement {
     this.glitchAmount = 4;
     const variant = this.rng.int(0, 4);
     const presets = [
-      { count: 80, impulse: 60, damping: 0.98, fade: 0.03, size: 2 },
-      { count: 200, impulse: 40, damping: 0.99, fade: 0.02, size: 1.5 },
-      { count: 30, impulse: 100, damping: 0.95, fade: 0.05, size: 3 },
-      { count: 120, impulse: 80, damping: 0.96, fade: 0.01, size: 2.5 },
+      { count: 80, impulse: 60, damping: 0.98, fade: 0.03, sizeFactor: 0.007 },
+      { count: 200, impulse: 40, damping: 0.99, fade: 0.02, sizeFactor: 0.005 },
+      { count: 30, impulse: 100, damping: 0.95, fade: 0.05, sizeFactor: 0.01 },
+      { count: 120, impulse: 80, damping: 0.96, fade: 0.01, sizeFactor: 0.007 },
     ];
     const p = presets[variant];
 
@@ -66,7 +66,7 @@ export class BrownianMotionElement extends BaseElement {
     this.trailCtx.fillRect(0, 0, this.trailCanvas.width, this.trailCanvas.height);
 
     this.trailTexture = new THREE.CanvasTexture(this.trailCanvas);
-    this.trailTexture.minFilter = THREE.LinearFilter;
+    this.trailTexture.minFilter = THREE.NearestFilter;
     const geo = new THREE.PlaneGeometry(w, h);
     this.trailMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
       map: this.trailTexture, transparent: true, opacity: 0,
@@ -80,7 +80,7 @@ export class BrownianMotionElement extends BaseElement {
     pointGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.pointsMesh = new THREE.Points(pointGeo, new THREE.PointsMaterial({
       color: this.palette.primary, transparent: true, opacity: 0,
-      size: p.size, sizeAttenuation: false,
+      size: Math.max(1, Math.min(w, h) * p.sizeFactor), sizeAttenuation: false,
     }));
     this.group.add(this.pointsMesh);
   }

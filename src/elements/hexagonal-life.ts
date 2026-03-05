@@ -76,13 +76,15 @@ export class HexagonalLifeElement extends BaseElement {
 
     // Canvas size matches the region
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.max(64, Math.min(200, Math.floor(w * 0.8)));
-    this.canvas.height = Math.max(64, Math.min(200, Math.floor(h * 0.8)));
+    const maxRes = 200;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.canvas.width = Math.max(64, Math.floor(w * scale));
+    this.canvas.height = Math.max(64, Math.floor(h * scale));
     this.ctx = this.get2DContext(this.canvas);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
 
     this.material = new THREE.MeshBasicMaterial({
       map: this.texture,

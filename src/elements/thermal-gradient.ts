@@ -42,10 +42,10 @@ export class ThermalGradientElement extends BaseElement {
 
     const variant = this.rng.int(0, 3);
     const presets = [
-      { mode: '2d', gridScale: 0.4, alpha: 0.25, hotSide: 'left' },
-      { mode: '2d', gridScale: 0.35, alpha: 0.15, hotSide: 'bottom' },
-      { mode: '1d', gridScale: 0.5, alpha: 0.3, hotSide: 'left' },
-      { mode: '2d', gridScale: 0.3, alpha: 0.4, hotSide: 'center' },
+      { mode: '2d', gridScale: 0.8, alpha: 0.25, hotSide: 'left' },
+      { mode: '2d', gridScale: 0.7, alpha: 0.15, hotSide: 'bottom' },
+      { mode: '1d', gridScale: 0.9, alpha: 0.3, hotSide: 'left' },
+      { mode: '2d', gridScale: 0.6, alpha: 0.4, hotSide: 'center' },
     ];
     const p = presets[variant];
     this.mode = p.mode;
@@ -101,7 +101,7 @@ export class ThermalGradientElement extends BaseElement {
     } else if (this.hotSide === 'center') {
       const cx = Math.floor(this.gridW / 2);
       const cy = Math.floor(this.gridH / 2);
-      const r = 2;
+      const r = Math.max(3, Math.floor(Math.min(this.gridW, this.gridH) * 0.08));
       for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
           const gx = cx + dx;
@@ -117,7 +117,7 @@ export class ThermalGradientElement extends BaseElement {
     if (this.hotPulse > 0) this.hotPulse = Math.max(0, this.hotPulse - dt * 2);
 
     // Heat equation: dT/dt = alpha * laplacian(T)
-    const iterations = 3;
+    const iterations = 6;
     for (let iter = 0; iter < iterations; iter++) {
       if (this.mode === '1d') {
         // 1D heat equation

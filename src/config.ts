@@ -20,23 +20,24 @@ export function computeAspectSize(
   windowW: number,
   windowH: number
 ): { width: number; height: number; offsetX: number; offsetY: number } {
+  // Clamp to minimum to prevent crashes when overscan exceeds window size
+  const safeW = Math.max(windowW, 64);
+  const safeH = Math.max(windowH, 64);
   if (aspect === 'fill') {
-    return { width: windowW, height: windowH, offsetX: 0, offsetY: 0 };
+    return { width: safeW, height: safeH, offsetX: 0, offsetY: 0 };
   }
   const ratio = aspectToNumber(aspect);
   let w: number, h: number;
-  if (windowW / windowH > ratio) {
-    // Window is wider than target — pillarbox
-    h = windowH;
+  if (safeW / safeH > ratio) {
+    h = safeH;
     w = Math.round(h * ratio);
   } else {
-    // Window is taller than target — letterbox
-    w = windowW;
+    w = safeW;
     h = Math.round(w / ratio);
   }
   return {
-    width: w,
-    height: h,
+    width: Math.max(w, 64),
+    height: Math.max(h, 64),
     offsetX: Math.round((windowW - w) / 2),
     offsetY: Math.round((windowH - h) / 2),
   };

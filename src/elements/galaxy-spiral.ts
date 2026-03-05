@@ -78,7 +78,7 @@ export class GalaxySpiralElement extends BaseElement {
     const cg = new THREE.BufferGeometry();
     cg.setAttribute('position', new THREE.BufferAttribute(corePos, 3));
     this.coreMesh = new THREE.Points(cg, new THREE.PointsMaterial({
-      color: this.palette.secondary, transparent: true, opacity: 0, size: 6, sizeAttenuation: false,
+      color: this.palette.secondary, transparent: true, opacity: 0, size: Math.max(1, Math.min(w, h) * 0.02), sizeAttenuation: false,
     }));
     this.group.add(this.coreMesh);
   }

@@ -144,7 +144,7 @@ export class RingGaugeElement extends BaseElement {
     this.canvas.height = Math.ceil(innerR * 1.2 * scale);
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.minFilter = THREE.NearestFilter;
     const labelGeo = new THREE.PlaneGeometry(innerR * 1.6, innerR * 1.2);
     this.labelMesh = new THREE.Mesh(labelGeo, new THREE.MeshBasicMaterial({
       map: this.texture,

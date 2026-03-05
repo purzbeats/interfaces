@@ -63,8 +63,10 @@ export class MagmaConvectElement extends BaseElement {
     this.coolingRate = p.coolingRate;
 
     this.canvas = document.createElement('canvas');
-    this.cw = Math.min(w, 400);
-    this.ch = Math.min(h, 400);
+    const maxRes = 300;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.cw = Math.max(64, Math.floor(w * scale));
+    this.ch = Math.max(64, Math.floor(h * scale));
     this.canvas.width = this.cw;
     this.canvas.height = this.ch;
     this.ctx = this.get2DContext(this.canvas);

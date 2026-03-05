@@ -29,7 +29,7 @@ export class BtreeInsertElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.max(64, Math.floor(w)); this.canvas.height = Math.max(64, Math.floor(h));
     this.ctx = this.get2DContext(this.canvas);
-    this.texture = new THREE.CanvasTexture(this.canvas); this.texture.minFilter = THREE.LinearFilter;
+    this.texture = new THREE.CanvasTexture(this.canvas); this.texture.minFilter = THREE.NearestFilter;
     const geo = new THREE.PlaneGeometry(w, h);
     this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, opacity: 0 }));
     this.mesh.position.set(x + w / 2, y + h / 2, 0); this.group.add(this.mesh);
