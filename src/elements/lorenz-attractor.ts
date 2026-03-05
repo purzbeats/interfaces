@@ -245,17 +245,17 @@ export class LorenzAttractorElement extends BaseElement {
     if (action === 'glitch') {
       // Perturb all trajectories
       for (const state of this.states) {
-        state.x += (Math.random() - 0.5) * 5;
-        state.y += (Math.random() - 0.5) * 5;
-        state.z += (Math.random() - 0.5) * 5;
+        state.x += (this.rng.next() - 0.5) * 5;
+        state.y += (this.rng.next() - 0.5) * 5;
+        state.z += (this.rng.next() - 0.5) * 5;
       }
     }
     if (action === 'alert') {
       // Reset all trajectories to new random initial conditions near the attractor
       for (let t = 0; t < this.states.length; t++) {
-        this.states[t].x = (Math.random() - 0.5) * 10;
-        this.states[t].y = (Math.random() - 0.5) * 10;
-        this.states[t].z = 20 + Math.random() * 15;
+        this.states[t].x = (this.rng.next() - 0.5) * 10;
+        this.states[t].y = (this.rng.next() - 0.5) * 10;
+        this.states[t].z = 20 + this.rng.next() * 15;
         // Clear trail buffers so fresh traces draw
         this.buffers[t].head = 0;
         this.buffers[t].filled = false;
@@ -268,15 +268,15 @@ export class LorenzAttractorElement extends BaseElement {
     if (level === 0) return;
     // Parameter nudge proportional to level
     for (const state of this.states) {
-      state.x += (Math.random() - 0.5) * level * 0.5;
-      state.y += (Math.random() - 0.5) * level * 0.5;
+      state.x += (this.rng.next() - 0.5) * level * 0.5;
+      state.y += (this.rng.next() - 0.5) * level * 0.5;
     }
     if (level >= 5) {
       // Bifurcation: reset to new random initial conditions
       for (let t = 0; t < this.states.length; t++) {
-        this.states[t].x = (Math.random() - 0.5) * 10;
-        this.states[t].y = (Math.random() - 0.5) * 10;
-        this.states[t].z = 20 + Math.random() * 15;
+        this.states[t].x = (this.rng.next() - 0.5) * 10;
+        this.states[t].y = (this.rng.next() - 0.5) * 10;
+        this.states[t].z = 20 + this.rng.next() * 15;
         this.buffers[t].head = 0;
         this.buffers[t].filled = false;
       }

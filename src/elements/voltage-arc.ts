@@ -17,6 +17,7 @@ export class VoltageArcElement extends BaseElement {
   private regenAccum: number = 0;
   private regenRate: number = 0;
   private arcSeed: number = 0;
+  private _spread: number = 0;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -32,7 +33,7 @@ export class VoltageArcElement extends BaseElement {
     const { x, y, w, h } = this.px;
     this.arcSegments = this.rng.int(p.segMin, p.segMax);
     this.regenRate = this.rng.float(p.regenMin, p.regenMax);
-    (this as any)._spread = p.spread + this.rng.float(-0.02, 0.02);
+    this._spread = p.spread + this.rng.float(-0.02, 0.02);
 
     // Electrode end-caps
     const eVerts = new Float32Array([
@@ -79,7 +80,7 @@ export class VoltageArcElement extends BaseElement {
       const cy = y + h / 2;
       const startX = x + w * 0.08;
       const endX = x + w * 0.92;
-      const spread = h * (this as any)._spread;
+      const spread = h * this._spread;
       let vi = 0;
 
       // Single main arc — clean jagged path

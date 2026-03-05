@@ -170,8 +170,8 @@ export class ParticleFieldElement extends BaseElement {
     super.onAction(action);
     if (action === 'glitch') {
       for (const p of this.particles) {
-        p.vx += (Math.random() - 0.5) * 60;
-        p.vy += (Math.random() - 0.5) * 60;
+        p.vx += (this.rng.next() - 0.5) * 60;
+        p.vy += (this.rng.next() - 0.5) * 60;
       }
     }
     if (action === 'alert') {

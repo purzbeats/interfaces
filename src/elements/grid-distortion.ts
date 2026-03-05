@@ -116,12 +116,12 @@ export class GridDistortionElement extends BaseElement {
   }
 
   private spawnTetromino(): void {
-    const shape = TETROMINOES[Math.floor(Math.random() * TETROMINOES.length)];
+    const shape = TETROMINOES[Math.floor(this.rng.next() * TETROMINOES.length)];
     const maxCol = this.divisionsX - 4;
     const maxRow = this.divisionsY - 2;
     if (maxCol < 0 || maxRow < 0) return;
-    const anchorCol = Math.floor(Math.random() * maxCol);
-    const anchorRow = Math.floor(Math.random() * maxRow);
+    const anchorCol = Math.floor(this.rng.next() * maxCol);
+    const anchorRow = Math.floor(this.rng.next() * maxRow);
 
     const cells: [number, number][] = shape.map(([c, r]) => [anchorCol + c, anchorRow + r]);
 
@@ -155,7 +155,7 @@ export class GridDistortionElement extends BaseElement {
       meshes,
       opacity: 0,
       age: 0,
-      lifespan: 1.5 + Math.random() * 2.0,
+      lifespan: 1.5 + this.rng.next() * 2.0,
     });
   }
 

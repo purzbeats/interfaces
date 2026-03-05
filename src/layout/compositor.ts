@@ -2,7 +2,7 @@ import type { SeededRandom } from '../random';
 import type { Region, RegionTier } from './region';
 import { getTemplate, type TemplateConfig } from './templates';
 import { getPattern, randomPattern } from './patterns';
-import { getMeta, allElementNames } from '../elements/tags';
+import { getMeta, allElementNames, type RoleTag, type MoodTag, type SizeTag } from '../elements/tags';
 import { injectDividers, resetDividerCounter } from './dividers';
 import { setHexAspect, hexDistance } from './hex-grid';
 
@@ -12,6 +12,38 @@ export interface CompositorResult {
   borderOverlays: Array<{ region: Region; borderType: string }>;
 }
 
+// --- Tuning constants ---
+
+/** Every element starts with this weight before template/fitness adjustments */
+const BASELINE_WEIGHT = 0.5;
+/** Pixel aspect ratio thresholds for classifying regions as square */
+const SQUARE_ASPECT_MIN = 0.7;
+const SQUARE_ASPECT_MAX = 1.4;
+/** Multiplier for radial shapes placed in non-square regions */
+const RADIAL_NON_SQUARE_PENALTY = 0.4;
+/** Near-zero weight to effectively exclude elements from unsuitable regions */
+const NEAR_ZERO_WEIGHT = 0.02;
+/** Radial elements in thin strips get this near-zero weight */
+const RADIAL_THIN_STRIP_WEIGHT = 0.05;
+/** Penalty when adjacent regions share the same role */
+const ADJACENT_ROLE_PENALTY = 0.4;
+/** Penalty when a role appears more than twice globally */
+const ROLE_SATURATION_PENALTY = 0.5;
+/** Role count threshold before saturation penalty kicks in */
+const ROLE_SATURATION_THRESHOLD = 2;
+/** Minimum normalized width for text elements (~120px on 1920w) */
+const MIN_TEXT_WIDTH = 0.07;
+/** Normalized area thresholds for small/medium/large region classification */
+const SMALL_AREA_THRESHOLD = 0.03;
+const MEDIUM_AREA_THRESHOLD = 0.10;
+/** Minimum area for a region to keep its "hero" tier */
+const HERO_MIN_AREA = 0.06;
+/** Border overlay density range (fraction of regions that get borders) */
+const BORDER_DENSITY_MIN = 0.2;
+const BORDER_DENSITY_MAX = 0.4;
+/** Tolerance for detecting shared edges between adjacent regions */
+const EDGE_TOLERANCE = 0.02;
+
 // --- Weight resolution ---
 
 function resolveWeights(template: TemplateConfig): Record<string, number> {
@@ -19,7 +51,7 @@ function resolveWeights(template: TemplateConfig): Record<string, number> {
 
   // Baseline: every registered element gets a small default weight
   for (const name of allElementNames()) {
-    weights[name] = 0.5;
+    weights[name] = BASELINE_WEIGHT;
   }
 
   if (template.tagWeights) {
@@ -29,9 +61,9 @@ function resolveWeights(template: TemplateConfig): Record<string, number> {
         if (!meta) continue;
         const matches =
           meta.shape === tag ||
-          meta.roles.includes(tag as any) ||
-          meta.moods.includes(tag as any) ||
-          meta.sizes.includes(tag as any);
+          meta.roles.includes(tag as RoleTag) ||
+          meta.moods.includes(tag as MoodTag) ||
+          meta.sizes.includes(tag as SizeTag);
         if (matches) {
           weights[name] = (weights[name] ?? 0) + tagWeight;
         }
@@ -57,7 +89,7 @@ let screenAspect = 16 / 9;
 function classifyRegion(region: Region): RegionShape {
   const pixelAspect = (region.width / region.height) * screenAspect;
   if (pixelAspect > 3 || pixelAspect < 1 / 3) return 'thin-strip';
-  if (pixelAspect >= 0.7 && pixelAspect <= 1.4) return 'square';
+  if (pixelAspect >= SQUARE_ASPECT_MIN && pixelAspect <= SQUARE_ASPECT_MAX) return 'square';
   return pixelAspect > 1 ? 'wide' : 'tall';
 }
 
@@ -70,8 +102,8 @@ function shapeFitness(elementName: string, regionShape: RegionShape): number {
   switch (meta.shape) {
     case 'radial':
       if (regionShape === 'square') return 1.5;
-      if (regionShape === 'thin-strip') return 0.05;
-      return 0.4;
+      if (regionShape === 'thin-strip') return RADIAL_THIN_STRIP_WEIGHT;
+      return RADIAL_NON_SQUARE_PENALTY;
     case 'linear':
       if (regionShape === 'thin-strip') return 2.0;
       if (regionShape === 'wide' || regionShape === 'tall') return 1.2;
@@ -84,8 +116,6 @@ function shapeFitness(elementName: string, regionShape: RegionShape): number {
 }
 
 // --- Adjacency detection ---
-
-const EDGE_TOLERANCE = 0.02;
 
 function areAdjacent(a: Region, b: Region): boolean {
   // Hex-aware adjacency: use hex distance if both regions have hex metadata
@@ -141,15 +171,15 @@ function diversityMultiplier(
       if (!areAdjacent(region, placed.region)) continue;
       const placedMeta = getMeta(placed.elementType);
       if (placedMeta && meta.roles.some(r => placedMeta.roles.includes(r))) {
-        mult *= 0.4;
+        mult *= ADJACENT_ROLE_PENALTY;
       }
     }
   }
 
   if (meta) {
     for (const role of meta.roles) {
-      if ((ctx.roleCounts[role] ?? 0) >= 2) {
-        mult *= 0.5;
+      if ((ctx.roleCounts[role] ?? 0) >= ROLE_SATURATION_THRESHOLD) {
+        mult *= ROLE_SATURATION_PENALTY;
       }
     }
   }
@@ -175,15 +205,14 @@ function moodBoost(elementName: string, dominantMood: Mood): number {
 
 // --- Text width fitness ---
 
-/** Minimum normalized width for text elements to look decent (~120px on 1920w) */
-const MIN_TEXT_WIDTH = 0.07;
+// MIN_TEXT_WIDTH defined in tuning constants above
 
 function textWidthFitness(elementName: string, region: Region): number {
   const pixelWidth = region.width * screenAspect;
   if (pixelWidth >= MIN_TEXT_WIDTH * (16 / 9)) return 1.0;
   const meta = getMeta(elementName);
   if (!meta) return 1.0;
-  if (meta.roles.includes('text')) return 0.02; // near-zero — effectively excluded
+  if (meta.roles.includes('text')) return NEAR_ZERO_WEIGHT;
   return 1.0;
 }
 
@@ -197,7 +226,7 @@ const BORDER_TYPES = new Set([
 function borderExclusion(elementName: string): number {
   const meta = getMeta(elementName);
   if (!meta) return 1.0;
-  if (meta.roles.includes('border')) return 0.02; // near-zero — effectively excluded from content
+  if (meta.roles.includes('border')) return NEAR_ZERO_WEIGHT;
   return 1.0;
 }
 
@@ -207,8 +236,8 @@ type RegionSizeBucket = 'small' | 'medium' | 'large';
 
 function classifyRegionSize(region: Region): RegionSizeBucket {
   const area = region.width * region.height;
-  if (area < 0.03) return 'small';
-  if (area < 0.10) return 'medium';
+  if (area < SMALL_AREA_THRESHOLD) return 'small';
+  if (area < MEDIUM_AREA_THRESHOLD) return 'medium';
   return 'large';
 }
 
@@ -261,8 +290,6 @@ function tierAffinityMultiplier(elementName: string, tier: RegionTier): number {
 }
 
 // --- Tier demotion after divider slicing ---
-
-const HERO_MIN_AREA = 0.06;
 
 function demoteSlicedHeroes(regions: Region[]): void {
   for (const r of regions) {
@@ -441,7 +468,7 @@ function selectBorderOverlays(
   rng: SeededRandom,
 ): Array<{ region: Region; borderType: string }> {
   const overlays: Array<{ region: Region; borderType: string }> = [];
-  const density = rng.float(0.2, 0.4); // 20-40% of regions
+  const density = rng.float(BORDER_DENSITY_MIN, BORDER_DENSITY_MAX);
 
   // Track used border types for diversity
   const usedTypes = new Set<string>();
@@ -508,7 +535,7 @@ export function pickElementForRegion(
 
   const adjustedWeights: number[] = candidates.map(name => {
     if (name === excludeType) return 0;
-    const base = 0.5; // default baseline weight
+    const base = BASELINE_WEIGHT;
     const fit = shapeFitness(name, regionShape);
     const size = sizeFitness(name, regionSize);
     const mood = moodBoost(name, dominantMood);

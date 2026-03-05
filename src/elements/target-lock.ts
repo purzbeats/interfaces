@@ -191,8 +191,8 @@ export class TargetLockElement extends BaseElement {
     const opacity = this.applyEffects(dt);
 
     // Wander target
-    this.targetVx += (Math.random() - 0.5) * 80 * dt;
-    this.targetVy += (Math.random() - 0.5) * 80 * dt;
+    this.targetVx += (this.rng.next() - 0.5) * 80 * dt;
+    this.targetVy += (this.rng.next() - 0.5) * 80 * dt;
     this.targetVx *= Math.exp(-1.5 * dt);
     this.targetVy *= Math.exp(-1.5 * dt);
     this.targetX += this.targetVx * dt;
@@ -307,8 +307,8 @@ export class TargetLockElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'glitch') {
-      this.targetVx += (Math.random() - 0.5) * 200;
-      this.targetVy += (Math.random() - 0.5) * 200;
+      this.targetVx += (this.rng.next() - 0.5) * 200;
+      this.targetVy += (this.rng.next() - 0.5) * 200;
     }
   }
 

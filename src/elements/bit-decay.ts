@@ -6,6 +6,8 @@ import type { ElementMeta } from './tags';
  * Grid of small squares representing bits (on/off).
  * "On" bits gradually decay (fade) from top to bottom over time.
  * New random rows appear at top; decayed bits occasionally repair briefly.
+ *
+ * Uses a single InstancedMesh for all cells — one draw call regardless of grid size.
  */
 export class BitDecayElement extends BaseElement {
   static readonly registration: ElementRegistration = {
@@ -24,8 +26,10 @@ export class BitDecayElement extends BaseElement {
   /** Per-cell repair flash timer (>0 means flashing) */
   private repairTimers: Float32Array = new Float32Array(0);
 
-  private meshes: THREE.Mesh[] = [];
-  private materials: THREE.MeshBasicMaterial[] = [];
+  private instancedMesh!: THREE.InstancedMesh;
+  private mat!: THREE.MeshBasicMaterial;
+  private dummy: THREE.Matrix4 = new THREE.Matrix4();
+  private tempColor: THREE.Color = new THREE.Color();
 
   private rowTimer: number = 0;
   private rowInterval: number = 0;
@@ -55,28 +59,33 @@ export class BitDecayElement extends BaseElement {
       this.brightness[i] = this.bits[i] === 1 ? 1.0 : 0.1;
     }
 
-    // Create one mesh per cell using a shared geometry
+    // Single instanced mesh for all cells
     const geo = new THREE.PlaneGeometry(this.cellW * 0.8, this.cellH * 0.8);
+    this.mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0,
+    });
+    this.instancedMesh = new THREE.InstancedMesh(geo, this.mat, count);
+    this.instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(
+      new Float32Array(count * 3), 3
+    );
 
+    // Set static positions via instance matrices (positions never change)
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
-        const mat = new THREE.MeshBasicMaterial({
-          color: this.palette.primary,
-          transparent: true,
-          opacity: 0,
-        });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(
+        const i = row * this.cols + col;
+        this.dummy.makeTranslation(
           x + col * this.cellW + this.cellW / 2,
           y + row * this.cellH + this.cellH / 2,
           0,
         );
-        this.group.add(mesh);
-        this.meshes.push(mesh);
-        this.materials.push(mat);
+        this.instancedMesh.setMatrixAt(i, this.dummy);
       }
     }
+    this.instancedMesh.instanceMatrix.needsUpdate = true;
 
+    this.group.add(this.instancedMesh);
     this.rowTimer = 0;
   }
 
@@ -87,8 +96,9 @@ export class BitDecayElement extends BaseElement {
     // Decay: each cell fades based on its row position (top rows slower, bottom faster)
     for (let row = 0; row < this.rows; row++) {
       const rowDecayFactor = 0.3 + (row / this.rows) * 0.7;
+      const rowOffset = row * this.cols;
       for (let col = 0; col < this.cols; col++) {
-        const i = row * this.cols + col;
+        const i = rowOffset + col;
         if (this.bits[i] === 1 && this.brightness[i] > 0.1) {
           this.brightness[i] -= dt * this.decaySpeed * rowDecayFactor;
           if (this.brightness[i] < 0.1) this.brightness[i] = 0.1;
@@ -103,7 +113,7 @@ export class BitDecayElement extends BaseElement {
         if (this.repairTimers[i] <= 0) {
           this.repairTimers[i] = 0;
         }
-      } else if (this.bits[i] === 1 && this.brightness[i] < 0.4 && Math.random() < this.repairChance) {
+      } else if (this.bits[i] === 1 && this.brightness[i] < 0.4 && this.rng.next() < this.repairChance) {
         this.repairTimers[i] = this.rng.float(0.08, 0.2);
       }
     }
@@ -113,44 +123,45 @@ export class BitDecayElement extends BaseElement {
     if (this.rowTimer >= this.rowInterval) {
       this.rowTimer -= this.rowInterval;
 
-      // Shift rows down
-      for (let row = this.rows - 1; row > 0; row--) {
-        for (let col = 0; col < this.cols; col++) {
-          const dst = row * this.cols + col;
-          const src = (row - 1) * this.cols + col;
-          this.bits[dst] = this.bits[src];
-          this.brightness[dst] = this.brightness[src];
-          this.repairTimers[dst] = this.repairTimers[src];
-        }
-      }
+      // Shift rows down (copy as contiguous blocks)
+      this.bits.copyWithin(this.cols, 0, (this.rows - 1) * this.cols);
+      this.brightness.copyWithin(this.cols, 0, (this.rows - 1) * this.cols);
+      this.repairTimers.copyWithin(this.cols, 0, (this.rows - 1) * this.cols);
+
       // New random top row
       for (let col = 0; col < this.cols; col++) {
-        this.bits[col] = Math.random() < 0.5 ? 1 : 0;
+        this.bits[col] = this.rng.chance(0.5) ? 1 : 0;
         this.brightness[col] = this.bits[col] === 1 ? 1.0 : 0.1;
         this.repairTimers[col] = 0;
       }
     }
 
-    // Update materials
+    // Update instance colors — single buffer write, no per-cell material
     const pr = this.palette.primary;
     const dr = this.palette.dim;
     const sr = this.palette.secondary;
+    const colorAttr = this.instancedMesh.instanceColor!;
+    const colorArray = colorAttr.array as Float32Array;
 
     for (let i = 0; i < count; i++) {
       let b = this.brightness[i];
-      let color = pr;
+      let cr: number, cg: number, cb: number;
 
       if (this.repairTimers[i] > 0) {
         b = 1.0;
-        color = sr;
+        cr = sr.r; cg = sr.g; cb = sr.b;
+      } else {
+        cr = pr.r; cg = pr.g; cb = pr.b;
       }
 
-      this.materials[i].color.set(
-        color.r * b + dr.r * (1 - b),
-        color.g * b + dr.g * (1 - b),
-        color.b * b + dr.b * (1 - b),
-      );
-      this.materials[i].opacity = opacity * (0.15 + b * 0.85);
+      // Bake opacity variation into color brightness (avoids per-instance material)
+      const fade = opacity * (0.15 + b * 0.85);
+      const j = i * 3;
+      colorArray[j] = (cr * b + dr.r * (1 - b)) * fade;
+      colorArray[j + 1] = (cg * b + dr.g * (1 - b)) * fade;
+      colorArray[j + 2] = (cb * b + dr.b * (1 - b)) * fade;
     }
+    colorAttr.needsUpdate = true;
+    this.mat.opacity = 1; // opacity is baked into instance colors
   }
 }

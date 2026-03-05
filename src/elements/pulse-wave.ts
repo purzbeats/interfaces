@@ -112,7 +112,7 @@ export class PulseWaveElement extends BaseElement {
       const pointPhase = scrollPhase - t * 2.5;
       let val: number;
       if (this.flatline) {
-        val = (Math.random() - 0.5) * 0.02;
+        val = (this.rng.next() - 0.5) * 0.02;
       } else {
         val = this.ecgWave(pointPhase);
         // Add subtle noise

@@ -113,7 +113,7 @@ export class TypewriterHeadElement extends BaseElement {
       this.stepTimer -= this.stepInterval;
 
       // Spawn a dot at current head position (randomly skip some for variety)
-      if (Math.random() < 0.75) {
+      if (this.rng.next() < 0.75) {
         this.spawnDot(this.headX);
       }
 

@@ -1,107 +1,82 @@
-# ROAST.md — A Brutal Audit of `interfaces/`
+# ROAST v2 — The Sequel Nobody Asked For
 
-## The Verdict
-
-This codebase is a **first-draft prototype masquerading as a finished system**. It compiles, it runs, and it even looks kinda cool for about 45 seconds — right up until the memory leaks eat your browser alive and you notice that half the "features" are stubs that do nothing.
+The first roast found memory leaks and missing features. They got fixed. Time for round two: the sins that survived.
 
 ---
 
-## Critical Bugs (the show-stoppers)
+## 1. `Math.random()` in a "deterministic" system (FIXED)
 
-### 1. ~~Memory Leaks That Would Make Chrome Weep~~ ✅ FIXED
-~~`graph.ts` and `progress-bar.ts` both **recreate THREE.PlaneGeometry every single frame**.~~
+The README brags about "deterministic output" and "shareable seeds." The PRNG class says "same seed always produces the same sequence." Meanwhile, **19 element files** just call `Math.random()` in their update loops — corrupted-text (12 calls!), static-channel (15 calls!), lorenz-attractor (15 calls!), and 16 others.
 
-Both now use `mesh.scale` instead of geometry recreation.
+You wrote an entire seeded PRNG class with `chance()`, `float()`, and `pick()` methods. And then didn't use it. Across 87 call sites.
 
-### 2. ~~Radar Sweep Has a Dead Pulse~~ ✅ FIXED
-~~`radar-sweep.ts` declares `pulseTimer`, sets it in `onAction('pulse')`, and then... never reads it in `update()`.~~
+## 2. `as any` to dodge your own type system (FIXED)
 
-`pulseTimer` is read in `update()` and modulates opacity correctly.
+The compositor — the brain of the layout engine — casts tags to `any`:
 
-### 3. ~~Stale Pixel Cache After Resize~~ ✅ FIXED
-~~Every element computes `this.px = regionToPixels(...)` once in the constructor.~~
+```ts
+meta.roles.includes(tag as any)
+```
 
-Window resize handler now calls `generate()` to rebuild all elements with correct dimensions.
+`RoleTag`, `MoodTag`, and `SizeTag` are right there in `tags.ts`. Defined. Exported. Waiting. The type system is trying to help and you're ghosting it.
 
----
+## 3. Zero tests for 161 elements
 
-## Visual Crimes Against Retro-Futurism
+Not a single `.test.ts` or `.spec.ts` in the entire project. The BSP subdivision, the seeded PRNG, the compositor's weighted selection, the state machine — all untested. `@playwright/test` is in devDependencies though, so someone thought about it. Thought about it and moved on.
 
-### 4. ~~The Pulse Effect Is Having an Identity Crisis~~ ✅ FIXED
-~~Every element implements pulse differently.~~
+## 4. Magic number casino (FIXED)
 
-All elements use the shared `pulse()` utility from `animation/fx.ts`.
+`compositor.ts` was a slot machine of unexplained constants: `0.5`, `0.7`, `1.4`, `0.05`, `0.4`, `0.02`, `0.07`, `0.03`, `0.10`. Not one had a name.
 
-### 5. ~~CRT Shader Is Barely Trying~~ ✅ FIXED
-~~The CRT pass applies a basic barrel distortion and a sine-wave scanline.~~
+## 5. Module-level mutable state (FIXED)
 
-CRT shader now includes: phosphor sub-pixel shadow mask, scanlines with proper falloff, interlacing artifacts, horizontal beam interference, horizontal tearing, corner darkening, phosphor glow boost, and soft edge curvature.
+`grid.ts:18` — `let regionCounter = 0;` — a module-level mutable counter reset via `resetRegionCounter()`. Forget to call it and region IDs grow silently forever. State management by prayer.
 
-### 6. ~~Chromatic Aberration Only Shifts Two Channels~~ ✅ FIXED
-~~The shader shifts R right and B left but leaves G centered.~~
+## 6. Static mutable globals on `BaseElement`
 
-All three channels now shift radially from center with different magnitudes (R > G > B, like real glass optics) using non-linear distance falloff.
+```ts
+static audioFlickerEnabled: boolean = true;
+static audioJiggleEnabled: boolean = true;
+static intensityFromAudio: boolean = false;
+```
 
-### 7. Text Looks Like It Was Rendered in 2024
-Canvas-rendered monospace text with no glow, no scan interference, no phosphor bleed. The typewriter effect is cute but the text itself looks like a modern terminal, not NORAD circa 1983. Where's the character-level jitter? The uneven brightness? The slight misalignment between rows?
+Three mutable statics used as global config. Set from the engine, read from every element instance. Want two independent engines for testing? This architecture says no.
 
-### 8. ~~Glitch Action: Mostly Unimplemented~~ ✅ FIXED
-~~Out of 10 element types, only 2 respond to glitch.~~
+## 7. The `(this as any)._propertyName` pattern (FIXED)
 
-All 54 element types now handle pulse, glitch, and alert actions. Pulse/glitch boilerplate extracted into `BaseElement.applyEffects()`.
+8 element files stored computed values by casting `this` to `any`:
 
----
+```ts
+(this as any)._fontScale = p.fontScale;
+```
 
-## Performance Sins
+TypeScript lets you declare properties on classes. That's the whole point.
 
-### 9. ~~Canvas Textures Updated Every Frame~~ ✅ FIXED
-~~`scrolling-numbers.ts`, `text-label.ts`, etc. all render canvas textures every frame.~~
+## 8. Canvas `getContext('2d')` without null checks
 
-All canvas-based elements use reduced render rates (10-20fps) via `renderAccum` accumulators.
+32 elements call `canvas.getContext('2d')!` with a non-null assertion. Browsers can return null under memory pressure. One null and the whole HUD explodes with an unhelpful stack trace.
 
-### 10. String Operations in Hot Loops
-`val.toString(16).toUpperCase()` runs per-cell per-frame in scrolling-numbers. These create garbage strings that stress the GC. Minor perf issue.
+## 9. The 766-line editor overlay
 
----
+`editor-overlay.ts` — 766 lines handling palette selection, region editing, element picking, drag-and-drop, toolbar rendering, and overlay drawing. That's not a file, that's a department.
 
-## Architecture & Code Quality
+## 10. `synth.ts` freelancing with `Math.random()`
 
-### 11. Magic Numbers: The Gathering
-The codebase is a museum of unexplained constants. `0.08`, `12`, `64`, `7`, `1.65`, `0.97` — sprinkled everywhere with zero documentation. Want to tune the feel? Hope you enjoy binary-searching through `rng.float(0.3, 0.8)` calls across 15 files.
-
-### 12. ~~No Regeneration on Palette/Template Change~~ ✅ FIXED
-GUI changes trigger `onRegenerate()` callback which calls `generate()`.
-
-### 13. ~~Hardcoded Video Codec~~ ✅ FIXED
-~~`exporter.ts` hardcodes `video/webm;codecs=vp9`.~~
-
-`detectMimeType()` now tries VP9 → VP8 → WebM → MP4 with fallback.
-
-### 14. ~~Config Doesn't Persist~~ ✅ FIXED
-`persistence.ts` saves to localStorage and syncs URL params (`?seed=X&palette=Y&template=Z`). "Copy Seed URL" button in GUI.
+14 calls to `Math.random()` in the audio synth. Audio randomness doesn't need to be deterministic, fine. But the inconsistency with the project's seeded-RNG philosophy is sloppy.
 
 ---
 
-## Missing Features That Hurt
+## Scorecard
 
-### 15. ~~No Sound~~ ✅ FIXED
-`AudioSynth` provides keystroke, blip, data chirp, glitch noise, alert, and deactivation sounds with Web Audio API.
-
-### 16. No Timeline Scrubbing
-You can't pause, rewind, or scrub the animation. You watch it play once, and if you want to see the boot sequence again, you regenerate. No playback controls whatsoever.
-
-### 17. ~~No Shareable Seeds~~ ✅ FIXED
-URL params support seed/palette/template. `updateURL()` keeps browser URL in sync. Copy button in GUI.
-
----
-
-## The Bottom Line
-
-The **architecture is sound** — seeded PRNG, BSP layout, element registry, timeline cues, post-FX pipeline. Remaining work:
-
-1. **Add retro texture to text** (glow, phosphor bleed, character jitter)
-2. **Timeline scrubbing** (pause/play/rewind controls)
-3. **Clean up magic numbers** (document or extract to config)
-4. **Minor GC pressure** (reduce string allocations in hot loops)
-
-It's a good skeleton with flesh and skin. Now it needs a sick leather jacket.
+| # | Issue | Status | Fix |
+|---|-------|--------|-----|
+| 1 | `Math.random()` breaking determinism | FIXED | Replaced 87 calls across 19 element files with `this.rng` |
+| 2 | `as any` tag matching | FIXED | Proper `RoleTag \| MoodTag \| SizeTag` casts |
+| 3 | Zero tests | NOT FIXED | Still zero. Good luck. |
+| 4 | Magic number casino | FIXED | 15 named constants with comments in compositor.ts |
+| 5 | Module-level mutable state | FIXED | Counter passed through recursion, `resetRegionCounter()` eliminated |
+| 6 | Static mutable globals | NOT FIXED | Architectural — needs engine-level refactor |
+| 7 | `(this as any)` pattern | FIXED | Proper private property declarations in 8 files |
+| 8 | Canvas null assertions | NOT FIXED | 32 files — low real-world risk but technically sloppy |
+| 9 | 766-line editor overlay | NOT FIXED | Needs structural refactor into sub-modules |
+| 10 | Synth `Math.random()` | NOT FIXED | Audio doesn't need determinism, just consistency |

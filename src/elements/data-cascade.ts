@@ -134,7 +134,7 @@ export class DataCascadeElement extends BaseElement {
       if (headRow < 0 || headRow >= this.rows) continue;
 
       // Head character — brightest
-      const ch = this.chars[Math.floor(Math.random() * this.chars.length)];
+      const ch = this.chars[Math.floor(this.rng.next() * this.chars.length)];
       ctx.fillStyle = isGlitching ? ('#' + this.palette.alert.getHexString()) : primaryHex;
       ctx.fillText(ch, c * charW + charW / 2, headRow * charH + charH / 2);
 
@@ -142,7 +142,7 @@ export class DataCascadeElement extends BaseElement {
       for (let t = 1; t < this.trailLength; t++) {
         const trailRow = headRow - t;
         if (trailRow < 0 || trailRow >= this.rows) continue;
-        const trailCh = this.chars[Math.floor(Math.random() * this.chars.length)];
+        const trailCh = this.chars[Math.floor(this.rng.next() * this.chars.length)];
         ctx.fillStyle = dimHex;
         ctx.globalAlpha = 0.6 - t * 0.08;
         ctx.fillText(trailCh, c * charW + charW / 2, trailRow * charH + charH / 2);

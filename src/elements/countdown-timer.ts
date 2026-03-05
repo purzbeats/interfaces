@@ -23,6 +23,8 @@ export class CountdownTimerElement extends BaseElement {
   private renderAccum: number = 0;
   private label: string = '';
   private urgentThreshold: number = 60;
+  private _countSpeed: number = 0;
+  private _digitScale: number = 0;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -40,8 +42,8 @@ export class CountdownTimerElement extends BaseElement {
     this.remaining = this.startValue;
     this.label = this.rng.pick(p.labels);
     this.urgentThreshold = this.rng.float(p.urgentMin, p.urgentMax);
-    (this as any)._countSpeed = p.speed + this.rng.float(-0.2, 0.2);
-    (this as any)._digitScale = p.digitScale;
+    this._countSpeed = p.speed + this.rng.float(-0.2, 0.2);
+    this._digitScale = p.digitScale;
 
     const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
@@ -65,7 +67,7 @@ export class CountdownTimerElement extends BaseElement {
     const opacity = this.applyEffects(dt);
 
     // Count down
-    this.remaining -= dt * (this as any)._countSpeed;
+    this.remaining -= dt * this._countSpeed;
     if (this.remaining <= 0) {
       this.remaining = this.startValue;
     }
@@ -103,7 +105,7 @@ export class CountdownTimerElement extends BaseElement {
     const dimHex = '#' + this.palette.dim.getHexString();
 
     // Time digits
-    const heightSize = Math.floor(canvas.height * (this as any)._digitScale);
+    const heightSize = Math.floor(canvas.height * this._digitScale);
     const widthSize = Math.floor(canvas.width / (timeStr.length * 0.65));
     const bigSize = Math.max(8, Math.min(heightSize, widthSize));
     ctx.font = `bold ${bigSize}px monospace`;

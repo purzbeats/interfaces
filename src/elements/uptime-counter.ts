@@ -19,6 +19,8 @@ export class UptimeCounterElement extends BaseElement {
   private uptime: number = 0;
   private renderAccum: number = 0;
   private label: string = '';
+  private _fontScale: number = 0;
+  private _format: string = '';
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -34,8 +36,8 @@ export class UptimeCounterElement extends BaseElement {
     const { x, y, w, h } = this.px;
     this.uptime = this.rng.float(p.uptimeMin, p.uptimeMax);
     this.label = this.rng.pick(p.labels);
-    (this as any)._fontScale = p.fontScale + this.rng.float(-0.03, 0.03);
-    (this as any)._format = p.format;
+    this._fontScale = p.fontScale + this.rng.float(-0.03, 0.03);
+    this._format = p.format;
 
     const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
@@ -79,7 +81,7 @@ export class UptimeCounterElement extends BaseElement {
     const mins = Math.floor((t % 3600) / 60);
     const secs = Math.floor(t % 60);
 
-    const fmt = (this as any)._format;
+    const fmt = this._format;
     let uptimeStr: string;
     if (fmt === 'hms') {
       const totalH = Math.floor(t / 3600);
@@ -93,7 +95,7 @@ export class UptimeCounterElement extends BaseElement {
 
     const primaryHex = '#' + this.palette.primary.getHexString();
 
-    const heightSize = Math.floor(canvas.height * (this as any)._fontScale);
+    const heightSize = Math.floor(canvas.height * this._fontScale);
     const widthSize = Math.floor(canvas.width / (fullStr.length * 0.62));
     const fontSize = Math.max(8, Math.min(heightSize, widthSize));
     ctx.font = `${fontSize}px monospace`;

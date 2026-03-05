@@ -171,19 +171,19 @@ export class SeparatorElement extends BaseElement {
     if (this.stateMachine.state === 'active') {
       this.nextEventIn -= dt;
       if (this.nextEventIn <= 0) {
-        const roll = Math.random();
+        const roll = this.rng.next();
         if (roll < 0.3) {
           // Flicker: brief opacity dip
-          this.flickerTimer = 0.08 + Math.random() * 0.12;
+          this.flickerTimer = 0.08 + this.rng.next() * 0.12;
         } else if (roll < 0.6) {
           // Accent flash: briefly turn accent color
-          this.accentTimer = 0.2 + Math.random() * 0.3;
+          this.accentTimer = 0.2 + this.rng.next() * 0.3;
         } else {
           // Reboot: fade out then back in
-          this.rebootDuration = 0.6 + Math.random() * 0.8;
+          this.rebootDuration = 0.6 + this.rng.next() * 0.8;
           this.rebootTimer = this.rebootDuration;
         }
-        this.nextEventIn = 5 + Math.random() * 10;
+        this.nextEventIn = 5 + this.rng.next() * 10;
       }
     }
 

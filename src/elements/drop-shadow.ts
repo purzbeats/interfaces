@@ -268,14 +268,14 @@ export class DropShadowElement extends BaseElement {
     if (action === 'glitch') {
       // Randomly scatter layers momentarily
       for (const layer of this.layers) {
-        const glitchX = (Math.random() - 0.5) * this.shadowDist * 3;
-        const glitchY = (Math.random() - 0.5) * this.shadowDist * 3;
+        const glitchX = (this.rng.next() - 0.5) * this.shadowDist * 3;
+        const glitchY = (this.rng.next() - 0.5) * this.shadowDist * 3;
         layer.baseOffset[0] += glitchX;
         layer.baseOffset[1] += glitchY;
         setTimeout(() => {
           layer.baseOffset[0] -= glitchX;
           layer.baseOffset[1] -= glitchY;
-        }, 200 + Math.random() * 200);
+        }, 200 + this.rng.next() * 200);
       }
     }
     if (action === 'alert') {

@@ -245,8 +245,8 @@ export class FlowFieldElement extends BaseElement {
         this.particleX[i] < x || this.particleX[i] > x + w ||
         this.particleY[i] < y || this.particleY[i] > y + h
       ) {
-        this.particleX[i] = x + Math.random() * w;
-        this.particleY[i] = y + Math.random() * h;
+        this.particleX[i] = x + this.rng.next() * w;
+        this.particleY[i] = y + this.rng.next() * h;
         // Reset this particle's trail to new position
         for (let t = 0; t < this.trailLength; t++) {
           const tidx = i * this.trailLength + t;

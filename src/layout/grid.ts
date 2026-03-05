@@ -15,7 +15,8 @@ const DEFAULT_BSP: BSPOptions = {
   splitVariance: 0.3,
 };
 
-let regionCounter = 0;
+/** Mutable counter wrapper passed through recursion to avoid module-level state. */
+interface Counter { value: number; }
 
 /**
  * Recursive BSP subdivision of a region into leaf regions.
@@ -24,7 +25,8 @@ export function subdivide(
   region: Region,
   rng: SeededRandom,
   opts: Partial<BSPOptions> = {},
-  depth: number = 0
+  depth: number = 0,
+  counter: Counter = { value: 0 },
 ): Region[] {
   const o = { ...DEFAULT_BSP, ...opts };
 
@@ -57,22 +59,18 @@ export function subdivide(
     const splitW = region.width * splitRatio;
     if (splitW < o.minWidth || region.width - splitW < o.minWidth) return [region];
 
-    a = createRegion(`r${regionCounter++}`, region.x, region.y, splitW, region.height, region.padding);
-    b = createRegion(`r${regionCounter++}`, region.x + splitW, region.y, region.width - splitW, region.height, region.padding);
+    a = createRegion(`r${counter.value++}`, region.x, region.y, splitW, region.height, region.padding);
+    b = createRegion(`r${counter.value++}`, region.x + splitW, region.y, region.width - splitW, region.height, region.padding);
   } else {
     const splitH = region.height * splitRatio;
     if (splitH < o.minHeight || region.height - splitH < o.minHeight) return [region];
 
-    a = createRegion(`r${regionCounter++}`, region.x, region.y, region.width, splitH, region.padding);
-    b = createRegion(`r${regionCounter++}`, region.x, region.y + splitH, region.width, region.height - splitH, region.padding);
+    a = createRegion(`r${counter.value++}`, region.x, region.y, region.width, splitH, region.padding);
+    b = createRegion(`r${counter.value++}`, region.x, region.y + splitH, region.width, region.height - splitH, region.padding);
   }
 
   return [
-    ...subdivide(a, rng, opts, depth + 1),
-    ...subdivide(b, rng, opts, depth + 1),
+    ...subdivide(a, rng, opts, depth + 1, counter),
+    ...subdivide(b, rng, opts, depth + 1, counter),
   ];
-}
-
-export function resetRegionCounter(): void {
-  regionCounter = 0;
 }

@@ -103,18 +103,18 @@ export class SpectrogramElement extends BaseElement {
 
   private generateTargets(): void {
     // Simulate a frequency spectrum with narrow peaks and lots of silence
-    const peakCount = 2 + Math.floor(Math.random() * 3);
+    const peakCount = 2 + Math.floor(this.rng.next() * 3);
     const peaks: { center: number; width: number; height: number }[] = [];
     for (let p = 0; p < peakCount; p++) {
       peaks.push({
-        center: Math.random() * this.freqBands,
-        width: 2 + Math.random() * 5,
-        height: 0.2 + Math.random() * 0.6,
+        center: this.rng.next() * this.freqBands,
+        width: 2 + this.rng.next() * 5,
+        height: 0.2 + this.rng.next() * 0.6,
       });
     }
 
     for (let i = 0; i < this.freqBands; i++) {
-      let val = Math.random() * 0.05; // low noise floor
+      let val = this.rng.next() * 0.05; // low noise floor
       for (const peak of peaks) {
         const dist = Math.abs(i - peak.center);
         val += peak.height * Math.exp(-(dist * dist) / (2 * peak.width * peak.width));
@@ -232,7 +232,7 @@ export class SpectrogramElement extends BaseElement {
     if (action === 'glitch') {
       // Scramble bands
       for (let i = 0; i < this.freqBands; i++) {
-        this.bandTargets[i] = Math.random();
+        this.bandTargets[i] = this.rng.next();
       }
     }
   }

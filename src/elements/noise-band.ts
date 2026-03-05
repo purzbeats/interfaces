@@ -138,8 +138,8 @@ export class NoiseBandElement extends BaseElement {
       // Shimmer: randomize brightness with sine + noise kick
       const shimmer = 0.5 + 0.5 * Math.sin(time * d.speed + d.phase);
       // Randomly jitter position for static effect
-      const jx = (Math.random() - 0.5) * 3;
-      const jy = (Math.random() - 0.5) * (this.bandH * 0.1);
+      const jx = (this.rng.next() - 0.5) * 3;
+      const jy = (this.rng.next() - 0.5) * (this.bandH * 0.1);
 
       positions.setXYZ(i, d.x + jx, d.y + jy, 1);
 
@@ -172,8 +172,8 @@ export class NoiseBandElement extends BaseElement {
     if (action === 'glitch') {
       // Burst all dots outward randomly
       for (const d of this.dots) {
-        d.vx += (Math.random() - 0.5) * 80;
-        d.vy += (Math.random() - 0.5) * 40;
+        d.vx += (this.rng.next() - 0.5) * 80;
+        d.vy += (this.rng.next() - 0.5) * 40;
       }
     }
     if (action === 'alert') {
@@ -202,8 +202,8 @@ export class NoiseBandElement extends BaseElement {
       // Increase drift speed of all dots
       const kick = level * 12;
       for (const d of this.dots) {
-        d.vx += (Math.random() - 0.5) * kick;
-        d.vy += (Math.random() - 0.5) * kick * 0.5;
+        d.vx += (this.rng.next() - 0.5) * kick;
+        d.vy += (this.rng.next() - 0.5) * kick * 0.5;
       }
     }
     if (level >= 5) {

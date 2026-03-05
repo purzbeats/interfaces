@@ -24,6 +24,10 @@ export class ClockDisplayElement extends BaseElement {
   private renderAccum: number = 0;
   private timeScale: number = 1;
   private label: string = '';
+  private _fontScale: number = 0;
+  private _blinkRate: number = 0;
+  private _sweepOpacity: number = 0;
+  private _format: string = '';
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -40,10 +44,10 @@ export class ClockDisplayElement extends BaseElement {
     this.missionTime = this.rng.float(0, p.timeMax);
     this.timeScale = this.rng.pick(p.scales);
     this.label = this.rng.pick(p.labels);
-    (this as any)._fontScale = p.fontScale + this.rng.float(-0.03, 0.03);
-    (this as any)._blinkRate = p.blinkRate;
-    (this as any)._sweepOpacity = p.sweepOpacity;
-    (this as any)._format = p.format;
+    this._fontScale = p.fontScale + this.rng.float(-0.03, 0.03);
+    this._blinkRate = p.blinkRate;
+    this._sweepOpacity = p.sweepOpacity;
+    this._format = p.format;
 
     const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
@@ -98,7 +102,7 @@ export class ClockDisplayElement extends BaseElement {
 
     // Blink colon
     this.colonTimer += dt;
-    if (this.colonTimer >= (this as any)._blinkRate) {
+    if (this.colonTimer >= this._blinkRate) {
       this.colonTimer = 0;
       this.colonVisible = !this.colonVisible;
     }
@@ -108,7 +112,7 @@ export class ClockDisplayElement extends BaseElement {
     const sweepPos = this.sweepLine.geometry.getAttribute('position') as THREE.BufferAttribute;
     sweepPos.setX(1, x + w * secFrac);
     sweepPos.needsUpdate = true;
-    (this.sweepLine.material as THREE.LineBasicMaterial).opacity = opacity * (this as any)._sweepOpacity;
+    (this.sweepLine.material as THREE.LineBasicMaterial).opacity = opacity * this._sweepOpacity;
 
     // Render canvas at reduced rate
     this.renderAccum += dt;
@@ -132,7 +136,7 @@ export class ClockDisplayElement extends BaseElement {
     const ms = Math.floor((t % 1) * 1000);
 
     const colon = this.colonVisible || this.glitchTimer > 0 ? ':' : ' ';
-    const fmt = (this as any)._format;
+    const fmt = this._format;
     let timeStr: string;
     if (fmt === 'mmss') {
       timeStr = `${String(mins).padStart(2, '0')}${colon}${String(secs).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
@@ -146,7 +150,7 @@ export class ClockDisplayElement extends BaseElement {
     const dimHex = '#' + this.palette.dim.getHexString();
 
     // Time display with phosphor glow — constrain to both height and width
-    const fScale = (this as any)._fontScale;
+    const fScale = this._fontScale;
     const heightSize = Math.floor(canvas.height * fScale);
     const widthSize = Math.floor(canvas.width / (timeStr.length * 0.65));
     const bigSize = Math.max(8, Math.min(heightSize, widthSize));

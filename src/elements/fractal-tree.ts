@@ -61,6 +61,12 @@ export class FractalTreeElement extends BaseElement {
   /** Leaf flash timer (pulse action) */
   private leafFlashTimer: number = 0;
 
+  private _angleMin: number = 0;
+  private _angleMax: number = 0;
+  private _lengthFactorMin: number = 0;
+  private _lengthFactorMax: number = 0;
+  private _branchChance: number = 0;
+
   /** Random angle offsets stored per-segment for variation between growth cycles */
   private angleOffsets!: Float32Array;
 
@@ -82,11 +88,11 @@ export class FractalTreeElement extends BaseElement {
     this.windStrength = this.rng.float(p.windStrMin, p.windStrMax);
     this.holdDuration = this.rng.float(p.holdMin, p.holdMax);
     this.growthStep = this.rng.float(p.growthMin, p.growthMax);
-    (this as any)._angleMin = p.angleMin;
-    (this as any)._angleMax = p.angleMax;
-    (this as any)._lengthFactorMin = p.lengthFactor[0];
-    (this as any)._lengthFactorMax = p.lengthFactor[1];
-    (this as any)._branchChance = p.branchChance;
+    this._angleMin = p.angleMin;
+    this._angleMax = p.angleMax;
+    this._lengthFactorMin = p.lengthFactor[0];
+    this._lengthFactorMax = p.lengthFactor[1];
+    this._branchChance = p.branchChance;
 
     // Generate L-system tree structure
     const startX = x + w / 2;
@@ -160,12 +166,12 @@ export class FractalTreeElement extends BaseElement {
       const isLeaf = nextDepth >= this.maxDepth;
 
       // Two branches: left and right
-      const spreadAngle = this.rng.float((this as any)._angleMin, (this as any)._angleMax) * (Math.PI / 180);
-      const lengthFactor = this.rng.float((this as any)._lengthFactorMin, (this as any)._lengthFactorMax);
+      const spreadAngle = this.rng.float(this._angleMin, this._angleMax) * (Math.PI / 180);
+      const lengthFactor = this.rng.float(this._lengthFactorMin, this._lengthFactorMax);
       const childLength = parentSeg.length * lengthFactor;
 
       // Sometimes add a third branch (20% chance) for more organic look
-      const branchCount = this.rng.chance((this as any)._branchChance) ? 3 : 2;
+      const branchCount = this.rng.chance(this._branchChance) ? 3 : 2;
 
       for (let b = 0; b < branchCount; b++) {
         let angleOffset: number;
@@ -241,7 +247,7 @@ export class FractalTreeElement extends BaseElement {
 
         // Glitch: random snap
         if (glitchActive) {
-          relAngle += (Math.random() - 0.5) * 1.5;
+          relAngle += (this.rng.next() - 0.5) * 1.5;
         }
 
         absAngles[i] = parentAngle + relAngle + windSway;
@@ -262,7 +268,7 @@ export class FractalTreeElement extends BaseElement {
     const rootWindSway = Math.sin(time * this.windSpeed) * this.windStrength * 0.2;
     absAngles[0] = this.segments[0].baseAngle + this.angleOffsets[0] + rootWindSway;
     if (glitchActive) {
-      absAngles[0] += (Math.random() - 0.5) * 0.5;
+      absAngles[0] += (this.rng.next() - 0.5) * 0.5;
     }
     const rootEnd = {
       x: rootX + Math.cos(absAngles[0]) * this.segments[0].length,
@@ -287,7 +293,7 @@ export class FractalTreeElement extends BaseElement {
       const windSway = Math.sin(time * this.windSpeed + seg.depth * 0.5 + i * 0.1)
                      * this.windStrength * (seg.depth * 0.7 + 0.3);
       if (glitchActive) {
-        relAngle += (Math.random() - 0.5) * 1.5;
+        relAngle += (this.rng.next() - 0.5) * 1.5;
       }
       absAngles[i] = parentAngle + relAngle + windSway;
 
@@ -419,7 +425,7 @@ export class FractalTreeElement extends BaseElement {
   private randomizeAngles(): void {
     for (let i = 0; i < this.segments.length; i++) {
       // Small random perturbation to base angles for variety between cycles
-      this.angleOffsets[i] = (Math.random() - 0.5) * 0.3;
+      this.angleOffsets[i] = (this.rng.next() - 0.5) * 0.3;
     }
   }
 

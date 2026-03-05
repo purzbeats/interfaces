@@ -18,6 +18,7 @@ export class ConcentricRingsElement extends BaseElement {
   private rippleSpeed: number = 0;
   private segments: number = 0;
   private isHex: boolean = false;
+  private _fadeExp: number = 0;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -36,7 +37,7 @@ export class ConcentricRingsElement extends BaseElement {
     this.rippleSpeed = this.rng.float(p.speedMin, p.speedMax);
     this.segments = p.segments;
     this.isHex = !!this.region.hexCell;
-    (this as any)._fadeExp = p.fadeExp;
+    this._fadeExp = p.fadeExp;
 
     for (let i = 0; i < this.maxRings; i++) {
       const positions = new Float32Array((this.segments + 1) * 3);
@@ -79,7 +80,7 @@ export class ConcentricRingsElement extends BaseElement {
 
       // Ease out the expansion — starts fast, slows down
       const easedRadius = maxR * (1 - Math.pow(1 - phase, 2.5));
-      const fadeOut = Math.pow(1 - phase, (this as any)._fadeExp); // fade as it expands
+      const fadeOut = Math.pow(1 - phase, this._fadeExp); // fade as it expands
 
       const positions = this.ringMeshes[i].geometry.getAttribute('position') as THREE.BufferAttribute;
       if (this.isHex) {

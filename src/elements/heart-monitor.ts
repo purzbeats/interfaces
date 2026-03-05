@@ -20,6 +20,9 @@ export class HeartMonitorElement extends BaseElement {
   private bpm: number = 0;
   private ecgPhase: number = 0;
   private flatline: boolean = false;
+  private _ampScale: number = 0;
+  private _eraseGap: number = 0;
+  private _dotSize: number = 0;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -35,9 +38,9 @@ export class HeartMonitorElement extends BaseElement {
     this.numPoints = Math.max(64, Math.floor(w * 0.5));
     this.speed = this.rng.float(p.speedMin, p.speedMax);
     this.bpm = this.rng.float(p.bpmMin, p.bpmMax);
-    (this as any)._ampScale = p.ampScale + this.rng.float(-0.03, 0.03);
-    (this as any)._eraseGap = p.eraseGap;
-    (this as any)._dotSize = p.dotSize;
+    this._ampScale = p.ampScale + this.rng.float(-0.03, 0.03);
+    this._eraseGap = p.eraseGap;
+    this._dotSize = p.dotSize;
 
     // ECG line
     const positions = new Float32Array(this.numPoints * 3);
@@ -60,7 +63,7 @@ export class HeartMonitorElement extends BaseElement {
     dotGeo.setAttribute('position', new THREE.Float32BufferAttribute([x, y + h / 2, 2], 3));
     this.dot = new THREE.Points(dotGeo, new THREE.PointsMaterial({
       color: this.palette.secondary,
-      size: Math.max(4, Math.min(w, h) * (this as any)._dotSize),
+      size: Math.max(4, Math.min(w, h) * this._dotSize),
       transparent: true,
       opacity: 0,
       sizeAttenuation: false,
@@ -92,7 +95,7 @@ export class HeartMonitorElement extends BaseElement {
     const advance = dt * this.speed;
     const pos = this.line.geometry.getAttribute('position') as THREE.BufferAttribute;
     const cy = y + h / 2;
-    const amp = h * (this as any)._ampScale;
+    const amp = h * this._ampScale;
     const beatsPerSec = this.bpm / 60;
 
     for (let a = 0; a < advance; a++) {
@@ -103,7 +106,7 @@ export class HeartMonitorElement extends BaseElement {
       pos.setY(idx, cy + value * amp);
 
       // Erase ahead (gap)
-      const eraseIdx = (idx + (this as any)._eraseGap) % this.numPoints;
+      const eraseIdx = (idx + this._eraseGap) % this.numPoints;
       pos.setY(eraseIdx, cy);
 
       this.writeHead++;

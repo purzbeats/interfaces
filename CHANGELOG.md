@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.3.0
+
+Determinism fixes, type safety, and code quality sweep.
+
+### Fixed
+- **Seeded PRNG enforcement**: replaced 87 `Math.random()` calls across 19 element files with `this.rng` to restore deterministic output (bit-decay, breathing-grid, capillary-network, corrupted-text, data-cascade, drop-shadow, flow-field, fractal-tree, grid-distortion, laser-grid, lorenz-attractor, noise-band, particle-field, pulse-wave, separator, spectrogram, static-channel, target-lock, typewriter-head)
+- **Type safety in compositor**: replaced `as any` tag matching with proper `RoleTag | MoodTag | SizeTag` casts
+- **Module-level mutable state**: eliminated `regionCounter` global and `resetRegionCounter()` in grid.ts; counter now scoped to recursion
+- **`(this as any)` anti-pattern**: added proper private property declarations in 8 element files (bracket-frame, concentric-rings, clock-display, countdown-timer, fractal-tree, heart-monitor, voltage-arc, uptime-counter)
+
+### Changed
+- **Compositor tuning constants**: extracted 15 magic numbers into named, documented constants (BASELINE_WEIGHT, SQUARE_ASPECT_MIN/MAX, RADIAL_NON_SQUARE_PENALTY, NEAR_ZERO_WEIGHT, ADJACENT_ROLE_PENALTY, ROLE_SATURATION_PENALTY, MIN_TEXT_WIDTH, SMALL/MEDIUM_AREA_THRESHOLD, HERO_MIN_AREA, BORDER_DENSITY_MIN/MAX, EDGE_TOLERANCE)
+
+---
+
 ## v3.2.0
 
 Border overlay system and debug mode.

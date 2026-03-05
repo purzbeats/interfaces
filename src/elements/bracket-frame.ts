@@ -22,6 +22,8 @@ export class BracketFrameElement extends BaseElement {
   private expandTarget: number = 1;
   private renderAccum: number = 0;
   private coordText: string = '';
+  private _overshootAmount: number = 0;
+  private _labelRate: number = 0;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -37,8 +39,8 @@ export class BracketFrameElement extends BaseElement {
     const cx = x + w / 2;
     const cy = y + h / 2;
     const bracketLen = Math.min(w, h) * p.bracketScale;
-    (this as any)._overshootAmount = p.overshoot + this.rng.float(-0.01, 0.01);
-    (this as any)._labelRate = p.labelRate;
+    this._overshootAmount = p.overshoot + this.rng.float(-0.01, 0.01);
+    this._labelRate = p.labelRate;
 
     // Generate fake coordinates
     this.coordText = `X:${this.rng.int(100, 999)} Y:${this.rng.int(100, 999)}`;
@@ -211,7 +213,7 @@ export class BracketFrameElement extends BaseElement {
     // Corners expand from center with overshoot
     const diff = this.expandTarget - this.expandProgress;
     this.expandProgress += diff * dt * 5;
-    const overshoot = this.expandProgress + Math.sin(this.expandProgress * Math.PI) * (this as any)._overshootAmount;
+    const overshoot = this.expandProgress + Math.sin(this.expandProgress * Math.PI) * this._overshootAmount;
 
     for (let i = 0; i < this.corners.length; i++) {
       const s = Math.max(0.01, overshoot);
@@ -223,7 +225,7 @@ export class BracketFrameElement extends BaseElement {
 
     // Render label
     this.renderAccum += dt;
-    if (this.renderAccum >= 1 / (this as any)._labelRate) {
+    if (this.renderAccum >= 1 / this._labelRate) {
       this.renderAccum = 0;
       const { ctx, canvas } = this;
       ctx.clearRect(0, 0, canvas.width, canvas.height);

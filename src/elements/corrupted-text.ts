@@ -90,9 +90,9 @@ export class CorruptedTextElement extends BaseElement {
       result += ch;
       if (ch === ' ') continue;
       // Add combining diacriticals (U+0300-U+036F)
-      const count = Math.floor(Math.random() * intensity * 6);
+      const count = Math.floor(this.rng.next() * intensity * 6);
       for (let i = 0; i < count; i++) {
-        result += String.fromCharCode(0x0300 + Math.floor(Math.random() * 112));
+        result += String.fromCharCode(0x0300 + Math.floor(this.rng.next() * 112));
       }
     }
     return result;
@@ -130,15 +130,15 @@ export class CorruptedTextElement extends BaseElement {
       let text = this.activeLines[i];
 
       // Apply corruption
-      if (corruption > 0 && Math.random() < corruption) {
+      if (corruption > 0 && this.rng.next() < corruption) {
         text = this.zalgo(text, corruption);
       }
 
       // Character substitution
       if (corruption > 0.3) {
         text = text.split('').map(ch => {
-          if (Math.random() < corruption * 0.3) {
-            return String.fromCharCode(0x2580 + Math.floor(Math.random() * 32));
+          if (this.rng.next() < corruption * 0.3) {
+            return String.fromCharCode(0x2580 + Math.floor(this.rng.next() * 32));
           }
           return ch;
         }).join('');
@@ -154,7 +154,7 @@ export class CorruptedTextElement extends BaseElement {
       const cy = lineH * (i + 1);
 
       // Horizontal jitter
-      const jx = (Math.random() - 0.5) * jitter * (canvas.width / 200);
+      const jx = (this.rng.next() - 0.5) * jitter * (canvas.width / 200);
 
       // Ghost/shadow layer
       if (ghost > 0) {
@@ -167,7 +167,7 @@ export class CorruptedTextElement extends BaseElement {
       }
 
       // Main text
-      const color = corruption > 0.5 && Math.random() < 0.2 ? alertHex : primaryHex;
+      const color = corruption > 0.5 && this.rng.next() < 0.2 ? alertHex : primaryHex;
       drawGlowText(ctx, text, cx + jx, cy, color, corruption > 0.3 ? 12 : 6);
     }
 
@@ -175,10 +175,10 @@ export class CorruptedTextElement extends BaseElement {
     applyScanlines(ctx, canvas, 0.1, time);
 
     // Horizontal tear artifact
-    if (Math.random() < 0.05) {
-      const tearY = Math.floor(Math.random() * canvas.height);
-      const tearH = 2 + Math.floor(Math.random() * 4);
-      const tearShift = (Math.random() - 0.5) * canvas.width * 0.15;
+    if (this.rng.next() < 0.05) {
+      const tearY = Math.floor(this.rng.next() * canvas.height);
+      const tearH = 2 + Math.floor(this.rng.next() * 4);
+      const tearShift = (this.rng.next() - 0.5) * canvas.width * 0.15;
       const imgData = ctx.getImageData(0, tearY, canvas.width, tearH);
       ctx.putImageData(imgData, tearShift, tearY);
     }
@@ -192,7 +192,7 @@ export class CorruptedTextElement extends BaseElement {
     // Phrase swap timer
     this.swapTimer -= dt;
     if (this.swapTimer <= 0) {
-      const idx = Math.floor(Math.random() * this.lineCount);
+      const idx = Math.floor(this.rng.next() * this.lineCount);
       this.activeLines[idx] = this.rng.pick(CorruptedTextElement.PHRASE_POOL);
       this.swapTimer = this.swapInterval;
     }

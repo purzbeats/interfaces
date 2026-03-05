@@ -96,13 +96,13 @@ export class LaserGridElement extends BaseElement {
     this.flashAccum += dt;
     if (this.flashAccum >= this.flashInterval) {
       this.flashAccum -= this.flashInterval;
-      const idx = Math.floor(Math.random() * this.lines.length);
+      const idx = Math.floor(this.rng.next() * this.lines.length);
       this.lines[idx].flashTimer = 0.3;
     }
 
     // Occasionally toggle visibility of a random line
-    if (Math.random() < dt * 0.3) {
-      const idx = Math.floor(Math.random() * this.lines.length);
+    if (this.rng.next() < dt * 0.3) {
+      const idx = Math.floor(this.rng.next() * this.lines.length);
       this.lines[idx].visible = !this.lines[idx].visible;
     }
 

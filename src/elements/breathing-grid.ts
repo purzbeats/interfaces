@@ -187,7 +187,7 @@ export class BreathingGridElement extends BaseElement {
     if (action === 'glitch') {
       // Randomize phases
       for (let i = 0; i < this.phases.length; i++) {
-        this.phases[i] = Math.random() * Math.PI * 2;
+        this.phases[i] = this.rng.float(0, Math.PI * 2);
       }
     }
   }

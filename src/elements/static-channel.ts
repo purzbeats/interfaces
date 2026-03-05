@@ -86,7 +86,7 @@ export class StaticChannelElement extends BaseElement {
         const idx = (srcY * gridW + x) * 4;
 
         // Random noise with palette tint
-        const noise = Math.random();
+        const noise = this.rng.next();
         const brightness = noise * noise * 0.7; // bias toward darker, let peaks shine
         data[idx]     = Math.floor(bgR + (tintR - bgR) * brightness);
         data[idx + 1] = Math.floor(bgG + (tintG - bgG) * brightness);
@@ -102,15 +102,15 @@ export class StaticChannelElement extends BaseElement {
       this.drawGhost(data, g);
     }
     // Spawn new ghosts
-    if (Math.random() < this.ghostChance) {
+    if (this.rng.next() < this.ghostChance) {
       const types = ['circle', 'rect', 'face', 'triangle'];
       this.ghostShapes.push({
-        type: types[Math.floor(Math.random() * types.length)],
-        x: Math.floor(Math.random() * gridW),
-        y: Math.floor(Math.random() * gridH),
-        size: 3 + Math.floor(Math.random() * Math.min(gridW, gridH) * 0.15),
-        alpha: 0.3 + Math.random() * 0.4,
-        fade: 0.92 + Math.random() * 0.06,
+        type: types[Math.floor(this.rng.next() * types.length)],
+        x: Math.floor(this.rng.next() * gridW),
+        y: Math.floor(this.rng.next() * gridH),
+        size: 3 + Math.floor(this.rng.next() * Math.min(gridW, gridH) * 0.15),
+        alpha: 0.3 + this.rng.next() * 0.4,
+        fade: 0.92 + this.rng.next() * 0.06,
       });
     }
 
@@ -118,9 +118,9 @@ export class StaticChannelElement extends BaseElement {
     this.tearCounter++;
     if (this.tearCounter >= 20) {
       this.tearCounter = 0;
-      const tearY = Math.floor(Math.random() * gridH);
-      const tearH = 1 + Math.floor(Math.random() * 3);
-      const shift = Math.floor((Math.random() - 0.5) * gridW * 0.2);
+      const tearY = Math.floor(this.rng.next() * gridH);
+      const tearH = 1 + Math.floor(this.rng.next() * 3);
+      const shift = Math.floor((this.rng.next() - 0.5) * gridW * 0.2);
       for (let ty = tearY; ty < Math.min(gridH, tearY + tearH); ty++) {
         for (let tx = 0; tx < gridW; tx++) {
           const srcX = tx - shift;
@@ -230,9 +230,9 @@ export class StaticChannelElement extends BaseElement {
       for (let i = 0; i < 5; i++) {
         this.ghostShapes.push({
           type: 'face',
-          x: Math.floor(Math.random() * this.gridW),
-          y: Math.floor(Math.random() * this.gridH),
-          size: 5 + Math.floor(Math.random() * 8),
+          x: Math.floor(this.rng.next() * this.gridW),
+          y: Math.floor(this.rng.next() * this.gridH),
+          size: 5 + Math.floor(this.rng.next() * 8),
           alpha: 0.6,
           fade: 0.95,
         });

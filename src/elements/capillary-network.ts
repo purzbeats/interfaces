@@ -294,7 +294,7 @@ export class CapillaryNetworkElement extends BaseElement {
 
         if (childA >= 0 && childB >= 0) {
           // Branch: randomly pick a child
-          this.particleSegment[i] = Math.random() < 0.5 ? childA : childB;
+          this.particleSegment[i] = this.rng.chance(0.5) ? childA : childB;
         } else if (childA >= 0) {
           this.particleSegment[i] = childA;
         } else if (childB >= 0) {
@@ -314,8 +314,8 @@ export class CapillaryNetworkElement extends BaseElement {
 
       // Level 5 hemorrhage: scatter particles outside vessels
       if (this.hemorrhage) {
-        px += (Math.random() - 0.5) * 8;
-        py += (Math.random() - 0.5) * 8;
+        px += (this.rng.next() - 0.5) * 8;
+        py += (this.rng.next() - 0.5) * 8;
       }
 
       posAttr.setXYZ(i, px, py, 1);
@@ -324,7 +324,7 @@ export class CapillaryNetworkElement extends BaseElement {
       const depth = this.segDepth[s];
       const depthRatio = depth / Math.max(1, this.maxDepth);
 
-      if (this.hemorrhage && Math.random() < 0.3) {
+      if (this.hemorrhage && this.rng.next() < 0.3) {
         // Some particles use alert color during hemorrhage
         colAttr.setXYZ(i, alertR, alertG, alertB);
       } else {
