@@ -11,11 +11,24 @@ export class HexGridElement extends BaseElement {
     name: 'hex-grid',
     meta: { shape: 'radial', roles: ['decorative', 'scanner'], moods: ['tactical'], bandAffinity: 'mid', sizes: ['needs-medium', 'needs-large'] },
   };
-  private cells: THREE.LineSegments[] = [];
-  private fills: THREE.Mesh[] = [];
   private cellActivation: number[] = [];
   private cellTargetBright: number[] = [];
   private activationSpeed: number = 0;
+  /** Per-cell center coords (element-local) and hex radius */
+  private cellCenters: { lx: number; ly: number }[] = [];
+  private hexR = 0;
+  private fillR = 0;
+  /** Per-cell color: true = alert, false = primary */
+  private cellColors: boolean[] = [];
+
+  private canvas!: HTMLCanvasElement;
+  private ctx!: CanvasRenderingContext2D;
+  private texture!: THREE.CanvasTexture;
+  private mesh!: THREE.Mesh;
+  private canvasW = 0;
+  private canvasH = 0;
+  private renderAccum = 0;
+  private readonly renderInterval = 1 / 15;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -28,9 +41,10 @@ export class HexGridElement extends BaseElement {
     const p = presets[variant];
 
     const { x, y, w, h } = this.px;
-    const hexR = Math.min(w, h) * this.rng.float(p.hexSizeMin, p.hexSizeMax);
-    const hexW = hexR * Math.sqrt(3);
-    const hexH = hexR * 2;
+    this.hexR = Math.min(w, h) * this.rng.float(p.hexSizeMin, p.hexSizeMax);
+    this.fillR = this.hexR * 0.6;
+    const hexW = this.hexR * Math.sqrt(3);
+    const hexH = this.hexR * 2;
     const cols = Math.floor(w / hexW);
     const rows = Math.floor(h / (hexH * 0.75));
     this.activationSpeed = this.rng.float(p.actSpeed[0], p.actSpeed[1]);
@@ -38,77 +52,123 @@ export class HexGridElement extends BaseElement {
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const offsetX = (row % 2) * (hexW / 2);
-        const cx = x + col * hexW + offsetX + hexW / 2;
-        const cy = y + row * (hexH * 0.75) + hexR;
-        if (cx + hexR > x + w || cy + hexR > y + h) continue;
+        const cx = col * hexW + offsetX + hexW / 2;
+        const cy = row * (hexH * 0.75) + this.hexR;
+        if (cx + this.hexR > w || cy + this.hexR > h) continue;
 
-        // Hex outline
-        const verts: number[] = [];
-        for (let i = 0; i < 6; i++) {
-          const a1 = (Math.PI / 3) * i - Math.PI / 6;
-          const a2 = (Math.PI / 3) * (i + 1) - Math.PI / 6;
-          verts.push(
-            cx + Math.cos(a1) * hexR, cy + Math.sin(a1) * hexR, 1,
-            cx + Math.cos(a2) * hexR, cy + Math.sin(a2) * hexR, 1,
-          );
-        }
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-        const line = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-          color: this.palette.primary,
-          transparent: true,
-          opacity: 0,
-        }));
-        this.cells.push(line);
-        this.group.add(line);
+        this.cellCenters.push({ lx: cx, ly: cy });
+        this.cellColors.push(false);
 
-        // Small fill hexagon (slightly smaller)
-        const fillR = hexR * 0.6;
-        const fillVerts: number[] = [];
-        for (let i = 0; i < 6; i++) {
-          const a = (Math.PI / 3) * i - Math.PI / 6;
-          fillVerts.push(cx + Math.cos(a) * fillR, cy + Math.sin(a) * fillR);
-        }
-        const shape = new THREE.Shape();
-        shape.moveTo(fillVerts[0], fillVerts[1]);
-        for (let i = 2; i < fillVerts.length; i += 2) {
-          shape.lineTo(fillVerts[i], fillVerts[i + 1]);
-        }
-        shape.closePath();
-        const fillGeo = new THREE.ShapeGeometry(shape);
-        const fill = new THREE.Mesh(fillGeo, new THREE.MeshBasicMaterial({
-          color: this.palette.primary,
-          transparent: true,
-          opacity: 0,
-        }));
-        fill.position.z = 0.5;
-        this.fills.push(fill);
-        this.group.add(fill);
-
-        // Staggered activation + random brightness targets
         const dist = Math.sqrt((col - cols / 2) ** 2 + (row - rows / 2) ** 2);
-        this.cellActivation.push(-dist * p.delayFactor); // negative = delay
+        this.cellActivation.push(-dist * p.delayFactor);
         this.cellTargetBright.push(this.rng.float(p.fillMin, p.fillMax));
       }
     }
+
+    // Canvas
+    const scale = Math.min(1, 300 / Math.max(w, h));
+    this.canvasW = Math.max(32, Math.round(w * scale));
+    this.canvasH = Math.max(32, Math.round(h * scale));
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.canvasW;
+    this.canvas.height = this.canvasH;
+    this.ctx = this.get2DContext(this.canvas);
+
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.magFilter = THREE.LinearFilter;
+
+    const geo = new THREE.PlaneGeometry(w, h);
+    this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      map: this.texture,
+      transparent: true,
+      opacity: 0,
+    }));
+    this.mesh.position.set(x + w / 2, y + h / 2, 1);
+    this.group.add(this.mesh);
   }
 
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
 
-    for (let i = 0; i < this.cells.length; i++) {
+    // Update activation state (always runs)
+    for (let i = 0; i < this.cellCenters.length; i++) {
       this.cellActivation[i] += dt * this.activationSpeed;
-      const t = Math.max(0, Math.min(1, this.cellActivation[i]));
-      // Elastic-ish entrance
-      const elastic = t < 1 ? 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 2) : 1;
-      const cellOpacity = elastic * opacity;
-
-      (this.cells[i].material as THREE.LineBasicMaterial).opacity = cellOpacity * 0.6;
-
-      // Fill brightness oscillates slowly per cell
-      const fillBright = this.cellTargetBright[i] * (0.7 + Math.sin(time * 2 + i * 0.7) * 0.3);
-      (this.fills[i].material as THREE.MeshBasicMaterial).opacity = cellOpacity * fillBright;
     }
+
+    // Throttle canvas rendering to ~15fps
+    this.renderAccum += dt;
+    if (this.renderAccum < this.renderInterval) return;
+    this.renderAccum = 0;
+
+    const { w, h } = this.px;
+    const ctx = this.ctx;
+    const cw = this.canvasW;
+    const ch = this.canvasH;
+    const scaleX = cw / w;
+    const scaleY = ch / h;
+
+    ctx.clearRect(0, 0, cw, ch);
+
+    const primR = Math.round(this.palette.primary.r * 255);
+    const primG = Math.round(this.palette.primary.g * 255);
+    const primB = Math.round(this.palette.primary.b * 255);
+    const alertR = Math.round(this.palette.alert.r * 255);
+    const alertG = Math.round(this.palette.alert.g * 255);
+    const alertB = Math.round(this.palette.alert.b * 255);
+
+    const hexRCanvas = this.hexR * Math.min(scaleX, scaleY);
+    const fillRCanvas = this.fillR * Math.min(scaleX, scaleY);
+
+    // Precompute hex angles
+    const angles: { cos: number; sin: number }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i - Math.PI / 6;
+      angles.push({ cos: Math.cos(a), sin: Math.sin(a) });
+    }
+
+    for (let i = 0; i < this.cellCenters.length; i++) {
+      const t = Math.max(0, Math.min(1, this.cellActivation[i]));
+      const elastic = t < 1 ? 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 2) : 1;
+      const cellOpacity = elastic;
+
+      if (cellOpacity <= 0.001) continue;
+
+      const { lx, ly } = this.cellCenters[i];
+      const cx = lx * scaleX;
+      const cy = ly * scaleY;
+
+      const isAlert = this.cellColors[i];
+      const r = isAlert ? alertR : primR;
+      const g = isAlert ? alertG : primG;
+      const b = isAlert ? alertB : primB;
+
+      // Draw hex outline
+      ctx.strokeStyle = `rgba(${r},${g},${b},${cellOpacity * 0.6})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx + angles[0].cos * hexRCanvas, cy + angles[0].sin * hexRCanvas);
+      for (let j = 1; j < 6; j++) {
+        ctx.lineTo(cx + angles[j].cos * hexRCanvas, cy + angles[j].sin * hexRCanvas);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      // Draw fill hexagon
+      const fillBright = this.cellTargetBright[i] * (0.7 + Math.sin(time * 2 + i * 0.7) * 0.3);
+      ctx.fillStyle = `rgba(${r},${g},${b},${cellOpacity * fillBright})`;
+      ctx.beginPath();
+      ctx.moveTo(cx + angles[0].cos * fillRCanvas, cy + angles[0].sin * fillRCanvas);
+      for (let j = 1; j < 6; j++) {
+        ctx.lineTo(cx + angles[j].cos * fillRCanvas, cy + angles[j].sin * fillRCanvas);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    this.texture.needsUpdate = true;
   }
 
   onIntensity(level: number): void {
@@ -133,8 +193,7 @@ export class HexGridElement extends BaseElement {
   onAction(action: string): void {
     super.onAction(action);
     if (action === 'glitch') {
-      // Scramble some cells
-      for (let i = 0; i < this.cells.length; i++) {
+      for (let i = 0; i < this.cellCenters.length; i++) {
         if (this.rng.chance(0.3)) {
           this.cellTargetBright[i] = this.rng.float(0.5, 1.0);
         }
@@ -142,10 +201,8 @@ export class HexGridElement extends BaseElement {
     }
     if (action === 'alert') {
       this.pulseTimer = 2.0;
-      for (let i = 0; i < this.fills.length; i++) {
-        (this.fills[i].material as THREE.MeshBasicMaterial).color.copy(
-          this.rng.chance(0.4) ? this.palette.alert : this.palette.primary
-        );
+      for (let i = 0; i < this.cellCenters.length; i++) {
+        this.cellColors[i] = this.rng.chance(0.4);
       }
     }
   }

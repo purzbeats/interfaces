@@ -185,6 +185,7 @@ export class IsoBlocksElement extends BaseElement {
       side: THREE.DoubleSide,
     });
     const faceTop = new THREE.Mesh(topGeo, topMat);
+    faceTop.frustumCulled = false;
     this.group.add(faceTop);
 
     // Left face: parallelogram (col side)
@@ -199,6 +200,7 @@ export class IsoBlocksElement extends BaseElement {
       side: THREE.DoubleSide,
     });
     const faceLeft = new THREE.Mesh(leftGeo, leftMat);
+    faceLeft.frustumCulled = false;
     this.group.add(faceLeft);
 
     // Right face: parallelogram (row side)
@@ -213,6 +215,7 @@ export class IsoBlocksElement extends BaseElement {
       side: THREE.DoubleSide,
     });
     const faceRight = new THREE.Mesh(rightGeo, rightMat);
+    faceRight.frustumCulled = false;
     this.group.add(faceRight);
 
     return { faceTop, faceLeft, faceRight };
@@ -234,7 +237,6 @@ export class IsoBlocksElement extends BaseElement {
     topPos.setXYZ(2, sx, sy - bh + cH * 2, 0.3);     // bottom
     topPos.setXYZ(3, sx - cW, sy - bh + cH, 0.3);    // left
     topPos.needsUpdate = true;
-    block.faceTop.geometry.computeBoundingSphere();
 
     // Left face: from top-left to bottom-left
     // top-left: (sx - cW, sy - bh + cH)
@@ -247,7 +249,6 @@ export class IsoBlocksElement extends BaseElement {
     leftPos.setXYZ(2, sx, sy + cH * 2, 0.2);
     leftPos.setXYZ(3, sx - cW, sy + cH, 0.2);
     leftPos.needsUpdate = true;
-    block.faceLeft.geometry.computeBoundingSphere();
 
     // Right face: from top-right to bottom-right
     // top-left: (sx, sy - bh + cH * 2)
@@ -260,7 +261,6 @@ export class IsoBlocksElement extends BaseElement {
     rightPos.setXYZ(2, sx + cW, sy + cH, 0.1);
     rightPos.setXYZ(3, sx, sy + cH * 2, 0.1);
     rightPos.needsUpdate = true;
-    block.faceRight.geometry.computeBoundingSphere();
   }
 
   update(dt: number, time: number): void {

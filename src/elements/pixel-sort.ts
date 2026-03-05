@@ -15,8 +15,6 @@ import type { ElementMeta } from './tags';
  */
 
 interface SortColumn {
-  meshes: THREE.Mesh[];
-  materials: THREE.MeshBasicMaterial[];
   /** Simulated brightness value per cell [0..1] */
   brightness: number[];
   /** Current visual Y offset for each cell (in pixels) */
@@ -52,6 +50,17 @@ export class PixelSortElement extends BaseElement {
   private borderMat!: THREE.LineBasicMaterial;
   private globalTime: number = 0;
 
+  private canvas!: HTMLCanvasElement;
+  private ctx!: CanvasRenderingContext2D;
+  private texture!: THREE.CanvasTexture;
+  private mesh!: THREE.Mesh;
+  private canvasW = 0;
+  private canvasH = 0;
+  private renderAccum = 0;
+  private readonly renderInterval = 1 / 15; // ~15fps throttle
+  /** Alert color override tracking */
+  private alertActive = false;
+
   build(): void {
     this.variant = this.rng.int(0, 3);
     const { x, y, w, h } = this.px;
@@ -77,41 +86,13 @@ export class PixelSortElement extends BaseElement {
     this.cellW = w / this.numCols;
     this.cellH = h / this.numRows;
 
-    // Colors: use primary for bright cells, dim for dark, secondary for mid
-    const brightColor = this.palette.primary;
-    const midColor = this.palette.secondary;
-    const darkColor = this.palette.dim;
-
     for (let col = 0; col < this.numCols; col++) {
-      const meshes: THREE.Mesh[] = [];
-      const materials: THREE.MeshBasicMaterial[] = [];
       const brightness: number[] = [];
       const offsets: number[] = [];
       const targetOffsets: number[] = [];
 
       for (let row = 0; row < this.numRows; row++) {
-        const b = this.rng.float(0, 1);
-        brightness.push(b);
-
-        // Pick color by brightness band
-        let color: THREE.Color;
-        if (b > 0.66) color = brightColor;
-        else if (b > 0.33) color = midColor;
-        else color = darkColor;
-
-        const geo = new THREE.PlaneGeometry(this.cellW * 0.9, this.cellH * 0.9);
-        const mat = new THREE.MeshBasicMaterial({
-          color: color.clone(),
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-        });
-        const mesh = new THREE.Mesh(geo, mat);
-        // Position at cell center — matches update() positioning
-        mesh.position.set(x + col * this.cellW + this.cellW * 0.5, y + row * this.cellH + this.cellH * 0.5, 0);
-        this.group.add(mesh);
-        meshes.push(mesh);
-        materials.push(mat);
+        brightness.push(this.rng.float(0, 1));
         offsets.push(0);
         targetOffsets.push(0);
       }
@@ -119,8 +100,6 @@ export class PixelSortElement extends BaseElement {
       // Stagger next sort time per column
       const sortDelay = this.rng.float(0, 3.0);
       this.columns.push({
-        meshes,
-        materials,
         brightness,
         offsets,
         targetOffsets,
@@ -130,6 +109,30 @@ export class PixelSortElement extends BaseElement {
         nextSortTime: sortDelay,
       });
     }
+
+    // Canvas for rendering all cells
+    const scale = Math.min(1, 256 / Math.max(w, h));
+    this.canvasW = Math.max(32, Math.round(w * scale));
+    this.canvasH = Math.max(32, Math.round(h * scale));
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.canvasW;
+    this.canvas.height = this.canvasH;
+    this.ctx = this.get2DContext(this.canvas);
+
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
+
+    const geo = new THREE.PlaneGeometry(w, h);
+    this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      map: this.texture,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    }));
+    this.mesh.position.set(x + w / 2, y + h / 2, 0);
+    this.group.add(this.mesh);
 
     // Border
     const bv = new Float32Array([
@@ -185,10 +188,11 @@ export class PixelSortElement extends BaseElement {
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
     this.globalTime = time;
-    const { x, y } = this.px;
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
 
     const sortChancePerSec = 0.15 + this.intensityLevel * 0.08;
 
+    // Update sort state (always runs, not throttled)
     for (let colIdx = 0; colIdx < this.columns.length; colIdx++) {
       const col = this.columns[colIdx];
 
@@ -196,7 +200,6 @@ export class PixelSortElement extends BaseElement {
         col.nextSortTime -= dt;
         if (col.nextSortTime <= 0) {
           if (this.rng.chance(sortChancePerSec)) {
-            // Start sorting
             col.sorting = true;
             col.sortProgress = 0;
             col.sortDuration = this.rng.float(0.3, 1.5);
@@ -212,7 +215,6 @@ export class PixelSortElement extends BaseElement {
         if (col.sortProgress >= 1) {
           col.sortProgress = 1;
           col.sorting = false;
-          // After sort, scramble brightness for next sort cycle
           for (let r = 0; r < this.numRows; r++) {
             if (this.rng.chance(0.3)) {
               col.brightness[r] = this.rng.float(0, 1);
@@ -223,19 +225,47 @@ export class PixelSortElement extends BaseElement {
           col.nextSortTime = this.rng.float(0.5, 3.0);
         }
       }
+    }
 
-      // Wave variant: add sinusoidal oscillation on top of sort
-      let waveOffset = 0;
+    this.borderMat.opacity = opacity * 0.25;
+
+    // Throttle canvas rendering to ~15fps
+    this.renderAccum += dt;
+    if (this.renderAccum < this.renderInterval) return;
+    this.renderAccum = 0;
+
+    const { w, h } = this.px;
+    const ctx = this.ctx;
+    const cw = this.canvasW;
+    const ch = this.canvasH;
+    const scaleX = cw / w;
+    const scaleY = ch / h;
+
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Pre-compute color strings
+    const prim = this.palette.primary;
+    const sec = this.palette.secondary;
+    const dim = this.palette.dim;
+    const alert = this.alertActive ? this.palette.alert : null;
+    const primStr = `${Math.round(prim.r * 255)},${Math.round(prim.g * 255)},${Math.round(prim.b * 255)}`;
+    const secStr = `${Math.round(sec.r * 255)},${Math.round(sec.g * 255)},${Math.round(sec.b * 255)}`;
+    const dimStr = `${Math.round(dim.r * 255)},${Math.round(dim.g * 255)},${Math.round(dim.b * 255)}`;
+    const alertStr = alert ? `${Math.round(alert.r * 255)},${Math.round(alert.g * 255)},${Math.round(alert.b * 255)}` : '';
+
+    const cellWCanvas = this.cellW * 0.9 * scaleX;
+    const cellHCanvas = this.cellH * 0.9 * scaleY;
+
+    for (let colIdx = 0; colIdx < this.columns.length; colIdx++) {
+      const col = this.columns[colIdx];
 
       for (let row = 0; row < this.numRows; row++) {
-        const baseX = x + colIdx * this.cellW + this.cellW * 0.5;
-        const baseY = y + row * this.cellH + this.cellH * 0.5;
+        const b = col.brightness[row];
 
         let yOff = 0;
         let xOff = 0;
 
         if (col.sorting) {
-          // Ease: smoothstep
           const t = col.sortProgress;
           const ease = t * t * (3 - 2 * t);
           const fromOff = col.offsets[row];
@@ -246,35 +276,45 @@ export class PixelSortElement extends BaseElement {
         }
 
         if (this.variant === 3) {
-          waveOffset = Math.sin(time * 2.1 + colIdx * 0.4 + row * 0.2) * this.cellH * 0.5;
+          const waveOffset = Math.sin(time * 2.1 + colIdx * 0.4 + row * 0.2) * this.cellH * 0.5;
           yOff += waveOffset * (col.sorting ? col.sortProgress : 0);
         } else if (this.variant === 1) {
-          // horizontal: offset goes to X instead of Y
           xOff = yOff;
           yOff = 0;
         } else if (this.variant === 2) {
-          // diagonal: split offset between X and Y
           xOff = yOff * 0.4;
           yOff = yOff * 0.7;
         }
 
-        const mesh = col.meshes[row];
-        mesh.position.set(baseX + xOff, baseY + yOff, 0);
+        // Cell position in element-local coords, then to canvas
+        const cx = (colIdx * this.cellW + this.cellW * 0.5 + xOff) * scaleX - cellWCanvas / 2;
+        const cy = (row * this.cellH + this.cellH * 0.5 + yOff) * scaleY - cellHCanvas / 2;
 
-        // Vary opacity by brightness — bright cells more visible
-        const b = col.brightness[row];
-        const cellOpacity = opacity * (0.3 + b * 0.7);
-        col.materials[row].opacity = cellOpacity;
+        // Determine color
+        let colorStr: string;
+        if (alert && b > 0.7) {
+          colorStr = alertStr;
+        } else if (b > 0.66) {
+          colorStr = primStr;
+        } else if (b > 0.33) {
+          colorStr = secStr;
+        } else {
+          colorStr = dimStr;
+        }
 
-        // Flicker bright cells at high intensity
+        // Vary opacity by brightness
+        let cellOpacity = 0.3 + b * 0.7;
         if (this.intensityLevel >= 3 && b > 0.8) {
           const flicker = 0.7 + 0.3 * Math.sin(time * 20 + colIdx * 1.3 + row * 0.7);
-          col.materials[row].opacity = cellOpacity * flicker;
+          cellOpacity *= flicker;
         }
+
+        ctx.fillStyle = `rgba(${colorStr},${cellOpacity})`;
+        ctx.fillRect(cx, cy, cellWCanvas, cellHCanvas);
       }
     }
 
-    this.borderMat.opacity = opacity * 0.25;
+    this.texture.needsUpdate = true;
   }
 
   onAction(action: string): void {
@@ -293,23 +333,10 @@ export class PixelSortElement extends BaseElement {
       }
     }
     if (action === 'alert') {
-      // Flash bright cells to alert color
-      for (const col of this.columns) {
-        for (let r = 0; r < this.numRows; r++) {
-          if (col.brightness[r] > 0.7) {
-            col.materials[r].color.copy(this.palette.alert);
-          }
-        }
-      }
+      // Flash bright cells to alert color (handled in canvas render)
+      this.alertActive = true;
       setTimeout(() => {
-        for (const col of this.columns) {
-          for (let r = 0; r < this.numRows; r++) {
-            const b = col.brightness[r];
-            if (b > 0.66) col.materials[r].color.copy(this.palette.primary);
-            else if (b > 0.33) col.materials[r].color.copy(this.palette.secondary);
-            else col.materials[r].color.copy(this.palette.dim);
-          }
-        }
+        this.alertActive = false;
       }, 2000);
     }
   }
@@ -338,13 +365,8 @@ export class PixelSortElement extends BaseElement {
   }
 
   dispose(): void {
-    for (const col of this.columns) {
-      for (let r = 0; r < this.numRows; r++) {
-        col.meshes[r].geometry.dispose();
-        col.materials[r].dispose();
-      }
-    }
     this.columns = [];
+    if (this.texture) this.texture.dispose();
     super.dispose();
   }
 }

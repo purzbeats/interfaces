@@ -48,6 +48,7 @@ export class CloudCellElement extends BaseElement {
   private intensityLevel = 0;
   private cw = 0;
   private ch = 0;
+  private renderAccum = 0;
 
   build(): void {
     this.glitchAmount = 4;
@@ -67,8 +68,8 @@ export class CloudCellElement extends BaseElement {
     this.turbulence = p.turbulence;
 
     this.canvas = document.createElement('canvas');
-    this.cw = Math.min(w, 400);
-    this.ch = Math.min(h, 400);
+    this.cw = Math.min(w, 160);
+    this.ch = Math.min(h, 160);
     this.canvas.width = this.cw;
     this.canvas.height = this.ch;
     this.ctx = this.get2DContext(this.canvas);
@@ -163,9 +164,14 @@ export class CloudCellElement extends BaseElement {
       if (cell.cy > this.ch) cell.cy -= this.ch;
     }
 
+    this.mat.opacity = opacity;
+
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.083) return;
+    this.renderAccum = 0;
+
     this.drawCells(time);
     this.texture.needsUpdate = true;
-    this.mat.opacity = opacity;
   }
 
   onAction(action: string): void {

@@ -76,8 +76,8 @@ export class HexagonalLifeElement extends BaseElement {
 
     // Canvas size matches the region
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.max(64, Math.floor(w * 0.8));
-    this.canvas.height = Math.max(64, Math.floor(h * 0.8));
+    this.canvas.width = Math.max(64, Math.min(200, Math.floor(w * 0.8)));
+    this.canvas.height = Math.max(64, Math.min(200, Math.floor(h * 0.8)));
     this.ctx = this.get2DContext(this.canvas);
 
     this.texture = new THREE.CanvasTexture(this.canvas);

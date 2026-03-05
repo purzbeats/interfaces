@@ -50,6 +50,7 @@ export class DistanceFieldElement extends BaseElement {
   private cw = 0;
   private ch = 0;
   private intensityLevel = 0;
+  private renderAccum = 0;
 
   build(): void {
     this.glitchAmount = 4;
@@ -67,8 +68,10 @@ export class DistanceFieldElement extends BaseElement {
     this.contourSpacing = p.contourSpacing;
     this.operation = p.operation;
 
-    this.cw = Math.min(Math.round(w), 256);
-    this.ch = Math.min(Math.round(h), 256);
+    const maxRes = 160;
+    const resScale = Math.min(1, maxRes / Math.max(w, h));
+    this.cw = Math.max(32, Math.floor(w * resScale));
+    this.ch = Math.max(32, Math.floor(h * resScale));
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.cw;
     this.canvas.height = this.ch;
@@ -217,9 +220,14 @@ export class DistanceFieldElement extends BaseElement {
       if (s.cy < 0 || s.cy >= this.ch) { s.vy = -s.vy; s.cy = Math.max(0, Math.min(this.ch - 1, s.cy)); }
     }
 
+    this.mat.opacity = opacity;
+
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.083) return;
+    this.renderAccum = 0;
+
     this.drawField();
     this.texture.needsUpdate = true;
-    this.mat.opacity = opacity;
   }
 
   onAction(action: string): void {

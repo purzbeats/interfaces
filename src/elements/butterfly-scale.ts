@@ -32,6 +32,7 @@ export class ButterflyScaleElement extends BaseElement {
   private patternType: number = 0; // 0=radial, 1=bands, 2=eyespot, 3=chevron
   private scalePhases!: Float32Array;
   private speedMult: number = 1;
+  private renderAccum: number = 0;
 
   build(): void {
     this.glitchAmount = 4;
@@ -50,8 +51,16 @@ export class ButterflyScaleElement extends BaseElement {
     this.shimmerSpeed = p.shimmer;
     this.patternType = p.pattern;
 
-    this.cols = Math.ceil(w / this.scaleW) + 2;
-    this.rows = Math.ceil(h / (this.scaleH * 0.7)) + 2;
+    // Cap canvas resolution to avoid huge per-frame canvas2D draws
+    const maxRes = 400;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = Math.max(64, Math.floor(w * scale));
+    this.canvas.height = Math.max(64, Math.floor(h * scale));
+    this.ctx = this.get2DContext(this.canvas);
+
+    this.cols = Math.ceil(this.canvas.width / this.scaleW) + 2;
+    this.rows = Math.ceil(this.canvas.height / (this.scaleH * 0.7)) + 2;
 
     // Pre-generate per-scale phase offsets
     const totalScales = this.cols * this.rows;
@@ -59,11 +68,6 @@ export class ButterflyScaleElement extends BaseElement {
     for (let i = 0; i < totalScales; i++) {
       this.scalePhases[i] = this.rng.float(0, Math.PI * 2);
     }
-
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.max(64, Math.floor(w));
-    this.canvas.height = Math.max(64, Math.floor(h));
-    this.ctx = this.get2DContext(this.canvas);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
@@ -80,6 +84,13 @@ export class ButterflyScaleElement extends BaseElement {
 
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;
+
+    // Throttle canvas redraws to ~15fps
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.065) return;
+    this.renderAccum = 0;
+
     const cw = this.canvas.width;
     const ch = this.canvas.height;
     const ctx = this.ctx;
@@ -197,7 +208,6 @@ export class ButterflyScaleElement extends BaseElement {
     }
 
     this.texture.needsUpdate = true;
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;
   }
 
   onAction(action: string): void {

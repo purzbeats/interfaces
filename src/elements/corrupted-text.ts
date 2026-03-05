@@ -66,10 +66,9 @@ export class CorruptedTextElement extends BaseElement {
       this.activeLines.push(this.phrases[i % this.phrases.length]);
     }
 
-    const scale = Math.min(2, window.devicePixelRatio);
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.ceil(w * scale);
-    this.canvas.height = Math.ceil(h * scale);
+    this.canvas.width = Math.min(400, Math.ceil(w));
+    this.canvas.height = Math.min(400, Math.ceil(h));
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;

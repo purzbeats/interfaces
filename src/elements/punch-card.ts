@@ -20,17 +20,20 @@ export class PunchCardElement extends BaseElement {
 
   private cols = 0;
   private rows = 0;
-  private holeMeshes: THREE.Mesh[] = [];
-  private guideLines!: THREE.LineSegments;
   private scrollOffset = 0;
   private scrollSpeed = 12;
-  private holeW = 0;
-  private holeH = 0;
-  private gridX = 0;
-  private gridY = 0;
   private cellW = 0;
   private cellH = 0;
   private topRow = 0; // tracks which logical row is at the top
+
+  private canvas!: HTMLCanvasElement;
+  private ctx!: CanvasRenderingContext2D;
+  private texture!: THREE.CanvasTexture;
+  private mesh!: THREE.Mesh;
+  private canvasW = 0;
+  private canvasH = 0;
+  private renderAccum = 0;
+  private readonly renderInterval = 1 / 15; // ~15fps throttle
 
   build(): void {
     const { x, y, w, h } = this.px;
@@ -41,46 +44,34 @@ export class PunchCardElement extends BaseElement {
     const padding = w * 0.05;
     const gridW = w - padding * 2;
     const gridH = h - padding * 2;
-    this.gridX = x + padding;
-    this.gridY = y + padding;
 
     this.cols = Math.max(4, Math.floor(gridW / this.cellW));
     this.rows = Math.max(3, Math.floor(gridH / this.cellH) + 2); // +2 for scroll buffer
 
-    this.holeW = this.cellW * 0.6;
-    this.holeH = this.cellH * 0.55;
     this.scrollSpeed = this.rng.float(6, 18);
 
-    // Column guide lines
-    const guideVerts: number[] = [];
-    for (let c = 0; c <= this.cols; c++) {
-      const gx = this.gridX + c * this.cellW;
-      guideVerts.push(gx, this.gridY, 0, gx, this.gridY + gridH, 0);
-    }
-    const guideGeo = new THREE.BufferGeometry();
-    guideGeo.setAttribute('position', new THREE.Float32BufferAttribute(guideVerts, 3));
-    this.guideLines = new THREE.LineSegments(guideGeo, new THREE.LineBasicMaterial({
-      color: this.palette.dim,
+    // Canvas size: cap at 256px, map grid proportionally
+    const scale = Math.min(1, 256 / Math.max(gridW, gridH));
+    this.canvasW = Math.max(32, Math.round(gridW * scale));
+    this.canvasH = Math.max(32, Math.round(gridH * scale));
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.canvasW;
+    this.canvas.height = this.canvasH;
+    this.ctx = this.get2DContext(this.canvas);
+
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
+
+    const geo = new THREE.PlaneGeometry(gridW, gridH);
+    this.mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      map: this.texture,
       transparent: true,
       opacity: 0,
     }));
-    this.group.add(this.guideLines);
-
-    // Create hole meshes (one per grid cell including buffer rows)
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        const geo = new THREE.PlaneGeometry(this.holeW, this.holeH);
-        const mat = new THREE.MeshBasicMaterial({
-          color: this.palette.primary,
-          transparent: true,
-          opacity: 0,
-        });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(0, 0, 1);
-        this.holeMeshes.push(mesh);
-        this.group.add(mesh);
-      }
-    }
+    this.mesh.position.set(x + padding + gridW / 2, y + padding + gridH / 2, 1);
+    this.group.add(this.mesh);
   }
 
   /** Deterministic hash for punch pattern */
@@ -94,6 +85,7 @@ export class PunchCardElement extends BaseElement {
 
   update(dt: number, _time: number): void {
     const opacity = this.applyEffects(dt);
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
 
     // Scroll
     this.scrollOffset += this.scrollSpeed * dt;
@@ -102,37 +94,73 @@ export class PunchCardElement extends BaseElement {
       this.topRow++;
     }
 
-    const { h } = this.px;
-    const visibleH = h - h * 0.1; // gridH
+    // Throttle canvas rendering to ~15fps
+    this.renderAccum += dt;
+    if (this.renderAccum < this.renderInterval) return;
+    this.renderAccum = 0;
 
-    // Guide lines
-    (this.guideLines.material as THREE.LineBasicMaterial).opacity = opacity * 0.12;
+    const { w, h } = this.px;
+    const padding = w * 0.05;
+    const gridW = w - padding * 2;
+    const gridH = h - padding * 2;
 
-    // Position holes
+    const ctx = this.ctx;
+    const cw = this.canvasW;
+    const ch = this.canvasH;
+
+    // Clear
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Draw column guide lines
+    const dimR = Math.round(this.palette.dim.r * 255);
+    const dimG = Math.round(this.palette.dim.g * 255);
+    const dimB = Math.round(this.palette.dim.b * 255);
+    ctx.strokeStyle = `rgba(${dimR},${dimG},${dimB},${opacity * 0.12})`;
+    ctx.lineWidth = 1;
+    for (let c = 0; c <= this.cols; c++) {
+      const gx = (c * this.cellW / gridW) * cw;
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, ch);
+      ctx.stroke();
+    }
+
+    // Scale factors from grid space to canvas space
+    const scaleX = cw / gridW;
+    const scaleY = ch / gridH;
+    const holeW = this.cellW * 0.6 * scaleX;
+    const holeH = this.cellH * 0.55 * scaleY;
+
+    const primaryR = Math.round(this.palette.primary.r * 255);
+    const primaryG = Math.round(this.palette.primary.g * 255);
+    const primaryB = Math.round(this.palette.primary.b * 255);
+
+    // Draw holes
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
-        const idx = r * this.cols + c;
-        const mesh = this.holeMeshes[idx];
-        const mat = mesh.material as THREE.MeshBasicMaterial;
-
         const logicalRow = this.topRow + r;
-        const screenY = this.gridY + visibleH - (r * this.cellH - this.scrollOffset) - this.cellH / 2;
-        const screenX = this.gridX + c * this.cellW + this.cellW / 2;
+        // screenY in grid-local coords (0..gridH), with 0 at top of grid
+        const screenYLocal = gridH - (r * this.cellH - this.scrollOffset) - this.cellH / 2;
+        const screenXLocal = c * this.cellW + this.cellW / 2;
 
-        mesh.position.set(screenX, screenY, 1);
+        // Check in-bounds in grid-local coords
+        if (screenYLocal < 0 || screenYLocal > gridH) continue;
 
         const punched = this.isPunched(logicalRow, c);
+        const cellOpacity = opacity * (punched ? 0.7 : 0.08);
 
-        // Hide holes that are out of bounds
-        const inBounds = screenY >= this.gridY && screenY <= this.gridY + visibleH;
-
-        if (inBounds) {
-          mat.opacity = opacity * (punched ? 0.7 : 0.08);
-          mat.color.copy(punched ? this.palette.primary : this.palette.dim);
+        if (punched) {
+          ctx.fillStyle = `rgba(${primaryR},${primaryG},${primaryB},${cellOpacity})`;
         } else {
-          mat.opacity = 0;
+          ctx.fillStyle = `rgba(${dimR},${dimG},${dimB},${cellOpacity})`;
         }
+
+        const cx = screenXLocal * scaleX - holeW / 2;
+        const cy = screenYLocal * scaleY - holeH / 2;
+        ctx.fillRect(cx, cy, holeW, holeH);
       }
     }
+
+    this.texture.needsUpdate = true;
   }
 }

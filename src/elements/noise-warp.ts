@@ -38,6 +38,7 @@ export class NoiseWarpElement extends BaseElement {
   private timeSpeed = 0.3;
   private octaves = 3;
   private intensityLevel = 0;
+  private renderAccum = 0;
 
   // Permutation table for noise
   private perm!: Uint8Array;
@@ -59,8 +60,10 @@ export class NoiseWarpElement extends BaseElement {
     this.timeSpeed = p.timeSpeed;
     this.octaves = p.octaves;
 
-    this.cw = Math.min(Math.round(w / 2), 160);
-    this.ch = Math.min(Math.round(h / 2), 160);
+    const maxRes = 120;
+    const resScale = Math.min(1, maxRes / Math.max(w, h));
+    this.cw = Math.max(32, Math.floor(w * resScale));
+    this.ch = Math.max(32, Math.floor(h * resScale));
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.cw;
     this.canvas.height = this.ch;
@@ -209,11 +212,15 @@ export class NoiseWarpElement extends BaseElement {
 
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
-    const animTime = time * this.timeSpeed;
+    this.mat.opacity = opacity;
 
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.083) return;
+    this.renderAccum = 0;
+
+    const animTime = time * this.timeSpeed;
     this.drawWarp(animTime);
     this.texture.needsUpdate = true;
-    this.mat.opacity = opacity;
   }
 
   onAction(action: string): void {

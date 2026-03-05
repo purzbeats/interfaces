@@ -42,6 +42,7 @@ export class TermiteBuildElement extends BaseElement {
   private stepsPerFrame: number = 0;
   private agentSpeed: number = 0;
   private initialDirtRatio: number = 0;
+  private renderAccum = 0;
 
   build(): void {
     this.glitchAmount = 4;
@@ -49,10 +50,10 @@ export class TermiteBuildElement extends BaseElement {
     const variant = this.rng.int(0, 3);
 
     const presets = [
-      { agents: 30, gridScale: 2, steps: 5,  dirtRatio: 0.25, speed: 1 },
-      { agents: 60, gridScale: 2, steps: 8,  dirtRatio: 0.3,  speed: 1.2 },
-      { agents: 15, gridScale: 3, steps: 3,  dirtRatio: 0.2,  speed: 0.8 },
-      { agents: 45, gridScale: 2, steps: 10, dirtRatio: 0.35, speed: 1.5 },
+      { agents: 30, gridScale: 2, steps: 3,  dirtRatio: 0.25, speed: 1 },
+      { agents: 60, gridScale: 2, steps: 3,  dirtRatio: 0.3,  speed: 1.2 },
+      { agents: 15, gridScale: 3, steps: 2,  dirtRatio: 0.2,  speed: 0.8 },
+      { agents: 45, gridScale: 2, steps: 3, dirtRatio: 0.35, speed: 1.5 },
     ];
     const p = presets[variant];
 
@@ -67,8 +68,8 @@ export class TermiteBuildElement extends BaseElement {
     this.initTermites(p.agents);
 
     // Canvas
-    const cw = Math.max(64, Math.min(512, Math.round(w)));
-    const ch = Math.max(64, Math.min(512, Math.round(h)));
+    const cw = Math.max(64, Math.min(256, Math.round(w)));
+    const ch = Math.max(64, Math.min(256, Math.round(h)));
     this.canvas = document.createElement('canvas');
     this.canvas.width = cw;
     this.canvas.height = ch;
@@ -193,13 +194,18 @@ export class TermiteBuildElement extends BaseElement {
   update(dt: number, _time: number): void {
     const opacity = this.applyEffects(dt);
 
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
+
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.066) return;
+    this.renderAccum = 0;
+
     for (let i = 0; i < this.stepsPerFrame; i++) {
       this.stepSimulation();
     }
 
     this.renderCanvas();
     this.texture.needsUpdate = true;
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
   }
 
   onAction(action: string): void {
@@ -222,10 +228,10 @@ export class TermiteBuildElement extends BaseElement {
   onIntensity(level: number): void {
     super.onIntensity(level);
     if (level === 0) {
-      this.stepsPerFrame = 5;
+      this.stepsPerFrame = 3;
       return;
     }
-    this.stepsPerFrame = 5 + level * 3;
+    this.stepsPerFrame = Math.min(3 + level, 6);
     if (level >= 5) {
       // All termites drop what they carry
       for (const t of this.termites) {

@@ -92,8 +92,8 @@ export class SandPileElement extends BaseElement {
       }
     }
 
-    // Topple until stable (max iterations to prevent freeze)
-    for (let iter = 0; iter < 100; iter++) {
+    // Topple until stable (capped iterations — settles gradually across frames)
+    for (let iter = 0; iter < 25; iter++) {
       if (!this.topple()) break;
     }
 

@@ -42,6 +42,7 @@ export class DijkstraWaveElement extends BaseElement {
   private resetTimer: number = 0;
   private resetInterval: number = 8;
   private wallDensity: number = 0.2;
+  private renderAccum = 0;
 
   build(): void {
     this.glitchAmount = 4;
@@ -64,8 +65,8 @@ export class DijkstraWaveElement extends BaseElement {
 
     this.initGrid();
 
-    const cw = Math.max(64, Math.min(512, Math.round(w)));
-    const ch = Math.max(64, Math.min(512, Math.round(h)));
+    const cw = Math.max(64, Math.min(200, Math.round(w)));
+    const ch = Math.max(64, Math.min(200, Math.round(h)));
     this.canvas = document.createElement('canvas');
     this.canvas.width = cw;
     this.canvas.height = ch;
@@ -249,9 +250,14 @@ export class DijkstraWaveElement extends BaseElement {
       }
     }
 
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
+
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.066) return;
+    this.renderAccum = 0;
+
     this.renderCanvas();
     this.texture.needsUpdate = true;
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
   }
 
   onAction(action: string): void {

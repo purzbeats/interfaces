@@ -31,19 +31,18 @@ export class ScrollingNumbersElement extends BaseElement {
     const p = presets[variant];
 
     const { x, y, w, h } = this.px;
-    const charW = p.cw;
-    const charH = p.ch;
-    this.columns = Math.max(2, Math.floor(w / charW));
-    this.rows = Math.max(2, Math.floor(h / charH));
+    this.columns = Math.min(30, Math.max(2, Math.floor(w / p.cw)));
+    this.rows = Math.min(20, Math.max(2, Math.floor(h / p.ch)));
     this.isHex = this.rng.chance(p.hexChance);
 
+    // Size canvas to actual element dimensions so text renders at native resolution
     this.canvas = document.createElement('canvas');
-    this.canvas.width = this.columns * charW;
-    this.canvas.height = this.rows * charH;
+    this.canvas.width = Math.ceil(w);
+    this.canvas.height = Math.ceil(h);
     this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.minFilter = THREE.NearestFilter;
-    this.texture.magFilter = THREE.NearestFilter;
+    this.texture.minFilter = THREE.LinearFilter;
+    this.texture.magFilter = THREE.LinearFilter;
 
     for (let c = 0; c < this.columns; c++) {
       this.scrollSpeeds.push(this.rng.float(p.speedMin, p.speedMax));

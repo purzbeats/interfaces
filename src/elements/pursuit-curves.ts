@@ -35,10 +35,10 @@ export class PursuitCurvesElement extends BaseElement {
 
     const variant = this.rng.int(0, 3);
     const presets = [
-      { agents: 4, speed: 60, trail: 500 },
-      { agents: 5, speed: 50, trail: 600 },
-      { agents: 3, speed: 80, trail: 400 },
-      { agents: 6, speed: 40, trail: 700 },
+      { agents: 4, speed: 60, trail: 300 },
+      { agents: 5, speed: 50, trail: 300 },
+      { agents: 3, speed: 80, trail: 300 },
+      { agents: 6, speed: 40, trail: 300 },
     ];
     const pr = presets[variant];
     this.numAgents = pr.agents;

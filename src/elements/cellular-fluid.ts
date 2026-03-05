@@ -44,16 +44,17 @@ export class CellularFluidElement extends BaseElement {
 
   private omega: number = 1.5; // relaxation parameter (1/tau)
   private inletSpeed: number = 0.08;
-  private stepsPerFrame: number = 3;
+  private stepsPerFrame: number = 2;
   private intensityLevel: number = 0;
+  private renderAccum: number = 0;
 
   build(): void {
     const variant = this.rng.int(0, 3);
     const presets = [
-      { omega: 1.5, speed: 0.08, steps: 3, obstType: 0, resDiv: 4 },   // Circle obstacle
-      { omega: 1.7, speed: 0.1, steps: 4, obstType: 1, resDiv: 4 },    // Multi obstacles
-      { omega: 1.3, speed: 0.06, steps: 2, obstType: 2, resDiv: 3 },   // Plate obstacle
-      { omega: 1.6, speed: 0.12, steps: 5, obstType: 3, resDiv: 5 },   // Channel flow
+      { omega: 1.5, speed: 0.08, steps: 2, obstType: 0, resDiv: 6 },   // Circle obstacle
+      { omega: 1.7, speed: 0.1, steps: 2, obstType: 1, resDiv: 6 },    // Multi obstacles
+      { omega: 1.3, speed: 0.06, steps: 1, obstType: 2, resDiv: 5 },   // Plate obstacle
+      { omega: 1.6, speed: 0.12, steps: 2, obstType: 3, resDiv: 7 },   // Channel flow
     ];
     const p = presets[variant];
 
@@ -252,12 +253,15 @@ export class CellularFluidElement extends BaseElement {
     const opacity = this.applyEffects(dt);
     this.material.opacity = opacity;
 
-    const steps = this.stepsPerFrame + this.intensityLevel;
+    const steps = Math.min(2, this.stepsPerFrame + this.intensityLevel);
     for (let s = 0; s < steps; s++) {
       this.step();
     }
 
-    // Render velocity magnitude to canvas
+    // Render velocity magnitude to canvas (throttled to ~12fps)
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.083) return;
+    this.renderAccum = 0;
     this.renderToCanvas();
     this.texture.needsUpdate = true;
   }

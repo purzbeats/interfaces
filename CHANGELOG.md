@@ -1,5 +1,26 @@
 # Changelog
 
+## v5.1.0
+
+Performance optimization pass across 28 elements, showcase perf overlay, and bug fixes.
+
+### Added
+- **Showcase performance overlay** (D key in fullscreen multi-view): FPS counter, update/render timing, budget headroom, and sparkline frame-time chart
+- Engine debug overlay now correctly hidden during showcase and gallery modes
+
+### Fixed
+- **poisson-disk**: crash when loading individually — `seedFirstPoint()` was called before Points mesh existed
+- **scrolling-numbers**: canvas now renders at native element resolution instead of tiny grid stretched to fill, eliminating blurry/pixelated text
+
+### Performance
+- **Canvas resolution caps**: hex-automata (full pixel→200px), corrupted-text (3840px→400px), dijkstra-wave (512→200px), termite-build (512→256px), cloud-cell (400→160px), hexagonal-life (w×0.8→200px), distance-field (256→160px), quasi-crystal (w×0.5→160px), noise-warp (160→120px), pressure-wave (w×0.5→160px), voronoi-shatter (200→150px), interference-rings (220→150px), lyapunov-fractal (200→140px), newton-fractal (200→140px)
+- **Render throttles added**: hex-automata, quasi-crystal, noise-warp, pressure-wave, distance-field, cloud-cell, termite-build, pixel-fire, dijkstra-wave, cellular-fluid (~10–20fps canvas redraws)
+- **Mesh batching**: punch-card (144 meshes→1 canvas), pixel-sort (768 meshes→1 canvas), hex-grid (per-cell geometries→1 canvas), iso-blocks (removed per-frame computeBoundingSphere)
+- **Simulation cost reduction**: slime-mold (reuse diffusion buffer, cap agents at 6000), cellular-fluid (fewer LBM steps, coarser grid), sand-pile (topple iterations 100→25), foam-relax (voronoi throttled to 15fps)
+- **Other**: buddhabrot/burning-ship/butterfly-scale (reduced iterations, canvas caps, throttles), pursuit-curves (trail points 700→300), scrolling-numbers (capped cols/rows), pendulum-grid (batched geometry)
+
+---
+
 ## v5.0.0
 
 128 more visual elements (384 total) across four new categories.

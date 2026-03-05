@@ -31,6 +31,7 @@ export class PressureWaveElement extends BaseElement {
   private speedMult: number = 1;
   private canvasW: number = 0;
   private canvasH: number = 0;
+  private renderAccum: number = 0;
 
   build(): void {
     this.glitchAmount = 4;
@@ -49,7 +50,8 @@ export class PressureWaveElement extends BaseElement {
     this.sourceCount = p.sources;
 
     // Canvas at reduced resolution for performance
-    const scale = 0.5;
+    const maxRes = 160;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
     this.canvasW = Math.max(32, Math.floor(w * scale));
     this.canvasH = Math.max(32, Math.floor(h * scale));
     this.canvas = document.createElement('canvas');
@@ -110,6 +112,12 @@ export class PressureWaveElement extends BaseElement {
 
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
+
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.066) return;
+    this.renderAccum = 0;
+
     const t = time * this.speedMult;
 
     const imgData = this.ctx.createImageData(this.canvasW, this.canvasH);
@@ -154,8 +162,6 @@ export class PressureWaveElement extends BaseElement {
 
     this.ctx.putImageData(imgData, 0, 0);
     this.texture.needsUpdate = true;
-
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
   }
 
   onAction(action: string): void {

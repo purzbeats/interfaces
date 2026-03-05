@@ -34,6 +34,7 @@ export class QuasiCrystalElement extends BaseElement {
   private cw: number = 0;
   private ch: number = 0;
   private intensityLevel: number = 0;
+  private renderAccum: number = 0;
 
   build(): void {
     const variant = this.rng.int(0, 3);
@@ -57,10 +58,10 @@ export class QuasiCrystalElement extends BaseElement {
     }
 
     const { x, y, w, h } = this.px;
-    this.cw = Math.floor(w * this.resScale);
-    this.ch = Math.floor(h * this.resScale);
-    this.cw = Math.max(this.cw, 32);
-    this.ch = Math.max(this.ch, 32);
+    const maxRes = 160;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.cw = Math.max(32, Math.floor(w * scale));
+    this.ch = Math.max(32, Math.floor(h * scale));
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.cw;
@@ -86,6 +87,10 @@ export class QuasiCrystalElement extends BaseElement {
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
     this.material.opacity = opacity;
+
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.066) return;
+    this.renderAccum = 0;
 
     const { cw, ch } = this;
     const ctx = this.ctx;

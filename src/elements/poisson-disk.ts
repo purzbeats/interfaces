@@ -68,7 +68,6 @@ export class PoissonDiskElement extends BaseElement {
     this.maxPoints = Math.min(this.maxPoints, 800);
 
     this.initGrid();
-    this.seedFirstPoint();
 
     const acceptedPos = new Float32Array(this.maxPoints * 3);
     const acceptedGeo = new THREE.BufferGeometry();
@@ -97,6 +96,9 @@ export class PoissonDiskElement extends BaseElement {
       sizeAttenuation: false,
     }));
     this.group.add(this.candidatePoints);
+
+    // Seed after Points meshes exist (addPoint updates acceptedPoints geometry)
+    this.seedFirstPoint();
   }
 
   private initGrid(): void {

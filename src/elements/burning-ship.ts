@@ -51,9 +51,9 @@ export class BurningShipElement extends BaseElement {
 
     const presets = [
       { maxIter: 80,  centerX: -1.76,  centerY: -0.028, zoomBase: 0.02,  zoomSpeed: 0.08, colorScheme: 0 },
-      { maxIter: 100, centerX: -1.772, centerY: -0.042, zoomBase: 0.005, zoomSpeed: 0.06, colorScheme: 1 },
+      { maxIter: 80,  centerX: -1.772, centerY: -0.042, zoomBase: 0.005, zoomSpeed: 0.06, colorScheme: 1 },
       { maxIter: 60,  centerX: -0.5,   centerY: -0.5,   zoomBase: 2.0,   zoomSpeed: 0.10, colorScheme: 2 },
-      { maxIter: 120, centerX: -1.755, centerY: -0.022, zoomBase: 0.01,  zoomSpeed: 0.05, colorScheme: 3 },
+      { maxIter: 100, centerX: -1.755, centerY: -0.022, zoomBase: 0.01,  zoomSpeed: 0.05, colorScheme: 3 },
     ];
     const p = presets[variant];
     this.maxIter = p.maxIter;
@@ -65,9 +65,9 @@ export class BurningShipElement extends BaseElement {
     this.zoomSpeed = p.zoomSpeed;
     this.colorScheme = p.colorScheme;
 
-    const maxRes = 200;
+    const maxRes = 160;
     const aspect = w / h;
-    this.cw = Math.min(maxRes, Math.ceil(w * 0.5));
+    this.cw = Math.min(maxRes, Math.ceil(w * 0.4));
     this.ch = Math.max(1, Math.ceil(this.cw / aspect));
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.cw;

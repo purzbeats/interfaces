@@ -19,7 +19,8 @@ export class PendulumGridElement extends BaseElement {
 
   private strings!: THREE.LineSegments;
   private topBar!: THREE.LineSegments;
-  private bobs!: THREE.Mesh[];
+  private bobPoints!: THREE.Points;
+  private bobMat!: THREE.PointsMaterial;
 
   private pendulumCount: number = 0;
   private cols: number = 0;
@@ -106,26 +107,25 @@ export class PendulumGridElement extends BaseElement {
     }));
     this.group.add(this.strings);
 
-    // Bobs (small circle meshes)
-    this.bobs = [];
-    const bobSegs = 8;
-    for (let i = 0; i < this.pendulumCount; i++) {
-      const geo = new THREE.CircleGeometry(this.bobRadius, bobSegs);
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-        color: this.palette.secondary,
-        transparent: true,
-        opacity: 0,
-      }));
-      mesh.position.z = 1;
-      this.bobs.push(mesh);
-      this.group.add(mesh);
-    }
+    // Bobs (single Points mesh)
+    const bobGeo = new THREE.BufferGeometry();
+    bobGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.pendulumCount * 3), 3));
+    this.bobMat = new THREE.PointsMaterial({
+      color: this.palette.secondary,
+      transparent: true,
+      opacity: 0,
+      size: Math.max(4, this.bobRadius * 2),
+      sizeAttenuation: false,
+    });
+    this.bobPoints = new THREE.Points(bobGeo, this.bobMat);
+    this.group.add(this.bobPoints);
   }
 
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
 
     const sPos = this.strings.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const bPos = this.bobPoints.geometry.getAttribute('position') as THREE.BufferAttribute;
 
     for (let i = 0; i < this.pendulumCount; i++) {
       const angle = Math.sin(time * this.frequencies[i] + this.phases[i]) * this.maxAngle;
@@ -137,13 +137,14 @@ export class PendulumGridElement extends BaseElement {
       sPos.setXYZ(i * 2 + 1, bobX, bobY, 0);
 
       // Bob position
-      this.bobs[i].position.set(bobX, bobY, 1);
-      (this.bobs[i].material as THREE.MeshBasicMaterial).opacity = opacity * 0.75;
+      bPos.setXYZ(i, bobX, bobY, 1);
     }
 
     sPos.needsUpdate = true;
+    bPos.needsUpdate = true;
 
     (this.topBar.material as THREE.LineBasicMaterial).opacity = opacity * 0.4;
     (this.strings.material as THREE.LineBasicMaterial).opacity = opacity * 0.65;
+    this.bobMat.opacity = opacity * 0.75;
   }
 }

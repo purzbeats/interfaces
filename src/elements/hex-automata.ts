@@ -44,6 +44,8 @@ export class HexAutomataElement extends BaseElement {
   private maxGenerations = 0;
   private intensityLevel = 0;
   private seedMode: 'single' | 'multi' | 'random' = 'single';
+  private renderAccum = 0;
+  private canvasScale = 1;
 
   build(): void {
     this.glitchAmount = 4;
@@ -80,8 +82,11 @@ export class HexAutomataElement extends BaseElement {
     this.seedGrid();
 
     this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.ceil(w);
-    this.canvas.height = Math.ceil(h);
+    const maxRes = 200;
+    this.canvasScale = Math.min(1, maxRes / Math.max(w, h));
+    const canvasScale = this.canvasScale;
+    this.canvas.width = Math.ceil(w * canvasScale);
+    this.canvas.height = Math.ceil(h * canvasScale);
     this.ctx = this.get2DContext(this.canvas);
 
     this.texture = new THREE.CanvasTexture(this.canvas);
@@ -190,7 +195,7 @@ export class HexAutomataElement extends BaseElement {
   }
 
   private renderHexGrid(): void {
-    const s = this.hexSize;
+    const s = this.hexSize * this.canvasScale;
     const pr = this.palette.primary;
     const sr = this.palette.secondary;
     const dm = this.palette.dim;
@@ -267,9 +272,12 @@ export class HexAutomataElement extends BaseElement {
       }
     }
 
-    this.renderHexGrid();
     this.meshMat.opacity = opacity;
     this.borderMat.opacity = opacity * 0.2;
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.066) return;
+    this.renderAccum = 0;
+    this.renderHexGrid();
   }
 
   onAction(action: string): void {

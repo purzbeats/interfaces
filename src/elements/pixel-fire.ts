@@ -41,6 +41,7 @@ export class PixelFireElement extends BaseElement {
 
   // RNG state for fire (need fast, can use simple LCG since visual only)
   private rngState = 0;
+  private renderAccum = 0;
 
   build(): void {
     this.glitchAmount = 4;
@@ -147,6 +148,13 @@ export class PixelFireElement extends BaseElement {
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
 
+    this.meshMat.opacity = opacity;
+    this.borderMat.opacity = opacity * 0.2;
+
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.05) return;
+    this.renderAccum = 0;
+
     // Wind effect
     const wind = Math.round(Math.sin(time * this.windFreq) * this.windBias * this.spreadW);
 
@@ -181,9 +189,6 @@ export class PixelFireElement extends BaseElement {
     }
     this.ctx.putImageData(imgData, 0, 0);
     this.texture.needsUpdate = true;
-
-    this.meshMat.opacity = opacity;
-    this.borderMat.opacity = opacity * 0.2;
   }
 
   onAction(action: string): void {

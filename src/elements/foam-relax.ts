@@ -33,6 +33,10 @@ export class FoamRelaxElement extends BaseElement {
   private relaxInterval: number = 0;
   private relaxStrength: number = 0;
 
+  // Voronoi computation throttle
+  private simAccum: number = 0;
+  private voronoiDirty: boolean = true;
+
   // Grid-based Voronoi approximation
   private gridW: number = 0;
   private gridH: number = 0;
@@ -251,11 +255,17 @@ export class FoamRelaxElement extends BaseElement {
     this.relaxTimer += dt;
     if (this.relaxTimer >= this.relaxInterval) {
       this.relaxTimer -= this.relaxInterval;
-      this.computeVoronoi();
       this.lloydRelax();
+      this.voronoiDirty = true;
     }
 
-    this.computeVoronoi();
+    // Throttle Voronoi recomputation to ~15fps
+    this.simAccum += dt;
+    if (this.voronoiDirty || this.simAccum >= 0.067) {
+      this.simAccum = 0;
+      this.voronoiDirty = false;
+      this.computeVoronoi();
+    }
     const vi = this.renderEdges();
     this.lineMesh.geometry.setDrawRange(0, vi);
 

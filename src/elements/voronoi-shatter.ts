@@ -42,7 +42,7 @@ export class VoronoiShatterElement extends BaseElement {
 
     const { x, y, w, h } = this.px;
     // Render at reduced resolution for performance
-    const scale = Math.max(1, Math.floor(Math.min(w, h) / 200));
+    const scale = Math.max(1, Math.floor(Math.min(w, h) / 150));
     this.cw = Math.ceil(w / scale);
     this.ch = Math.ceil(h / scale);
 
@@ -94,7 +94,7 @@ export class VoronoiShatterElement extends BaseElement {
 
     // Throttled rendering
     this.renderAccum += dt;
-    if (this.renderAccum < 0.05) {
+    if (this.renderAccum < 0.1) {
       (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
       return;
     }

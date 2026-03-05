@@ -107,6 +107,14 @@ export class ShowcaseMode {
   private swipeHandler: TouchSwipeHandler | null = null;
   private fullscreen: boolean = false;
 
+  // Performance debug overlay
+  private perfOverlay: HTMLDivElement | null = null;
+  private perfVisible: boolean = false;
+  private frameTimes: number[] = [];
+  private lastFrameTime: number = 0;
+  private updateDurations: number[] = [];
+  private renderDurations: number[] = [];
+
   constructor(ctx: RendererContext, pipeline: PostFXPipeline, config: Config, onExit: () => void) {
     this.ctx = ctx;
     this.pipeline = pipeline;
@@ -265,6 +273,9 @@ export class ShowcaseMode {
     if (this.fullscreen) {
       this.setFullscreen(false);
     }
+    this.perfOverlay?.remove();
+    this.perfOverlay = null;
+    this.perfVisible = false;
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('wheel', this.wheelHandler);
@@ -289,6 +300,9 @@ export class ShowcaseMode {
     if (this.fullscreen) {
       this.setFullscreen(false);
     }
+    this.perfOverlay?.remove();
+    this.perfOverlay = null;
+    this.perfVisible = false;
     this.overlay.style.display = 'none';
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('wheel', this.wheelHandler);
@@ -338,6 +352,11 @@ export class ShowcaseMode {
         e.preventDefault();
         this.currentIndex = (this.currentIndex - 1 + this.types.length) % this.types.length;
         this.spawnElement();
+        break;
+      case 'd':
+      case 'D':
+        e.preventDefault();
+        this.togglePerfOverlay();
         break;
       case 'f':
       case 'F':
@@ -397,6 +416,11 @@ export class ShowcaseMode {
   private spawnElement(): void {
     this.clearElement();
     this.elapsed = 0;
+    // Reset perf stats for fresh element
+    this.frameTimes = [];
+    this.updateDurations = [];
+    this.renderDurations = [];
+    this.lastFrameTime = 0;
 
     const type = this.types[this.currentIndex];
     this.palette = getPalette(this.config.palette);
@@ -483,18 +507,137 @@ export class ShowcaseMode {
     if (!this.active) return;
     if (!this.element && this.elements.length === 0) return;
     this.elapsed += dt;
+
+    const now = performance.now();
+
+    // Track frame interval
+    if (this.lastFrameTime > 0) {
+      this.frameTimes.push(now - this.lastFrameTime);
+      if (this.frameTimes.length > 120) this.frameTimes.shift();
+    }
+    this.lastFrameTime = now;
+
+    // Measure element update time
+    const updateStart = performance.now();
     this.element?.tick(dt, this.elapsed);
     for (const el of this.elements) el.tick(dt, this.elapsed);
+    const updateEnd = performance.now();
+    this.updateDurations.push(updateEnd - updateStart);
+    if (this.updateDurations.length > 120) this.updateDurations.shift();
+
     this.pipeline.update(this.elapsed, this.config);
+
+    if (this.perfVisible) this.refreshPerfOverlay();
   }
 
   render(): void {
     if (!this.active) return;
+    const renderStart = performance.now();
     this.pipeline.composer.render();
+    const renderEnd = performance.now();
+    this.renderDurations.push(renderEnd - renderStart);
+    if (this.renderDurations.length > 120) this.renderDurations.shift();
   }
 
   private isMobile(): boolean {
     return window.matchMedia('(max-width: 767px) and (pointer: coarse)').matches;
+  }
+
+  private togglePerfOverlay(): void {
+    this.perfVisible = !this.perfVisible;
+    if (this.perfVisible) {
+      this.frameTimes = [];
+      this.updateDurations = [];
+      this.renderDurations = [];
+      this.lastFrameTime = 0;
+      this.createPerfOverlay();
+    } else {
+      this.perfOverlay?.remove();
+      this.perfOverlay = null;
+    }
+  }
+
+  private createPerfOverlay(): void {
+    this.perfOverlay?.remove();
+    const el = document.createElement('div');
+    el.id = 'perf-overlay';
+    Object.assign(el.style, {
+      position: 'fixed',
+      top: '8px',
+      right: '8px',
+      background: 'rgba(0,0,0,0.85)',
+      border: '1px solid rgba(255,255,255,0.2)',
+      borderRadius: '4px',
+      padding: '8px 12px',
+      color: '#fff',
+      fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+      fontSize: '11px',
+      lineHeight: '1.6',
+      zIndex: '9999',
+      pointerEvents: 'none',
+      minWidth: '200px',
+    });
+    document.body.appendChild(el);
+    this.perfOverlay = el;
+  }
+
+  private refreshPerfOverlay(): void {
+    if (!this.perfOverlay) return;
+
+    const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+    const max = (arr: number[]) => arr.length > 0 ? Math.max(...arr) : 0;
+    const pct = (arr: number[], p: number) => {
+      if (arr.length === 0) return 0;
+      const sorted = [...arr].sort((a, b) => a - b);
+      return sorted[Math.min(Math.floor(sorted.length * p), sorted.length - 1)];
+    };
+
+    const avgFrame = avg(this.frameTimes);
+    const fps = avgFrame > 0 ? 1000 / avgFrame : 0;
+    const avgUpdate = avg(this.updateDurations);
+    const maxUpdate = max(this.updateDurations);
+    const p99Update = pct(this.updateDurations, 0.99);
+    const avgRender = avg(this.renderDurations);
+    const maxRender = max(this.renderDurations);
+
+    const typeName = this.types[this.currentIndex];
+    const total = avgUpdate + avgRender;
+    const budget = 16.67; // 60fps
+    const headroom = budget - total;
+
+    // Color code based on headroom
+    const fpsColor = fps >= 55 ? '#0f0' : fps >= 30 ? '#ff0' : '#f44';
+    const updateColor = avgUpdate < 4 ? '#0f0' : avgUpdate < 8 ? '#ff0' : '#f44';
+    const renderColor = avgRender < 4 ? '#0f0' : avgRender < 8 ? '#ff0' : '#f44';
+    const headroomColor = headroom > 4 ? '#0f0' : headroom > 0 ? '#ff0' : '#f44';
+
+    const instanceCount = this.fullscreen ? this.elements.length : (this.element ? 1 : 0);
+
+    // Build mini bar chart of recent frame times (last 60 frames)
+    const recent = this.frameTimes.slice(-60);
+    let sparkline = '';
+    if (recent.length > 0) {
+      const barMax = Math.max(33, max(recent)); // 33ms = 30fps ceiling
+      sparkline = '<div style="display:flex;align-items:flex-end;height:20px;gap:1px;margin:4px 0 2px;">';
+      for (const ft of recent) {
+        const h = Math.max(1, (ft / barMax) * 20);
+        const c = ft < 16.67 ? '#0f0' : ft < 33.3 ? '#ff0' : '#f44';
+        sparkline += `<div style="width:2px;height:${h}px;background:${c};"></div>`;
+      }
+      sparkline += '</div>';
+    }
+
+    this.perfOverlay.innerHTML = `
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;opacity:0.5;margin-bottom:4px;">
+        PERF &middot; ${typeName} &middot; ${instanceCount} instance${instanceCount !== 1 ? 's' : ''}
+      </div>
+      <div style="color:${fpsColor}"><b>${fps.toFixed(1)} FPS</b> <span style="opacity:0.5">(${avgFrame.toFixed(1)}ms/frame)</span></div>
+      <div style="color:${updateColor}">Update: ${avgUpdate.toFixed(2)}ms avg, ${maxUpdate.toFixed(1)}ms max, ${p99Update.toFixed(1)}ms p99</div>
+      <div style="color:${renderColor}">Render: ${avgRender.toFixed(2)}ms avg, ${maxRender.toFixed(1)}ms max</div>
+      <div style="color:${headroomColor}">Budget: ${total.toFixed(1)}ms / ${budget.toFixed(1)}ms (${headroom > 0 ? '+' : ''}${headroom.toFixed(1)}ms)</div>
+      ${sparkline}
+      <div style="font-size:9px;opacity:0.35;margin-top:2px;">D toggle &middot; green &lt;4ms &middot; yellow &lt;8ms &middot; red &gt;8ms</div>
+    `;
   }
 
   private setFullscreen(on: boolean): void {
@@ -511,6 +654,8 @@ export class ShowcaseMode {
     this.swipeHandler?.destroy();
     this.swipeHandler = null;
     this.clearElement();
+    this.perfOverlay?.remove();
+    this.perfOverlay = null;
     this.overlay.remove();
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('wheel', this.wheelHandler);

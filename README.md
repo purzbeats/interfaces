@@ -26,7 +26,7 @@ npm run preview
 | Backspace | Restart current seed |
 | R | Regenerate with new seed |
 | L | Toggle continuous loop mode |
-| D | Debug overlay (region outlines, IDs, element types) |
+| D | Debug overlay (region outlines in compositor; performance stats in showcase) |
 | G | Showcase mode (cycle through all elements) |
 | F | Toggle fullscreen / multi-aspect proof sheet (in showcase) |
 | B | Gallery mode (paginated grid of live previews) |

@@ -1422,8 +1422,10 @@ export class Engine {
           showToast(this.timeline.loop ? 'Loop: on' : 'Loop: off');
           break;
         case 'd':
-          this.toggleDebug();
-          showToast(this.debugVisible ? 'Debug: on' : 'Debug: off');
+          if (!this.showcase.isActive && !this.gallery.isActive) {
+            this.toggleDebug();
+            showToast(this.debugVisible ? 'Debug: on' : 'Debug: off');
+          }
           break;
         case 'g':
           if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive) {

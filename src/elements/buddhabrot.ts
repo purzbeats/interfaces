@@ -46,10 +46,10 @@ export class BuddhabrotElement extends BaseElement {
     const { x, y, w, h } = this.px;
 
     const presets = [
-      { maxIter: 100,  samples: 500,  rMin: -2,   rMax: 1,   iMin: -1.2, iMax: 1.2, interval: 0.12 },
-      { maxIter: 200,  samples: 300,  rMin: -1.8, rMax: 0.8, iMin: -1.0, iMax: 1.0, interval: 0.15 },
-      { maxIter: 50,   samples: 800,  rMin: -2.2, rMax: 1.2, iMin: -1.4, iMax: 1.4, interval: 0.10 },
-      { maxIter: 150,  samples: 400,  rMin: -1.5, rMax: 0.5, iMin: -0.8, iMax: 0.8, interval: 0.18 },
+      { maxIter: 80,   samples: 300,  rMin: -2,   rMax: 1,   iMin: -1.2, iMax: 1.2, interval: 0.12 },
+      { maxIter: 120,  samples: 200,  rMin: -1.8, rMax: 0.8, iMin: -1.0, iMax: 1.0, interval: 0.15 },
+      { maxIter: 50,   samples: 500,  rMin: -2.2, rMax: 1.2, iMin: -1.4, iMax: 1.4, interval: 0.10 },
+      { maxIter: 100,  samples: 250,  rMin: -1.5, rMax: 0.5, iMin: -0.8, iMax: 0.8, interval: 0.18 },
     ];
     const p = presets[variant];
 
@@ -195,10 +195,10 @@ export class BuddhabrotElement extends BaseElement {
   onIntensity(level: number): void {
     super.onIntensity(level);
     if (level === 0) {
-      this.samplesPerFrame = 500;
+      this.samplesPerFrame = 300;
       return;
     }
     // More samples at higher intensity for faster convergence
-    this.samplesPerFrame = 500 + level * 200;
+    this.samplesPerFrame = 300 + level * 100;
   }
 }

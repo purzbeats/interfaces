@@ -21,6 +21,7 @@ export class SlimeMoldElement extends BaseElement {
   private trailW = 0;
   private trailH = 0;
   private trailMap!: Float32Array;
+  private diffusionBuf!: Float32Array;
 
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
@@ -51,13 +52,14 @@ export class SlimeMoldElement extends BaseElement {
     this.trailW = Math.round(p.res * Math.max(1, aspect));
     this.trailH = Math.round(p.res / Math.max(1, 1 / aspect));
     this.trailMap = new Float32Array(this.trailW * this.trailH);
+    this.diffusionBuf = new Float32Array(this.trailW * this.trailH);
 
     this.sensorDist = p.sensorDist;
     this.turnSpeed = p.turnSpeed;
     this.depositAmount = p.deposit;
     this.decayRate = p.decay;
 
-    this.agentCount = p.agents;
+    this.agentCount = Math.min(p.agents, 6000);
     this.agentX = new Float32Array(this.agentCount);
     this.agentY = new Float32Array(this.agentCount);
     this.agentAngle = new Float32Array(this.agentCount);
@@ -134,8 +136,9 @@ export class SlimeMoldElement extends BaseElement {
         }
       }
 
-      // Diffuse + decay (simple 3x3 box blur)
-      const tmp = new Float32Array(this.trailMap.length);
+      // Diffuse + decay (simple 3x3 box blur) — reuse pre-allocated buffer
+      const tmp = this.diffusionBuf;
+      tmp.fill(0);
       for (let y2 = 1; y2 < this.trailH - 1; y2++) {
         for (let x2 = 1; x2 < this.trailW - 1; x2++) {
           let sum = 0;

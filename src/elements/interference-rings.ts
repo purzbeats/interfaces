@@ -29,10 +29,10 @@ export class InterferenceRingsElement extends BaseElement {
   build(): void {
     const variant = this.rng.int(0, 3);
     const presets = [
-      { emitters: 3, res: 160, freq: 0.15 },
-      { emitters: 5, res: 220, freq: 0.2 },
+      { emitters: 3, res: 150, freq: 0.15 },
+      { emitters: 5, res: 150, freq: 0.2 },
       { emitters: 2, res: 120, freq: 0.1 },
-      { emitters: 4, res: 180, freq: 0.25 },
+      { emitters: 4, res: 150, freq: 0.25 },
     ];
     const p = presets[variant];
     this.glitchAmount = 4;
@@ -69,7 +69,7 @@ export class InterferenceRingsElement extends BaseElement {
     const opacity = this.applyEffects(dt);
 
     this.renderAccum += dt;
-    if (this.renderAccum < 0.05) {
+    if (this.renderAccum < 0.083) {
       (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.85;
       return;
     }

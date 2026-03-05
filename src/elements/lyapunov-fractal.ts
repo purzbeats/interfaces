@@ -44,10 +44,10 @@ export class LyapunovFractalElement extends BaseElement {
     const { x, y, w, h } = this.px;
 
     const presets = [
-      { seq: [0, 1],          aRange: [2.0, 4.0], bRange: [2.0, 4.0], iter: 80,  warm: 20, pan: 0.03, interval: 1.5 },
-      { seq: [0, 0, 1],      aRange: [2.5, 3.8], bRange: [2.5, 4.0], iter: 60,  warm: 15, pan: 0.05, interval: 2.0 },
-      { seq: [0, 1, 1, 0],   aRange: [1.5, 4.0], bRange: [1.5, 4.0], iter: 100, warm: 25, pan: 0.02, interval: 1.0 },
-      { seq: [0, 1, 0, 1, 1],aRange: [2.8, 3.9], bRange: [2.8, 3.9], iter: 70,  warm: 18, pan: 0.04, interval: 1.8 },
+      { seq: [0, 1],          aRange: [2.0, 4.0], bRange: [2.0, 4.0], iter: 60,  warm: 20, pan: 0.03, interval: 1.5 },
+      { seq: [0, 0, 1],      aRange: [2.5, 3.8], bRange: [2.5, 4.0], iter: 50,  warm: 15, pan: 0.05, interval: 2.0 },
+      { seq: [0, 1, 1, 0],   aRange: [1.5, 4.0], bRange: [1.5, 4.0], iter: 80,  warm: 25, pan: 0.02, interval: 1.0 },
+      { seq: [0, 1, 0, 1, 1],aRange: [2.8, 3.9], bRange: [2.8, 3.9], iter: 55,  warm: 18, pan: 0.04, interval: 1.8 },
     ];
     const p = presets[variant];
 
@@ -60,7 +60,7 @@ export class LyapunovFractalElement extends BaseElement {
     this.redrawInterval = p.interval;
     this.redrawTimer = 0;
 
-    const maxRes = 200;
+    const maxRes = 140;
     const aspect = w / h;
     this.cw = Math.min(maxRes, Math.ceil(w));
     this.ch = Math.max(1, Math.ceil(this.cw / aspect));

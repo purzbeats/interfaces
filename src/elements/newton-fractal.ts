@@ -49,10 +49,10 @@ export class NewtonFractalElement extends BaseElement {
     const { x, y, w, h } = this.px;
 
     const presets = [
-      { exponent: 3, maxIter: 30, viewSize: 3.0, zoomSpeed: 0.08, rotationSpeed: 0.05 },
-      { exponent: 4, maxIter: 35, viewSize: 3.5, zoomSpeed: 0.06, rotationSpeed: 0.03 },
-      { exponent: 5, maxIter: 25, viewSize: 2.5, zoomSpeed: 0.12, rotationSpeed: 0.08 },
-      { exponent: 3, maxIter: 40, viewSize: 2.0, zoomSpeed: 0.10, rotationSpeed: 0.04 },
+      { exponent: 3, maxIter: 24, viewSize: 3.0, zoomSpeed: 0.08, rotationSpeed: 0.05 },
+      { exponent: 4, maxIter: 28, viewSize: 3.5, zoomSpeed: 0.06, rotationSpeed: 0.03 },
+      { exponent: 5, maxIter: 20, viewSize: 2.5, zoomSpeed: 0.12, rotationSpeed: 0.08 },
+      { exponent: 3, maxIter: 30, viewSize: 2.0, zoomSpeed: 0.10, rotationSpeed: 0.04 },
     ];
     const p = presets[variant];
     this.exponent = p.exponent;
@@ -61,7 +61,7 @@ export class NewtonFractalElement extends BaseElement {
     this.zoomSpeed = p.zoomSpeed;
     this.rotationSpeed = p.rotationSpeed;
 
-    const maxRes = 200;
+    const maxRes = 140;
     const aspect = w / h;
     this.cw = Math.min(maxRes, Math.ceil(w * 0.5));
     this.ch = Math.max(1, Math.ceil(this.cw / aspect));
