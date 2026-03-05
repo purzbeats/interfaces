@@ -1,5 +1,18 @@
 # Changelog
 
+## v5.0.0
+
+128 more visual elements (384 total) across four new categories.
+
+### Added
+- **128 new visual elements** in four themed batches:
+  - **Physics & Waves** (32): brownian-motion, three-body, doppler-rings, elastic-collision, standing-wave, coupled-oscillator, karman-vortex, chladni-plate, kepler-orbit, quantum-tunnel, double-slit, rayleigh-benard, soliton-collide, reaction-diffuse, phonon-dispersion, lens-caustic, bouncing-balls, maxwell-boltzmann, laminar-stream, shock-cone, bubble-raft, blackbody-spectrum, photoelectric-emit, eddy-current, capacitor-charge, orbital-transfer, coupled-pendulum, spring-pendulum, pressure-wave, refraction-stack, lorentz-force, thermal-gradient
+  - **Mathematics & Geometry** (32): pascal-mod, stern-brocot, farey-diagram, golden-phyllotaxis, euler-spiral, pi-walk, gaussian-prime, totient-plot, bezier-construct, hypercube-rotate, klein-bottle, cayley-graph, lattice-path, cantor-dust, weierstrass-curve, devil-staircase, peano-curve, gosper-curve, levy-curve, ford-circles, stereographic-map, sierpinski-carpet, newton-fractal, burning-ship, lyapunov-fractal, buddhabrot, rose-curve, lissajous-table, involute-gear, cycloid-trace, cardioid-envelope, astroid-curve
+  - **Nature & Organic** (32): leaf-venation, root-fractal, river-meander, crack-propagate, spider-web, crystal-defect, aurora-sheet, rain-ripples, wind-streak, snowflake-hex, firefly-sync, termite-build, vine-climb, shell-logarithm, honeycomb-build, foam-relax, stalactite-drip, sand-ripple, frost-crystal, lichen-front, feather-barb, butterfly-scale, tide-flow, pollen-scatter, tree-rings, cloud-cell, magma-convect, diatom-pattern, nautilus-chamber, moth-flame, coral-polyp, seed-disperse
+  - **Computing & Data Structures** (32): cpu-pipeline, memory-fragment, stack-recurse, linked-list-op, btree-insert, hash-collision, red-black-tree, graph-traverse, dijkstra-wave, convex-hull, delaunay-mesh, quadtree-decomp, fft-butterfly, signal-convolve, shift-register, logic-cascade, wireworld, turmite, towers-hanoi, knight-tour, monte-carlo-pi, random-walk-2d, truchet-tile, halton-sequence, markov-chain, voronoi-relax, poisson-disk, lsystem-grow, metaball-merge, distance-field, cellular-morph, noise-warp
+
+---
+
 ## v4.0.0
 
 Massive element expansion to 256 visual elements with bug fixes.

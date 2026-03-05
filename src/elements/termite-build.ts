@@ -1,0 +1,242 @@
+import * as THREE from 'three';
+import { BaseElement, type ElementRegistration } from './base-element';
+import type { ElementMeta } from './tags';
+
+interface Termite {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  carrying: boolean;
+}
+
+/**
+ * Termite-inspired construction. Agents pick up and drop "dirt" following
+ * simple rules. Emergent pile structures form over time.
+ * Canvas rendered with agent dots and dirt accumulation.
+ */
+export class TermiteBuildElement extends BaseElement {
+  static readonly registration: ElementRegistration = {
+    name: 'termite-build',
+    meta: {
+      shape: 'rectangular',
+      roles: ['data-display', 'decorative'],
+      moods: ['ambient', 'diagnostic'],
+      bandAffinity: 'bass',
+      sizes: ['needs-medium', 'needs-large'],
+    } satisfies ElementMeta,
+  };
+
+  private canvas!: HTMLCanvasElement;
+  private ctx!: CanvasRenderingContext2D;
+  private texture!: THREE.CanvasTexture;
+  private mesh!: THREE.Mesh;
+
+  // Grid
+  private gridW: number = 0;
+  private gridH: number = 0;
+  private dirt!: Uint8Array; // dirt density per cell (0-4)
+
+  // Agents
+  private termites: Termite[] = [];
+  private stepsPerFrame: number = 0;
+  private agentSpeed: number = 0;
+  private initialDirtRatio: number = 0;
+
+  build(): void {
+    this.glitchAmount = 4;
+    const { x, y, w, h } = this.px;
+    const variant = this.rng.int(0, 3);
+
+    const presets = [
+      { agents: 30, gridScale: 2, steps: 5,  dirtRatio: 0.25, speed: 1 },
+      { agents: 60, gridScale: 2, steps: 8,  dirtRatio: 0.3,  speed: 1.2 },
+      { agents: 15, gridScale: 3, steps: 3,  dirtRatio: 0.2,  speed: 0.8 },
+      { agents: 45, gridScale: 2, steps: 10, dirtRatio: 0.35, speed: 1.5 },
+    ];
+    const p = presets[variant];
+
+    this.gridW = Math.max(16, Math.floor(w / p.gridScale));
+    this.gridH = Math.max(16, Math.floor(h / p.gridScale));
+    this.stepsPerFrame = p.steps;
+    this.agentSpeed = p.speed;
+    this.initialDirtRatio = p.dirtRatio;
+
+    this.dirt = new Uint8Array(this.gridW * this.gridH);
+    this.initDirt();
+    this.initTermites(p.agents);
+
+    // Canvas
+    const cw = Math.max(64, Math.min(512, Math.round(w)));
+    const ch = Math.max(64, Math.min(512, Math.round(h)));
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = cw;
+    this.canvas.height = ch;
+    this.ctx = this.get2DContext(this.canvas);
+
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.minFilter = THREE.NearestFilter;
+    this.texture.magFilter = THREE.NearestFilter;
+
+    const geo = new THREE.PlaneGeometry(w, h);
+    const mat = new THREE.MeshBasicMaterial({
+      map: this.texture,
+      transparent: true,
+      opacity: 0,
+    });
+    this.mesh = new THREE.Mesh(geo, mat);
+    this.mesh.position.set(x + w / 2, y + h / 2, 0);
+    this.group.add(this.mesh);
+  }
+
+  private initDirt(): void {
+    this.dirt.fill(0);
+    const totalCells = this.gridW * this.gridH;
+    const dirtCells = Math.floor(totalCells * this.initialDirtRatio);
+    for (let i = 0; i < dirtCells; i++) {
+      const idx = this.rng.int(0, totalCells - 1);
+      if (this.dirt[idx] < 4) {
+        this.dirt[idx]++;
+      }
+    }
+  }
+
+  private initTermites(count: number): void {
+    this.termites = [];
+    for (let i = 0; i < count; i++) {
+      const angle = this.rng.float(0, Math.PI * 2);
+      this.termites.push({
+        x: this.rng.int(0, this.gridW - 1),
+        y: this.rng.int(0, this.gridH - 1),
+        dx: Math.cos(angle) > 0 ? 1 : -1,
+        dy: Math.sin(angle) > 0 ? 1 : -1,
+        carrying: false,
+      });
+    }
+  }
+
+  private stepSimulation(): void {
+    for (const t of this.termites) {
+      // Random walk with slight direction persistence
+      if (this.rng.float(0, 1) < 0.3) {
+        const angle = this.rng.float(0, Math.PI * 2);
+        t.dx = Math.cos(angle) > 0 ? 1 : -1;
+        t.dy = Math.sin(angle) > 0 ? 1 : -1;
+      }
+
+      // Move
+      t.x = ((t.x + t.dx) % this.gridW + this.gridW) % this.gridW;
+      t.y = ((t.y + t.dy) % this.gridH + this.gridH) % this.gridH;
+
+      const idx = t.y * this.gridW + t.x;
+
+      if (!t.carrying) {
+        // Pick up dirt if present
+        if (this.dirt[idx] > 0) {
+          this.dirt[idx]--;
+          t.carrying = true;
+        }
+      } else {
+        // Drop dirt if cell has dirt (creates piles)
+        if (this.dirt[idx] > 0 && this.dirt[idx] < 4) {
+          this.dirt[idx]++;
+          t.carrying = false;
+        }
+      }
+    }
+  }
+
+  private renderCanvas(): void {
+    const ctx = this.ctx;
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+
+    // Background
+    const bg = this.palette.bg;
+    ctx.fillStyle = `rgb(${Math.round(bg.r * 255)},${Math.round(bg.g * 255)},${Math.round(bg.b * 255)})`;
+    ctx.fillRect(0, 0, cw, ch);
+
+    const cellW = cw / this.gridW;
+    const cellH = ch / this.gridH;
+
+    const pr = this.palette.primary;
+    const sc = this.palette.secondary;
+    const dm = this.palette.dim;
+
+    // Draw dirt
+    for (let gy = 0; gy < this.gridH; gy++) {
+      for (let gx = 0; gx < this.gridW; gx++) {
+        const d = this.dirt[gy * this.gridW + gx];
+        if (d === 0) continue;
+
+        const t = d / 4;
+        const r = Math.round((dm.r * (1 - t) + sc.r * t) * 255);
+        const g = Math.round((dm.g * (1 - t) + sc.g * t) * 255);
+        const b = Math.round((dm.b * (1 - t) + sc.b * t) * 255);
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillRect(gx * cellW, gy * cellH, cellW + 0.5, cellH + 0.5);
+      }
+    }
+
+    // Draw termites
+    for (const t of this.termites) {
+      if (t.carrying) {
+        ctx.fillStyle = `rgb(${Math.round(pr.r * 255)},${Math.round(pr.g * 255)},${Math.round(pr.b * 255)})`;
+      } else {
+        ctx.fillStyle = `rgb(${Math.round(dm.r * 200)},${Math.round(dm.g * 200)},${Math.round(dm.b * 200)})`;
+      }
+      const size = Math.max(1.5, cellW * 0.8);
+      ctx.fillRect(t.x * cellW, t.y * cellH, size, size);
+    }
+  }
+
+  update(dt: number, _time: number): void {
+    const opacity = this.applyEffects(dt);
+
+    for (let i = 0; i < this.stepsPerFrame; i++) {
+      this.stepSimulation();
+    }
+
+    this.renderCanvas();
+    this.texture.needsUpdate = true;
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity;
+  }
+
+  onAction(action: string): void {
+    super.onAction(action);
+    if (action === 'glitch') {
+      // Earthquake: scatter dirt randomly
+      const totalCells = this.gridW * this.gridH;
+      for (let i = 0; i < totalCells; i++) {
+        if (this.dirt[i] > 0 && this.rng.float(0, 1) < 0.4) {
+          const target = this.rng.int(0, totalCells - 1);
+          if (this.dirt[target] < 4) {
+            this.dirt[i]--;
+            this.dirt[target]++;
+          }
+        }
+      }
+    }
+  }
+
+  onIntensity(level: number): void {
+    super.onIntensity(level);
+    if (level === 0) {
+      this.stepsPerFrame = 5;
+      return;
+    }
+    this.stepsPerFrame = 5 + level * 3;
+    if (level >= 5) {
+      // All termites drop what they carry
+      for (const t of this.termites) {
+        if (t.carrying) {
+          const idx = t.y * this.gridW + t.x;
+          if (this.dirt[idx] < 4) {
+            this.dirt[idx]++;
+          }
+          t.carrying = false;
+        }
+      }
+    }
+  }
+}

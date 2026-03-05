@@ -2,7 +2,7 @@
 
 [interfaces-1772551742842.webm](https://github.com/user-attachments/assets/25a11feb-68af-4224-be79-6166f167cead)
 
-Procedural sci-fi interface generator built with Three.js and TypeScript. Produces animated HUD-style compositions from 256 visual element types — radar sweeps, waveforms, fractals, physics simulations, cellular automata, mathematical visualizations, data cascades, oscilloscopes, star fields, cipher wheels, mechanical gauges, and more — arranged via BSP-subdivided and hexagonal layout templates with seeded randomness for deterministic output.
+Procedural sci-fi interface generator built with Three.js and TypeScript. Produces animated HUD-style compositions from 384 visual element types — radar sweeps, waveforms, fractals, physics simulations, cellular automata, mathematical visualizations, data cascades, oscilloscopes, star fields, cipher wheels, mechanical gauges, and more — arranged via BSP-subdivided and hexagonal layout templates with seeded randomness for deterministic output.
 
 ## Quick Start
 
@@ -44,7 +44,7 @@ src/
 ├── engine.ts            # Core engine — orchestrates layout, rendering, timeline
 ├── config.ts            # Runtime configuration (seed, palette, template, post-fx)
 ├── random.ts            # Seeded PRNG (mulberry32)
-├── elements/            # 256 visual element types + registry + tag metadata
+├── elements/            # 384 visual element types + registry + tag metadata
 │   ├── base-element.ts  # Abstract base class (pulse/glitch/opacity effects)
 │   ├── registry.ts      # Element factory registry
 │   └── tags.ts          # Shape/role/mood/size tag taxonomy
@@ -69,25 +69,31 @@ src/
 
 Ten built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `tactical`, `nerv`, `datastream`, `geometry`, `biolab`, `biblically-accurate`, `ops-hud`. Use `auto` for random selection. Supports both rectangular BSP and hexagonal tile layouts.
 
-## Elements (256)
+## Elements (384)
 
 ### Fractals & Chaos
-`mandelbrot-zoom`, `julia-set`, `barnsley-fern`, `dragon-curve`, `koch-snowflake`, `apollonian-gasket`, `collatz-tree`, `chaos-game`, `fractal-tree`, `fibonacci-spiral`, `diffusion-limited`, `strange-attractor`, `strange-repeller`, `lorenz-attractor`, `lorenz-section`, `logistic-map`, `chaos-pendulum`, `strange-billiards`, `quasi-crystal`
+`mandelbrot-zoom`, `julia-set`, `barnsley-fern`, `dragon-curve`, `koch-snowflake`, `apollonian-gasket`, `collatz-tree`, `chaos-game`, `fractal-tree`, `fibonacci-spiral`, `diffusion-limited`, `strange-attractor`, `strange-repeller`, `lorenz-attractor`, `lorenz-section`, `logistic-map`, `chaos-pendulum`, `strange-billiards`, `quasi-crystal`, `newton-fractal`, `burning-ship`, `lyapunov-fractal`, `buddhabrot`, `sierpinski-carpet`, `cantor-dust`, `reaction-diffuse`
 
 ### Physics Simulations
-`boids-swarm`, `flow-field`, `pendulum-wave`, `double-pendulum`, `cloth-sim`, `gravity-well`, `spring-mesh`, `electric-arc`, `lightning-tree`, `string-vibration`, `heat-equation`, `erosion-sim`, `n-body-ring`, `verlet-rope`, `catenary-chain`, `sine-gordon`, `wave-packet`, `wave-collapse`, `newton-cradle`, `ripple-tank`, `magnet-field`, `magnetic-field-lines`, `smoke-plume`, `pendulum-grid`
+`boids-swarm`, `flow-field`, `pendulum-wave`, `double-pendulum`, `cloth-sim`, `gravity-well`, `spring-mesh`, `electric-arc`, `lightning-tree`, `string-vibration`, `heat-equation`, `erosion-sim`, `n-body-ring`, `verlet-rope`, `catenary-chain`, `sine-gordon`, `wave-packet`, `wave-collapse`, `newton-cradle`, `ripple-tank`, `magnet-field`, `magnetic-field-lines`, `smoke-plume`, `pendulum-grid`, `brownian-motion`, `three-body`, `doppler-rings`, `elastic-collision`, `standing-wave`, `coupled-oscillator`, `karman-vortex`, `chladni-plate`, `kepler-orbit`, `quantum-tunnel`, `double-slit`, `rayleigh-benard`, `soliton-collide`, `phonon-dispersion`, `lens-caustic`, `bouncing-balls`, `maxwell-boltzmann`, `laminar-stream`, `shock-cone`, `bubble-raft`, `blackbody-spectrum`, `photoelectric-emit`, `eddy-current`, `capacitor-charge`, `orbital-transfer`, `coupled-pendulum`, `spring-pendulum`, `pressure-wave`, `refraction-stack`, `lorentz-force`, `thermal-gradient`
 
 ### Mathematical Visualizations
-`hilbert-walk`, `prime-spiral`, `recaman-sequence`, `fourier-draw`, `fourier-heat`, `lissajous-curve`, `epitrochoid`, `harmonograph`, `harmonograph-3d`, `pursuit-curves`, `riemann-zeta`, `modular-form`, `symplectic-map`, `tensor-field`, `tensor-product`, `quantum-walk`, `pendulum-phase`, `interference-rings`, `orbit-rings`, `topo-contour`
+`hilbert-walk`, `prime-spiral`, `recaman-sequence`, `fourier-draw`, `fourier-heat`, `lissajous-curve`, `epitrochoid`, `harmonograph`, `harmonograph-3d`, `pursuit-curves`, `riemann-zeta`, `modular-form`, `symplectic-map`, `tensor-field`, `tensor-product`, `quantum-walk`, `pendulum-phase`, `interference-rings`, `orbit-rings`, `topo-contour`, `pascal-mod`, `stern-brocot`, `farey-diagram`, `golden-phyllotaxis`, `euler-spiral`, `pi-walk`, `gaussian-prime`, `totient-plot`, `bezier-construct`, `weierstrass-curve`, `devil-staircase`, `rose-curve`, `lissajous-table`, `cycloid-trace`, `cardioid-envelope`, `astroid-curve`, `involute-gear`
 
-### Cellular Automata & Emergent Systems
-`conway-life`, `hexagonal-life`, `langton-ant`, `automata-1d`, `hex-automata`, `particle-life`, `slime-mold`, `ant-colony`, `sand-pile`, `cellular-fluid`, `belousov-zhabotinsky`, `ising-model`, `percolation-grid`, `spin-glass`, `kuramoto-sync`, `rule-grid`, `game-of-hex`, `diffusion-wave`
+### Space-Filling Curves
+`peano-curve`, `gosper-curve`, `levy-curve`
 
 ### Geometry & Tiling
-`penrose-tiling`, `hyperbolic-tiling`, `geodesic-dome`, `hyperboloid`, `mobius-strip`, `minimal-surface`, `knot-theory`, `mandala-gen`, `voronoi-shatter`, `concentric-rings`, `diamond-grid`, `crosshatch-fill`, `hex-grid`, `hex-tunnel`, `kaleidoscope`, `moire-pattern`
+`penrose-tiling`, `hyperbolic-tiling`, `geodesic-dome`, `hyperboloid`, `mobius-strip`, `minimal-surface`, `knot-theory`, `mandala-gen`, `voronoi-shatter`, `concentric-rings`, `diamond-grid`, `crosshatch-fill`, `hex-grid`, `hex-tunnel`, `kaleidoscope`, `moire-pattern`, `hypercube-rotate`, `klein-bottle`, `stereographic-map`, `ford-circles`, `truchet-tile`
+
+### Cellular Automata & Emergent Systems
+`conway-life`, `hexagonal-life`, `langton-ant`, `automata-1d`, `hex-automata`, `particle-life`, `slime-mold`, `ant-colony`, `sand-pile`, `cellular-fluid`, `belousov-zhabotinsky`, `ising-model`, `percolation-grid`, `spin-glass`, `kuramoto-sync`, `rule-grid`, `game-of-hex`, `diffusion-wave`, `wireworld`, `turmite`, `firefly-sync`, `termite-build`, `cellular-morph`
 
 ### Algorithms & Computation
-`sorting-bars`, `maze-solver`, `brainfuck-vm`, `turing-tape`, `neural-mesh`, `web-graph`, `flocking-arrows`, `flocking-fish`, `tree-growth`, `pixel-fire`, `rain-matrix`, `worley-noise`, `perlin-terrain`, `strange-loop`, `gravity-lens`, `electric-potential`
+`sorting-bars`, `maze-solver`, `brainfuck-vm`, `turing-tape`, `neural-mesh`, `web-graph`, `flocking-arrows`, `flocking-fish`, `tree-growth`, `pixel-fire`, `rain-matrix`, `worley-noise`, `perlin-terrain`, `strange-loop`, `gravity-lens`, `electric-potential`, `dijkstra-wave`, `convex-hull`, `delaunay-mesh`, `quadtree-decomp`, `graph-traverse`, `knight-tour`, `towers-hanoi`, `monte-carlo-pi`, `random-walk-2d`, `halton-sequence`, `poisson-disk`, `markov-chain`, `lsystem-grow`
+
+### Data Structures
+`cpu-pipeline`, `memory-fragment`, `stack-recurse`, `linked-list-op`, `btree-insert`, `hash-collision`, `red-black-tree`, `fft-butterfly`, `signal-convolve`, `shift-register`, `logic-cascade`
 
 ### Data Display
 `graph`, `scrolling-numbers`, `data-cascade`, `signal-bars`, `waveform`, `cross-scope`, `freq-analyzer`, `spectrogram`, `dot-matrix`, `pulse-wave`, `binary-stream`, `cpu-cores`, `data-table`, `network-graph`, `oscilloscope`, `audio-meter`, `heart-monitor`, `voltage-arc`, `barcode-strip`, `data-rings`, `hex-counter`, `morse-ticker`, `ticker-tape`, `flip-clock`, `chess-clock`, `abacus-row`, `punch-card`, `bit-decay`, `typewriter-head`, `semaphore`
@@ -103,6 +109,12 @@ Ten built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `
 
 ### Biotech
 `bio-reactor`, `capillary-network`, `cell-division`, `enzyme-cascade`, `gel-electrophoresis`, `spore-bloom`, `pulse-membrane`, `crystal-grow`, `dna-helix`
+
+### Nature & Organic
+`leaf-venation`, `root-fractal`, `river-meander`, `crack-propagate`, `spider-web`, `crystal-defect`, `aurora-sheet`, `rain-ripples`, `wind-streak`, `snowflake-hex`, `vine-climb`, `shell-logarithm`, `honeycomb-build`, `foam-relax`, `stalactite-drip`, `sand-ripple`, `frost-crystal`, `lichen-front`, `feather-barb`, `butterfly-scale`, `tide-flow`, `pollen-scatter`, `tree-rings`, `cloud-cell`, `magma-convect`, `diatom-pattern`, `nautilus-chamber`, `moth-flame`, `coral-polyp`, `seed-disperse`
+
+### Generative & Abstract
+`noise-warp`, `metaball-merge`, `distance-field`, `voronoi-relax`, `cayley-graph`, `lattice-path`
 
 ### Atmospheric & Decorative
 `flame-column`, `spark-emitter`, `spark-gap`, `static-channel`, `infinite-hallway`, `clock-melt`, `light-slit`, `iso-blocks`, `smoke-rise`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `plasma-field`, `prism-split`, `sine-weave`, `vinyl-spin`, `card-fan`, `spiral-arm`, `spiral-vortex`, `dot-orbit`, `wave-mesh`, `waveform-3d`, `pixel-sort`, `galaxy-spiral`, `orbital-display`, `particle-field`, `memory-map`, `matrix-rain`, `gear-train`, `spring-coil`, `domino-fall`, `tape-reel`, `tuning-fork`
