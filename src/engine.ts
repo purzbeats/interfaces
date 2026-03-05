@@ -94,7 +94,7 @@ export class Engine {
 
   /** URL-driven mode to enter after init (element showcase, gallery, perf). */
   private autoElement: string | null = null;
-  private autoView: 'single' | 'multi' | null = null;
+  private autoView: 'single' | 'full' | 'multi' | null = null;
   private autoGallery: boolean = false;
   private autoPerf: boolean = false;
 
@@ -113,7 +113,7 @@ export class Engine {
     if (params.has('element')) this.autoElement = params.get('element')!;
     if (params.has('view')) {
       const v = params.get('view')!;
-      this.autoView = v === 'multi' ? 'multi' : 'single';
+      this.autoView = v === 'multi' ? 'multi' : v === 'full' ? 'full' : 'single';
     }
     if (params.has('gallery')) this.autoGallery = params.get('gallery') !== '0';
     if (params.has('perf')) this.autoPerf = params.get('perf') !== '0';
@@ -366,9 +366,11 @@ export class Engine {
       const types = this.showcase.getTypes();
       const idx = types.indexOf(this.autoElement);
       if (idx >= 0) {
+        // Default to 'full' (fullscreen, no UI) when linking to an element
+        const view = this.autoView ?? 'full';
         this.showcase.enter(idx);
-        if (this.autoView === 'multi') {
-          this.showcase.setFullscreen(true);
+        if (view !== 'single') {
+          this.showcase.setViewMode(view);
           this.showcase.respawn();
         }
       }

@@ -106,7 +106,8 @@ export class ShowcaseMode {
   private resizeHandler: () => void;
   private stashedChildren: THREE.Object3D[] = [];
   private swipeHandler: TouchSwipeHandler | null = null;
-  private fullscreen: boolean = false;
+  /** 'single' = with overlay bar, 'full' = fullscreen no UI, 'multi' = proof sheet */
+  private viewMode: 'single' | 'full' | 'multi' = 'single';
 
   // Performance debug overlay
   private perfOverlay: HTMLDivElement | null = null;
@@ -179,7 +180,7 @@ export class ShowcaseMode {
     if (mobile) {
       hints = 'swipe \u2194 navigate \u00b7 double-tap fullscreen';
     } else {
-      const parts: string[] = ['\u2190 \u2192 or scroll', 'F fullscreen', 'C share'];
+      const parts: string[] = ['\u2190 \u2192 or scroll', 'F cycle view', 'C share'];
       if (this.enteredFromGallery) parts.push('B back');
       parts.push('G exit');
       hints = parts.join(' \u00b7 ');
@@ -237,39 +238,38 @@ export class ShowcaseMode {
       (dir) => {
         switch (dir) {
           case 'left':
-            if (!this.fullscreen) {
+            if (this.viewMode === 'single') {
               this.currentIndex = (this.currentIndex + 1) % this.types.length;
               this.spawnElement();
             }
             break;
           case 'right':
-            if (!this.fullscreen) {
+            if (this.viewMode === 'single') {
               this.currentIndex = (this.currentIndex - 1 + this.types.length) % this.types.length;
               this.spawnElement();
             }
             break;
           case 'down':
-            if (!this.fullscreen) {
-              this.setFullscreen(true);
-              this.spawnElement();
+            if (this.viewMode === 'single') {
+              this.cycleViewMode();
             }
             break;
           case 'up':
-            if (this.fullscreen) {
-              this.setFullscreen(false);
+            if (this.viewMode !== 'single') {
+              this.setViewMode('single');
               this.spawnElement();
             }
             break;
           case 'tap':
-            if (this.fullscreen) {
-              this.setFullscreen(false);
+            if (this.viewMode !== 'single') {
+              this.setViewMode('single');
+              this.spawnElement();
             } else {
               this.exit();
             }
             break;
           case 'doubletap':
-            this.setFullscreen(!this.fullscreen);
-            this.spawnElement();
+            this.cycleViewMode();
             break;
         }
       }
@@ -280,8 +280,8 @@ export class ShowcaseMode {
   exit(): void {
     this.active = false;
     this.enteredFromGallery = false;
-    if (this.fullscreen) {
-      this.setFullscreen(false);
+    if (this.viewMode !== 'single') {
+      this.setViewMode('single');
     }
     this.perfOverlay?.remove();
     this.perfOverlay = null;
@@ -308,8 +308,8 @@ export class ShowcaseMode {
   private backToGallery(): void {
     this.active = false;
     this.enteredFromGallery = false;
-    if (this.fullscreen) {
-      this.setFullscreen(false);
+    if (this.viewMode !== 'single') {
+      this.setViewMode('single');
     }
     this.perfOverlay?.remove();
     this.perfOverlay = null;
@@ -341,7 +341,7 @@ export class ShowcaseMode {
   }
 
   private handleWheel(e: WheelEvent): void {
-    if (!this.active || this.fullscreen) return;
+    if (!this.active || this.viewMode !== 'single') return;
     e.preventDefault();
     if (e.deltaY > 0) {
       this.currentIndex = (this.currentIndex + 1) % this.types.length;
@@ -372,8 +372,7 @@ export class ShowcaseMode {
       case 'f':
       case 'F':
         e.preventDefault();
-        this.setFullscreen(!this.fullscreen);
-        this.spawnElement(); // re-create with/without bottom inset
+        this.cycleViewMode();
         break;
       case 'b':
       case 'B':
@@ -447,13 +446,14 @@ export class ShowcaseMode {
 
     this.wrapper = new THREE.Group();
 
-    if (this.fullscreen) {
+    if (this.viewMode === 'multi') {
       // Multi-aspect proof sheet layout
       this.spawnMultiAspect(type, w, h);
     } else {
-      // Single element with overlay bar
-      const bottomInset = OVERLAY_BAR_PX / h;
-      const region: Region = createRegion('showcase', 0, bottomInset, 1, 1 - bottomInset, 0.02);
+      // Single element — with overlay bar ('single') or fullscreen ('full')
+      const bottomInset = this.viewMode === 'single' ? OVERLAY_BAR_PX / h : 0;
+      const padding = this.viewMode === 'single' ? 0.02 : 0;
+      const region: Region = createRegion('showcase', 0, bottomInset, 1, 1 - bottomInset, padding);
       region.elementType = type;
 
       const rng = new SeededRandom(this.config.seed + this.currentIndex);
@@ -474,7 +474,7 @@ export class ShowcaseMode {
   private updateURL(): void {
     const url = new URL(window.location.href);
     url.searchParams.set('element', this.types[this.currentIndex]);
-    url.searchParams.set('view', this.fullscreen ? 'multi' : 'single');
+    url.searchParams.set('view', this.viewMode);
     url.searchParams.set('seed', String(this.config.seed));
     url.searchParams.set('palette', this.config.palette);
     window.history.replaceState({}, '', url.toString());
@@ -487,7 +487,8 @@ export class ShowcaseMode {
     url.searchParams.set('element', name);
     url.searchParams.set('seed', String(this.config.seed));
     url.searchParams.set('palette', this.config.palette);
-    if (this.fullscreen) url.searchParams.set('view', 'multi');
+    // Share links default to fullscreen; only include view param for multi
+    if (this.viewMode === 'multi') url.searchParams.set('view', 'multi');
     else url.searchParams.delete('view');
     url.searchParams.delete('template');
     url.searchParams.delete('gallery');
@@ -664,7 +665,7 @@ export class ShowcaseMode {
     const renderColor = avgRender < 4 ? '#0f0' : avgRender < 8 ? '#ff0' : '#f44';
     const headroomColor = headroom > 4 ? '#0f0' : headroom > 0 ? '#ff0' : '#f44';
 
-    const instanceCount = this.fullscreen ? this.elements.length : (this.element ? 1 : 0);
+    const instanceCount = this.viewMode === 'multi' ? this.elements.length : (this.element ? 1 : 0);
 
     // Build mini bar chart of recent frame times (last 60 frames)
     const recent = this.frameTimes.slice(-60);
@@ -693,15 +694,23 @@ export class ShowcaseMode {
     `;
   }
 
-  setFullscreen(on: boolean): void {
-    this.fullscreen = on;
-    this.overlay.style.display = on ? 'none' : '';
-    // Hide/show the mobile toolbar
+  setViewMode(mode: 'single' | 'full' | 'multi'): void {
+    this.viewMode = mode;
+    const hideUI = mode !== 'single';
+    this.overlay.style.display = hideUI ? 'none' : '';
     const toolbar = document.getElementById('mobile-toolbar');
     if (toolbar) {
-      toolbar.style.display = on ? 'none' : '';
+      toolbar.style.display = hideUI ? 'none' : '';
     }
     if (this.active) this.updateURL();
+  }
+
+  /** Cycle view modes: single → full → multi → single */
+  private cycleViewMode(): void {
+    const next = this.viewMode === 'single' ? 'full'
+      : this.viewMode === 'full' ? 'multi' : 'single';
+    this.setViewMode(next);
+    this.spawnElement();
   }
 
   dispose(): void {
