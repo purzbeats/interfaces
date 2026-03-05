@@ -44,7 +44,7 @@ src/
 ├── engine.ts            # Core engine — orchestrates layout, rendering, timeline
 ├── config.ts            # Runtime configuration (seed, palette, template, post-fx)
 ├── random.ts            # Seeded PRNG (mulberry32)
-├── elements/            # 161 visual element types + registry + tag metadata
+├── elements/            # 256 visual element types + registry + tag metadata
 │   ├── base-element.ts  # Abstract base class (pulse/glitch/opacity effects)
 │   ├── registry.ts      # Element factory registry
 │   └── tags.ts          # Shape/role/mood/size tag taxonomy
@@ -69,37 +69,46 @@ src/
 
 Ten built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `tactical`, `nerv`, `datastream`, `geometry`, `biolab`, `biblically-accurate`, `ops-hud`. Use `auto` for random selection. Supports both rectangular BSP and hexagonal tile layouts.
 
-## Elements (161)
+## Elements (256)
+
+### Fractals & Chaos
+`mandelbrot-zoom`, `julia-set`, `barnsley-fern`, `dragon-curve`, `koch-snowflake`, `apollonian-gasket`, `collatz-tree`, `chaos-game`, `fractal-tree`, `fibonacci-spiral`, `diffusion-limited`, `strange-attractor`, `strange-repeller`, `lorenz-attractor`, `lorenz-section`, `logistic-map`, `chaos-pendulum`, `strange-billiards`, `quasi-crystal`
+
+### Physics Simulations
+`boids-swarm`, `flow-field`, `pendulum-wave`, `double-pendulum`, `cloth-sim`, `gravity-well`, `spring-mesh`, `electric-arc`, `lightning-tree`, `string-vibration`, `heat-equation`, `erosion-sim`, `n-body-ring`, `verlet-rope`, `catenary-chain`, `sine-gordon`, `wave-packet`, `wave-collapse`, `newton-cradle`, `ripple-tank`, `magnet-field`, `magnetic-field-lines`, `smoke-plume`, `pendulum-grid`
+
+### Mathematical Visualizations
+`hilbert-walk`, `prime-spiral`, `recaman-sequence`, `fourier-draw`, `fourier-heat`, `lissajous-curve`, `epitrochoid`, `harmonograph`, `harmonograph-3d`, `pursuit-curves`, `riemann-zeta`, `modular-form`, `symplectic-map`, `tensor-field`, `tensor-product`, `quantum-walk`, `pendulum-phase`, `interference-rings`, `orbit-rings`, `topo-contour`
+
+### Cellular Automata & Emergent Systems
+`conway-life`, `hexagonal-life`, `langton-ant`, `automata-1d`, `hex-automata`, `particle-life`, `slime-mold`, `ant-colony`, `sand-pile`, `cellular-fluid`, `belousov-zhabotinsky`, `ising-model`, `percolation-grid`, `spin-glass`, `kuramoto-sync`, `rule-grid`, `game-of-hex`, `diffusion-wave`
+
+### Geometry & Tiling
+`penrose-tiling`, `hyperbolic-tiling`, `geodesic-dome`, `hyperboloid`, `mobius-strip`, `minimal-surface`, `knot-theory`, `mandala-gen`, `voronoi-shatter`, `concentric-rings`, `diamond-grid`, `crosshatch-fill`, `hex-grid`, `hex-tunnel`, `kaleidoscope`, `moire-pattern`
+
+### Algorithms & Computation
+`sorting-bars`, `maze-solver`, `brainfuck-vm`, `turing-tape`, `neural-mesh`, `web-graph`, `flocking-arrows`, `flocking-fish`, `tree-growth`, `pixel-fire`, `rain-matrix`, `worley-noise`, `perlin-terrain`, `strange-loop`, `gravity-lens`, `electric-potential`
 
 ### Data Display
-`graph`, `scrolling-numbers`, `data-cascade`, `signal-bars`, `waveform`, `cross-scope`, `freq-analyzer`, `spectrogram`, `dot-matrix`, `pulse-wave`, `binary-stream`, `cpu-cores`, `data-table`, `network-graph`, `oscilloscope`, `audio-meter`, `heart-monitor`, `voltage-arc`, `barcode-strip`, `data-rings`, `hex-counter`, `morse-ticker`, `ticker-tape`, `flip-clock`, `chess-clock`, `abacus-row`, `punch-card`, `bit-decay`, `typewriter-head`
-
-### Simulations & Physics
-`boids-swarm`, `rule-grid`, `lorenz-attractor`, `neural-mesh`, `flow-field`, `pendulum-wave`, `harmonograph`, `cell-division`, `enzyme-cascade`, `gel-electrophoresis`, `newton-cradle`, `pendulum-grid`, `ripple-tank`, `magnet-field`, `crystal-grow`
+`graph`, `scrolling-numbers`, `data-cascade`, `signal-bars`, `waveform`, `cross-scope`, `freq-analyzer`, `spectrogram`, `dot-matrix`, `pulse-wave`, `binary-stream`, `cpu-cores`, `data-table`, `network-graph`, `oscilloscope`, `audio-meter`, `heart-monitor`, `voltage-arc`, `barcode-strip`, `data-rings`, `hex-counter`, `morse-ticker`, `ticker-tape`, `flip-clock`, `chess-clock`, `abacus-row`, `punch-card`, `bit-decay`, `typewriter-head`, `semaphore`
 
 ### Scanners
-`radar-sweep`, `radial-scanner`, `coord-grid`, `grid-overlay`, `bracket-frame`, `scan-line`, `target-lock`, `depth-sounder`, `satellite-track`, `thermal-map`, `topology-map`, `terrain-scan`, `sonar-ping`, `laser-grid`, `wave-radar`
+`radar-sweep`, `radial-scanner`, `coord-grid`, `grid-overlay`, `scan-line`, `target-lock`, `depth-sounder`, `satellite-track`, `thermal-map`, `topology-map`, `terrain-scan`, `sonar-ping`, `laser-grid`, `wave-radar`, `petri-dish`, `watching-eye`, `noise-band`, `prism-refract`
 
 ### Gauges
-`ring-gauge`, `progress-bar`, `threat-meter`, `phase-indicator`, `level-rings`, `segment-display`, `pressure-gauge`, `countdown-timer`, `flight-ladder`, `gauge-needle`, `water-level`, `battery-cell`, `tilt-level`, `depth-gauge`, `wind-sock`, `hourglass-timer`
+`ring-gauge`, `progress-bar`, `threat-meter`, `phase-indicator`, `level-rings`, `segment-display`, `pressure-gauge`, `countdown-timer`, `flight-ladder`, `gauge-needle`, `water-level`, `battery-cell`, `tilt-level`, `depth-gauge`, `wind-sock`, `hourglass-timer`, `spiral-clock`, `compass-rose`, `gyroscope`, `loading-spinner`, `iris-aperture`, `metronome`, `roulette-spin`, `seismograph`, `quake-line`, `stack-bars`
 
 ### Text
 `text-label`, `status-readout`, `clock-display`, `uptime-counter`, `boot-sequence`, `corrupted-text`, `decay-text`, `rune-glyph`
 
-### Mechanical & Kinetic
-`gear-train`, `metronome`, `spring-coil`, `domino-fall`, `loading-spinner`, `tape-reel`, `iris-aperture`, `semaphore`, `roulette-spin`
-
-### Decorative & Generative
-`concentric-rings`, `hex-grid`, `hex-tunnel`, `orbital-display`, `particle-field`, `memory-map`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `plasma-field`, `dna-helix`, `fractal-tree`, `moire-pattern`, `kaleidoscope`, `fibonacci-spiral`, `prism-split`, `sine-weave`, `vinyl-spin`, `card-fan`, `diamond-grid`, `crosshatch-fill`, `spiral-arm`, `spiral-vortex`, `dot-orbit`, `wave-mesh`, `waveform-3d`, `noise-band`, `pixel-sort`, `smoke-rise`, `tuning-fork`
-
 ### Biotech
-`bio-reactor`, `capillary-network`, `petri-dish`, `spore-bloom`, `pulse-membrane`
+`bio-reactor`, `capillary-network`, `cell-division`, `enzyme-cascade`, `gel-electrophoresis`, `spore-bloom`, `pulse-membrane`, `crystal-grow`, `dna-helix`
 
-### Atmospheric
-`flame-column`, `spark-emitter`, `spark-gap`, `static-channel`, `drop-shadow`, `infinite-hallway`, `clock-melt`, `watching-eye`, `light-slit`, `iso-blocks`
+### Atmospheric & Decorative
+`flame-column`, `spark-emitter`, `spark-gap`, `static-channel`, `infinite-hallway`, `clock-melt`, `light-slit`, `iso-blocks`, `smoke-rise`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `plasma-field`, `prism-split`, `sine-weave`, `vinyl-spin`, `card-fan`, `spiral-arm`, `spiral-vortex`, `dot-orbit`, `wave-mesh`, `waveform-3d`, `pixel-sort`, `galaxy-spiral`, `orbital-display`, `particle-field`, `memory-map`, `matrix-rain`, `gear-train`, `spring-coil`, `domino-fall`, `tape-reel`, `tuning-fork`
 
-### Structural
-`panel`, `separator`, `power-grid`, `border-chase`, `chevron-scroll`, `circuit-trace`, `corner-pip`, `face-brackets`, `pipe-network`, `pin-array`, `stack-bars`, `tread-track`, `zigzag-divider`, `chain-link`, `arrow-flow`, `breathing-grid`, `prism-refract`, `seismograph`, `quake-line`, `grid-distortion`, `compass-rose`, `gyroscope`, `matrix-rain`
+### Structural & Borders
+`panel`, `separator`, `power-grid`, `border-chase`, `bracket-frame`, `chevron-scroll`, `circuit-trace`, `corner-pip`, `drop-shadow`, `face-brackets`, `pipe-network`, `pin-array`, `tread-track`, `zigzag-divider`, `chain-link`, `arrow-flow`, `breathing-grid`, `grid-distortion`
 
 ## Element Tags
 
