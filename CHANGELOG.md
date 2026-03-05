@@ -1,5 +1,24 @@
 # Changelog
 
+## v4.0.0
+
+Massive element expansion to 256 visual elements with bug fixes.
+
+### Added
+- **95 new visual elements** spanning fractals, physics simulations, mathematical visualizations, cellular automata, and algorithmic art:
+  - **Fractals & chaos**: mandelbrot-zoom, julia-set, barnsley-fern, dragon-curve, koch-snowflake, apollonian-gasket, collatz-tree, chaos-game, strange-repeller, logistic-map, chaos-pendulum, lorenz-section, strange-billiards
+  - **Physics simulations**: cloth-sim, double-pendulum, gravity-well, spring-mesh, electric-arc, lightning-tree, string-vibration, heat-equation, erosion-sim, n-body-ring, verlet-rope, catenary-chain, sine-gordon, smoke-plume, wave-packet, wave-collapse
+  - **Math & algorithms**: hilbert-walk, prime-spiral, recaman-sequence, fourier-draw, fourier-heat, lissajous-curve, sorting-bars, maze-solver, voronoi-shatter, epitrochoid, harmonograph-3d, pursuit-curves, riemann-zeta, modular-form, symplectic-map, tensor-product, quantum-walk
+  - **Cellular automata & emergent**: conway-life, hexagonal-life, langton-ant, automata-1d, hex-automata, particle-life, slime-mold, ant-colony, sand-pile, diffusion-limited, cellular-fluid, belousov-zhabotinsky, ising-model, percolation-grid, spin-glass, kuramoto-sync, flocking-arrows, flocking-fish
+  - **Geometry & tiling**: penrose-tiling, hyperbolic-tiling, geodesic-dome, hyperboloid, mobius-strip, minimal-surface, knot-theory, mandala-gen, quasi-crystal
+  - **Data & decorative**: spiral-clock, galaxy-spiral, orbit-rings, interference-rings, magnetic-field, perlin-terrain, topo-contour, tensor-field, tree-growth, strange-attractor, web-graph, gravity-lens, electric-potential, diffusion-wave, pixel-fire, rain-matrix, worley-noise, strange-loop, game-of-hex, pendulum-phase, brainfuck-vm, turing-tape
+
+### Fixed
+- **magnetic-field-lines**: field lines no longer draw long connecting lines to screen origin when tracing exits bounds (remaining buffer positions now repeat last valid point)
+- **diffusion-wave**: profile line no longer extends outside region bounds (repositioned and clamped)
+
+---
+
 ## v3.3.0
 
 Determinism fixes, type safety, test suite, and code quality sweep.

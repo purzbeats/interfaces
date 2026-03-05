@@ -2,7 +2,7 @@
 
 [interfaces-1772551742842.webm](https://github.com/user-attachments/assets/25a11feb-68af-4224-be79-6166f167cead)
 
-Procedural sci-fi interface generator built with Three.js and TypeScript. Produces animated HUD-style compositions from 161 visual element types — radar sweeps, waveforms, data cascades, oscilloscopes, star fields, cipher wheels, mechanical gauges, physics simulations, and more — arranged via BSP-subdivided and hexagonal layout templates with seeded randomness for deterministic output.
+Procedural sci-fi interface generator built with Three.js and TypeScript. Produces animated HUD-style compositions from 256 visual element types — radar sweeps, waveforms, fractals, physics simulations, cellular automata, mathematical visualizations, data cascades, oscilloscopes, star fields, cipher wheels, mechanical gauges, and more — arranged via BSP-subdivided and hexagonal layout templates with seeded randomness for deterministic output.
 
 ## Quick Start
 
