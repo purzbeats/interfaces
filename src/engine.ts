@@ -92,6 +92,12 @@ export class Engine {
   /** Shared intensity config passed to all elements (replaces static globals). */
   readonly intensityConfig: IntensityConfig = createIntensityConfig();
 
+  /** URL-driven mode to enter after init (element showcase, gallery, perf). */
+  private autoElement: string | null = null;
+  private autoView: 'single' | 'multi' | null = null;
+  private autoGallery: boolean = false;
+  private autoPerf: boolean = false;
+
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
     const persisted = loadConfig();
@@ -102,6 +108,15 @@ export class Engine {
     if (params.has('seed')) this.config.seed = parseInt(params.get('seed')!, 10) || 42;
     if (params.has('palette')) this.config.palette = params.get('palette')!;
     if (params.has('template')) this.config.template = params.get('template')!;
+
+    // Mode params: ?element=burning-ship, ?view=multi, ?gallery=1, ?perf=1
+    if (params.has('element')) this.autoElement = params.get('element')!;
+    if (params.has('view')) {
+      const v = params.get('view')!;
+      this.autoView = v === 'multi' ? 'multi' : 'single';
+    }
+    if (params.has('gallery')) this.autoGallery = params.get('gallery') !== '0';
+    if (params.has('perf')) this.autoPerf = params.get('perf') !== '0';
   }
 
   /** Apply hex clipping planes to all materials in an element's group. */
@@ -342,6 +357,24 @@ export class Engine {
       this.generate(this.config.seed);
     }
     this.setupEvents();
+
+    // Auto-enter modes based on URL params
+    if (this.autoPerf) {
+      this.toggleDebug();
+    }
+    if (this.autoElement) {
+      const types = this.showcase.getTypes();
+      const idx = types.indexOf(this.autoElement);
+      if (idx >= 0) {
+        this.showcase.enter(idx);
+        if (this.autoView === 'multi') {
+          this.showcase.setFullscreen(true);
+          this.showcase.respawn();
+        }
+      }
+    } else if (this.autoGallery) {
+      this.gallery.enter();
+    }
   }
 
   /**

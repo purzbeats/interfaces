@@ -202,6 +202,15 @@ export class ShowcaseMode {
     `;
   }
 
+  /** Get the list of element type names. */
+  getTypes(): string[] { return this.types; }
+
+  /** Get the current element type name. */
+  getCurrentType(): string { return this.types[this.currentIndex]; }
+
+  /** Re-spawn the current element (e.g. after toggling fullscreen). */
+  respawn(): void { if (this.active) this.spawnElement(); }
+
   enter(startIndex?: number, fromGallery: boolean = false): void {
     this.active = true;
     this.enteredFromGallery = fromGallery;
@@ -290,6 +299,7 @@ export class ShowcaseMode {
     }
     this.stashedChildren = [];
 
+    this.clearURL();
     this.onExit();
   }
 
@@ -451,6 +461,25 @@ export class ShowcaseMode {
 
     this.ctx.scene.add(this.wrapper);
     this.updateOverlay();
+    this.updateURL();
+  }
+
+  /** Update URL to reflect current showcase state for shareable links. */
+  private updateURL(): void {
+    const url = new URL(window.location.href);
+    url.searchParams.set('element', this.types[this.currentIndex]);
+    url.searchParams.set('view', this.fullscreen ? 'multi' : 'single');
+    url.searchParams.set('seed', String(this.config.seed));
+    url.searchParams.set('palette', this.config.palette);
+    window.history.replaceState({}, '', url.toString());
+  }
+
+  /** Remove showcase URL params when exiting. */
+  private clearURL(): void {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('element');
+    url.searchParams.delete('view');
+    window.history.replaceState({}, '', url.toString());
   }
 
   /**
@@ -640,7 +669,7 @@ export class ShowcaseMode {
     `;
   }
 
-  private setFullscreen(on: boolean): void {
+  setFullscreen(on: boolean): void {
     this.fullscreen = on;
     this.overlay.style.display = on ? 'none' : '';
     // Hide/show the mobile toolbar
@@ -648,6 +677,7 @@ export class ShowcaseMode {
     if (toolbar) {
       toolbar.style.display = on ? 'none' : '';
     }
+    if (this.active) this.updateURL();
   }
 
   dispose(): void {

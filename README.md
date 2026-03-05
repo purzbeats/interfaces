@@ -38,6 +38,29 @@ npm run preview
 
 On mobile (<768px), a bottom toolbar provides touch-friendly buttons for all controls.
 
+## URL Parameters
+
+Shareable links with full state control:
+
+| Parameter | Values | Description |
+|-----------|--------|-------------|
+| `seed` | number | Random seed for deterministic generation |
+| `palette` | string | Color palette name (e.g. `phosphor-green`) |
+| `template` | string | Layout template (e.g. `command-center`, `auto`) |
+| `element` | string | Open showcase for a specific element (e.g. `burning-ship`) |
+| `view` | `single`, `multi` | Showcase view: single fullscreen or multi-aspect proof sheet |
+| `gallery` | `1` | Open gallery mode on load |
+| `perf` | `1` | Show debug/performance overlay on load |
+
+**Examples:**
+```
+?element=mandelbrot-zoom                    # fullscreen mandelbrot
+?element=burning-ship&view=multi            # multi-aspect proof sheet
+?element=logic-cascade&palette=amber-crt    # specific palette
+?gallery=1                                  # open gallery
+?seed=12345&perf=1                          # specific seed with debug overlay
+```
+
 ## Architecture
 
 ```

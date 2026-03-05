@@ -178,6 +178,11 @@ export class GalleryMode {
     }
     this.stashedChildren = [];
 
+    // Clear gallery URL param
+    const url = new URL(window.location.href);
+    url.searchParams.delete('gallery');
+    window.history.replaceState({}, '', url.toString());
+
     this.onExit();
   }
 

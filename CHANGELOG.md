@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.3.0
+
+### Added
+- **Shareable element URLs**: `?element=burning-ship` opens showcase mode for any element. URL updates as you navigate.
+- **View mode param**: `?view=single` (default) or `?view=multi` for multi-aspect proof sheet
+- **Gallery param**: `?gallery=1` opens gallery mode on load
+- **Performance param**: `?perf=1` shows debug/performance overlay on load
+- Documented all URL parameters and overscan controls in README
+
+---
+
 ## v5.2.0
 
 Visual quality pass, overscan fixes, and element scaling audit.
