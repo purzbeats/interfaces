@@ -9,6 +9,7 @@ import { type PostFXPipeline } from './postfx/pipeline';
 import { type Config, computeAspectSize } from './config';
 import { getMeta } from './elements/tags';
 import { TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
+import { showToast } from './gui/toast';
 
 const OVERLAY_BAR_PX = 72; // reserved height for the info bar below the element
 
@@ -178,7 +179,7 @@ export class ShowcaseMode {
     if (mobile) {
       hints = 'swipe \u2194 navigate \u00b7 double-tap fullscreen';
     } else {
-      const parts: string[] = ['\u2190 \u2192 or scroll', 'F fullscreen'];
+      const parts: string[] = ['\u2190 \u2192 or scroll', 'F fullscreen', 'C share'];
       if (this.enteredFromGallery) parts.push('B back');
       parts.push('G exit');
       hints = parts.join(' \u00b7 ');
@@ -381,6 +382,11 @@ export class ShowcaseMode {
           this.backToGallery();
         }
         break;
+      case 'c':
+      case 'C':
+        e.preventDefault();
+        this.copyShareLink();
+        break;
       case 'g':
       case 'G':
       case 'Escape':
@@ -472,6 +478,24 @@ export class ShowcaseMode {
     url.searchParams.set('seed', String(this.config.seed));
     url.searchParams.set('palette', this.config.palette);
     window.history.replaceState({}, '', url.toString());
+  }
+
+  /** Copy a shareable link for the current element to the clipboard. */
+  private copyShareLink(): void {
+    const name = this.types[this.currentIndex];
+    const url = new URL(window.location.href);
+    url.searchParams.set('element', name);
+    url.searchParams.set('seed', String(this.config.seed));
+    url.searchParams.set('palette', this.config.palette);
+    if (this.fullscreen) url.searchParams.set('view', 'multi');
+    else url.searchParams.delete('view');
+    url.searchParams.delete('template');
+    url.searchParams.delete('gallery');
+    url.searchParams.delete('perf');
+    navigator.clipboard.writeText(url.toString()).then(
+      () => showToast('Link copied'),
+      () => { prompt('Copy link:', url.toString()); },
+    );
   }
 
   /** Remove showcase URL params when exiting. */
