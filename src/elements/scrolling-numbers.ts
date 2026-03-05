@@ -40,7 +40,7 @@ export class ScrollingNumbersElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.columns * charW;
     this.canvas.height = this.rows * charH;
-    this.ctx = this.canvas.getContext('2d')!;
+    this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.NearestFilter;
     this.texture.magFilter = THREE.NearestFilter;

@@ -70,7 +70,7 @@ export class CorruptedTextElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.ceil(w * scale);
     this.canvas.height = Math.ceil(h * scale);
-    this.ctx = this.canvas.getContext('2d')!;
+    this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
 

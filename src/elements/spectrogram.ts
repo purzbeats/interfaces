@@ -58,7 +58,7 @@ export class SpectrogramElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.freqBands;
     this.canvas.height = this.scrollRows;
-    this.canvasCtx = this.canvas.getContext('2d')!;
+    this.canvasCtx = this.get2DContext(this.canvas);
     this.canvasCtx.fillStyle = '#000';
     this.canvasCtx.fillRect(0, 0, this.freqBands, this.scrollRows);
 

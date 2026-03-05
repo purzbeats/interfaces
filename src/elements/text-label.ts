@@ -54,7 +54,7 @@ export class TextLabelElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.max(256, Math.ceil(w * scale));
     this.canvas.height = Math.max(48, Math.ceil(h * scale));
-    this.ctx = this.canvas.getContext('2d')!;
+    this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
     this.texture.magFilter = THREE.LinearFilter;

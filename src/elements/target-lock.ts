@@ -174,7 +174,7 @@ export class TargetLockElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.ceil(labelW * scale);
     this.canvas.height = Math.ceil(labelH * scale);
-    this.canvasCtx = this.canvas.getContext('2d')!;
+    this.canvasCtx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
     const labelGeo = new THREE.PlaneGeometry(labelW, labelH);

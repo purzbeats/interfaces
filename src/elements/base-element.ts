@@ -22,14 +22,25 @@ export interface ElementRegistration {
   meta: ElementMeta;
 }
 
-export abstract class BaseElement {
-  /** When false, audio-reactive intensity won't trigger pulse (flicker). */
-  static audioFlickerEnabled: boolean = true;
-  /** When false, audio-reactive intensity won't trigger glitch (jiggle). */
-  static audioJiggleEnabled: boolean = true;
-  /** Set by engine before audio-reactive intensity broadcasts. */
-  static intensityFromAudio: boolean = false;
+/**
+ * Shared config object for audio-reactive intensity gating.
+ * One instance per engine, passed by reference to all elements.
+ */
+export interface IntensityConfig {
+  audioFlickerEnabled: boolean;
+  audioJiggleEnabled: boolean;
+  intensityFromAudio: boolean;
+}
 
+/** Default config used when no engine config is provided (e.g. standalone tests). */
+export function createIntensityConfig(): IntensityConfig {
+  return { audioFlickerEnabled: true, audioJiggleEnabled: true, intensityFromAudio: false };
+}
+
+/** Shared default for backward compat — used when elements are created without an explicit config. */
+const DEFAULT_INTENSITY_CONFIG: IntensityConfig = createIntensityConfig();
+
+export abstract class BaseElement {
   readonly id: string;
   readonly region: Region;
   readonly palette: Palette;
@@ -37,6 +48,7 @@ export abstract class BaseElement {
   readonly stateMachine: StateMachine;
   readonly group: THREE.Group;
   protected emitAudio: AudioEmitter;
+  protected intensityConfig: IntensityConfig;
 
   protected px: { x: number; y: number; w: number; h: number };
   protected screenWidth: number;
@@ -57,7 +69,8 @@ export abstract class BaseElement {
     rng: SeededRandom,
     screenWidth: number,
     screenHeight: number,
-    emitAudio?: AudioEmitter
+    emitAudio?: AudioEmitter,
+    intensityConfig?: IntensityConfig,
   ) {
     this.id = region.id;
     this.region = region;
@@ -69,6 +82,7 @@ export abstract class BaseElement {
     this.group = new THREE.Group();
     this.group.visible = false;
     this.emitAudio = emitAudio ?? (() => {});
+    this.intensityConfig = intensityConfig ?? DEFAULT_INTENSITY_CONFIG;
 
     this.stateMachine = new StateMachine();
     this.stateMachine.config.activating.easing = randomEasing(rng);
@@ -175,9 +189,9 @@ export abstract class BaseElement {
    * Level 0 = return to baseline (clear timers). Override for custom behavior.
    */
   onIntensity(level: number): void {
-    const fromAudio = BaseElement.intensityFromAudio;
-    const canFlicker = !fromAudio || BaseElement.audioFlickerEnabled;
-    const canJiggle = !fromAudio || BaseElement.audioJiggleEnabled;
+    const fromAudio = this.intensityConfig.intensityFromAudio;
+    const canFlicker = !fromAudio || this.intensityConfig.audioFlickerEnabled;
+    const canJiggle = !fromAudio || this.intensityConfig.audioJiggleEnabled;
 
     switch (level) {
       case 0:
@@ -214,6 +228,13 @@ export abstract class BaseElement {
     if (this.group.visible) {
       this.update(dt, time);
     }
+  }
+
+  /** Get a 2D rendering context, throwing a clear error instead of a null deref. */
+  protected get2DContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error(`Failed to get 2D context for element ${this.id}`);
+    return ctx;
   }
 
   dispose(): void {

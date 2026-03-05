@@ -7,7 +7,7 @@ import { createRenderer, resizeRenderer, type RendererContext } from './renderer
 import { getPalette, type Palette } from './color/palettes';
 import { compose, pickElementForRegion } from './layout/compositor';
 import { createElement, createElementDeferred } from './elements/registry';
-import { BaseElement } from './elements/base-element';
+import { BaseElement, createIntensityConfig, type IntensityConfig } from './elements/base-element';
 import { generateTimeline, type Timeline } from './animation/timeline';
 import { createPostFXPipeline, type PostFXPipeline } from './postfx/pipeline';
 import { createGUI, type GUIControls } from './gui/controls';
@@ -88,6 +88,9 @@ export class Engine {
 
   /** Hex border overlay — present only when current layout is hex-based. */
   private hexBorder: HexBorderOverlay | null = null;
+
+  /** Shared intensity config passed to all elements (replaces static globals). */
+  readonly intensityConfig: IntensityConfig = createIntensityConfig();
 
   constructor(config?: Partial<Config>) {
     // Layer: defaults → localStorage → URL params → constructor overrides
@@ -378,8 +381,8 @@ export class Engine {
       const elRng = elementRng.fork();
       const elementType = region.elementType ?? 'panel';
       const element = deferred
-        ? createElementDeferred(elementType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio)
-        : createElement(elementType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
+        ? createElementDeferred(elementType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio, this.intensityConfig)
+        : createElement(elementType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio, this.intensityConfig);
 
       comp.elements.push(element);
       comp.elementMap.set(element.id, element);
@@ -407,8 +410,8 @@ export class Engine {
       const region = spec.region; // already prefixed above
       const elRng = borderRng.fork();
       const borderEl = deferred
-        ? createElementDeferred(spec.borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio)
-        : createElement(spec.borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
+        ? createElementDeferred(spec.borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio, this.intensityConfig)
+        : createElement(spec.borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio, this.intensityConfig);
 
       comp.borderOverlays.push(borderEl);
       comp.elementMap.set(borderEl.id, borderEl);
@@ -610,7 +613,7 @@ export class Engine {
 
     const emitAudio = this.makeEmitAudio();
     const elRng = rng.fork();
-    const newEl = createElement(newType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
+    const newEl = createElement(newType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio, this.intensityConfig);
 
     // Apply clipping planes to keep content inside tile bounds
     const hex = region.hexCell;
@@ -649,7 +652,7 @@ export class Engine {
     const borderType = rng.pick(Engine.BORDER_TYPES);
     const emitAudio = this.makeEmitAudio();
     const elRng = rng.fork();
-    const borderEl = createElement(borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio);
+    const borderEl = createElement(borderType, region, this.palette, elRng, this.config.width, this.config.height, emitAudio, this.intensityConfig);
 
     // Apply clipping planes — same region bounds as content
     const hex = region.hexCell;
@@ -907,9 +910,9 @@ export class Engine {
       }
 
       // Sync config flags so base-element gates pulse/glitch
-      BaseElement.audioFlickerEnabled = this.config.audioReactive.flicker;
-      BaseElement.audioJiggleEnabled = this.config.audioReactive.jiggle;
-      BaseElement.intensityFromAudio = true;
+      this.intensityConfig.audioFlickerEnabled = this.config.audioReactive.flicker;
+      this.intensityConfig.audioJiggleEnabled = this.config.audioReactive.jiggle;
+      this.intensityConfig.intensityFromAudio = true;
 
       // Per-element intensity routing
       let anyActive = false;
@@ -945,7 +948,7 @@ export class Engine {
         this.currentIntensity = Math.round(Math.min(5, Math.max(1, this.bandEnvelopes[1])));
       }
 
-      BaseElement.intensityFromAudio = false;
+      this.intensityConfig.intensityFromAudio = false;
     }
 
     // Phase A: Staggered build — pop a batch each frame

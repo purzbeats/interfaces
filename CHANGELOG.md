@@ -2,16 +2,21 @@
 
 ## v3.3.0
 
-Determinism fixes, type safety, and code quality sweep.
+Determinism fixes, type safety, test suite, and code quality sweep.
+
+### Added
+- **Test suite**: 80 tests across 5 suites covering SeededRandom, StateMachine, BSP subdivision, easing functions, and visual effect utilities (vitest)
+- **`IntensityConfig` interface**: replaces static mutable globals on BaseElement with a shared config object passed by reference from the engine — enables independent engine instances for testing
 
 ### Fixed
-- **Seeded PRNG enforcement**: replaced 87 `Math.random()` calls across 19 element files with `this.rng` to restore deterministic output (bit-decay, breathing-grid, capillary-network, corrupted-text, data-cascade, drop-shadow, flow-field, fractal-tree, grid-distortion, laser-grid, lorenz-attractor, noise-band, particle-field, pulse-wave, separator, spectrogram, static-channel, target-lock, typewriter-head)
+- **Seeded PRNG enforcement**: replaced 87 `Math.random()` calls across 19 element files with `this.rng` to restore deterministic output
 - **Type safety in compositor**: replaced `as any` tag matching with proper `RoleTag | MoodTag | SizeTag` casts
 - **Module-level mutable state**: eliminated `regionCounter` global and `resetRegionCounter()` in grid.ts; counter now scoped to recursion
-- **`(this as any)` anti-pattern**: added proper private property declarations in 8 element files (bracket-frame, concentric-rings, clock-display, countdown-timer, fractal-tree, heart-monitor, voltage-arc, uptime-counter)
+- **`(this as any)` anti-pattern**: added proper private property declarations in 8 element files
+- **Canvas null safety**: replaced 32 `getContext('2d')!` non-null assertions with `get2DContext()` helper that throws a clear error
 
 ### Changed
-- **Compositor tuning constants**: extracted 15 magic numbers into named, documented constants (BASELINE_WEIGHT, SQUARE_ASPECT_MIN/MAX, RADIAL_NON_SQUARE_PENALTY, NEAR_ZERO_WEIGHT, ADJACENT_ROLE_PENALTY, ROLE_SATURATION_PENALTY, MIN_TEXT_WIDTH, SMALL/MEDIUM_AREA_THRESHOLD, HERO_MIN_AREA, BORDER_DENSITY_MIN/MAX, EDGE_TOLERANCE)
+- **Compositor tuning constants**: extracted 15 magic numbers into named, documented constants
 
 ---
 

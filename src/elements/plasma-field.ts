@@ -65,7 +65,7 @@ export class PlasmaFieldElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.resW;
     this.canvas.height = this.resH;
-    this.ctx = this.canvas.getContext('2d')!;
+    this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
     this.texture.magFilter = THREE.LinearFilter;

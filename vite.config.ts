@@ -12,4 +12,7 @@ export default defineConfig({
   server: {
     open: true,
   },
+  test: {
+    include: ['src/**/*.test.ts'],
+  },
 });

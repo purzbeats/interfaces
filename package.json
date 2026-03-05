@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "lil-gui": "^0.20.0",
@@ -17,6 +19,7 @@
     "@types/three": "^0.170.0",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
-    "vite-plugin-glsl": "^1.3.0"
+    "vite-plugin-glsl": "^1.3.0",
+    "vitest": "^4.0.18"
   }
 }

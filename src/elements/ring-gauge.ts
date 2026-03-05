@@ -142,7 +142,7 @@ export class RingGaugeElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.ceil(innerR * 1.6 * scale);
     this.canvas.height = Math.ceil(innerR * 1.2 * scale);
-    this.ctx = this.canvas.getContext('2d')!;
+    this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
     const labelGeo = new THREE.PlaneGeometry(innerR * 1.6, innerR * 1.2);

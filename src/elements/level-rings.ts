@@ -106,7 +106,7 @@ export class LevelRingsElement extends BaseElement {
     this.canvas = document.createElement('canvas');
     this.canvas.width = Math.ceil(labelR * 2 * scale);
     this.canvas.height = Math.ceil(labelR * 2 * scale);
-    this.ctx = this.canvas.getContext('2d')!;
+    this.ctx = this.get2DContext(this.canvas);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.minFilter = THREE.LinearFilter;
     const labelGeo = new THREE.PlaneGeometry(labelR * 2, labelR * 2);

@@ -1,7 +1,7 @@
 import type { Region } from '../layout/region';
 import type { Palette } from '../color/palettes';
 import type { SeededRandom } from '../random';
-import { BaseElement, type AudioEmitter, type ElementRegistration } from './base-element';
+import { BaseElement, type AudioEmitter, type ElementRegistration, type IntensityConfig } from './base-element';
 import type { ElementMeta } from './tags';
 
 type ElementFactory = (
@@ -10,7 +10,8 @@ type ElementFactory = (
   rng: SeededRandom,
   screenWidth: number,
   screenHeight: number,
-  emitAudio?: AudioEmitter
+  emitAudio?: AudioEmitter,
+  intensityConfig?: IntensityConfig,
 ) => BaseElement;
 
 const REGISTRY: Record<string, ElementFactory> = {};
@@ -32,7 +33,7 @@ for (const mod of Object.values(modules)) {
     ) {
       const { name, meta } = (exported as { registration: ElementRegistration }).registration;
       const Ctor = exported as unknown as new (...args: ConstructorParameters<typeof BaseElement>) => BaseElement;
-      REGISTRY[name] = (r, p, rng, sw, sh, a) => new Ctor(r, p, rng, sw, sh, a);
+      REGISTRY[name] = (r, p, rng, sw, sh, a, ic) => new Ctor(r, p, rng, sw, sh, a, ic);
       META[name] = meta;
     }
   }
@@ -47,10 +48,11 @@ export function createElement(
   rng: SeededRandom,
   screenWidth: number,
   screenHeight: number,
-  emitAudio?: AudioEmitter
+  emitAudio?: AudioEmitter,
+  intensityConfig?: IntensityConfig,
 ): BaseElement {
   const factory = REGISTRY[type] ?? REGISTRY['panel'];
-  const element = factory(region, palette, rng, screenWidth, screenHeight, emitAudio);
+  const element = factory(region, palette, rng, screenWidth, screenHeight, emitAudio, intensityConfig);
   element.build();
   return element;
 }
@@ -63,10 +65,11 @@ export function createElementDeferred(
   rng: SeededRandom,
   screenWidth: number,
   screenHeight: number,
-  emitAudio?: AudioEmitter
+  emitAudio?: AudioEmitter,
+  intensityConfig?: IntensityConfig,
 ): BaseElement {
   const factory = REGISTRY[type] ?? REGISTRY['panel'];
-  return factory(region, palette, rng, screenWidth, screenHeight, emitAudio);
+  return factory(region, palette, rng, screenWidth, screenHeight, emitAudio, intensityConfig);
 }
 
 export function elementTypes(): string[] {
