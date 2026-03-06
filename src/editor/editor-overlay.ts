@@ -403,6 +403,7 @@ export class EditorOverlay {
       width: `${w}px`, height: `${h}px`,
       border: `2px solid ${ACCENT}`, boxSizing: 'border-box',
       pointerEvents: 'auto', cursor: 'move', zIndex: '910',
+      touchAction: 'none',
     });
     outline.addEventListener('pointerdown', (e) => {
       e.stopPropagation(); e.preventDefault();
@@ -457,6 +458,7 @@ export class EditorOverlay {
         background: ACCENT, border: '1px solid #000', boxSizing: 'border-box',
         borderRadius: isTouch ? '50%' : '0',
         cursor: p.cur, pointerEvents: 'auto', zIndex: '920',
+        touchAction: 'none',
       });
       handle.addEventListener('pointerdown', (e) => {
         e.stopPropagation(); e.preventDefault();
