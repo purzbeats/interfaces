@@ -2,6 +2,7 @@ import { type Config, DEFAULT_CONFIG, computeAspectSize } from './config';
 import { ShowcaseMode } from './showcase';
 import { GalleryMode } from './gallery';
 import { EditorMode } from './editor';
+import { MediaMode } from './media/media-mode';
 import { SeededRandom } from './random';
 import { createRenderer, resizeRenderer, type RendererContext } from './renderer/setup';
 import { getPalette, type Palette } from './color/palettes';
@@ -19,6 +20,7 @@ import { TouchRipple } from './touch/touch-ripple';
 import { TouchManager } from './touch/touch-manager';
 import { ShakeDetector } from './touch/shake-detector';
 import { loadConfig, saveConfig, updateURL } from './persistence';
+import { loadCustomPalettes } from './color/custom-palettes';
 import { setDividerBrightness, setDividerThickness } from './elements/separator';
 import { getMeta, BAND_INDEX } from './elements/tags';
 import { showToast } from './gui/toast';
@@ -65,6 +67,7 @@ export class Engine {
   private showcase!: ShowcaseMode;
   private gallery!: GalleryMode;
   private editor!: EditorMode;
+  private media!: MediaMode;
   private mobileToolbar: MobileToolbar | null = null;
   private mobileQuery!: MediaQueryList;
   private touchRipple: TouchRipple | null = null;
@@ -99,6 +102,8 @@ export class Engine {
   private autoPerf: boolean = false;
 
   constructor(config?: Partial<Config>) {
+    // Register any user-created palettes before config resolution
+    loadCustomPalettes();
     // Layer: defaults → localStorage → URL params → constructor overrides
     const persisted = loadConfig();
     this.config = { ...DEFAULT_CONFIG, ...persisted, ...config };
@@ -225,6 +230,14 @@ export class Engine {
       this.generate(this.config.seed);
     }, () => !!this.mobileToolbar);
 
+    this.media = new MediaMode(this.ctx, this.pipeline, this.config, () => {
+      // On exit: restore aspect, regenerate the normal composition
+      this.applyAspect();
+      resizeRenderer(this.ctx, this.config.width, this.config.height);
+      this.pipeline.resize(this.config.width, this.config.height);
+      this.generate(this.config.seed);
+    }, () => !!this.mobileToolbar);
+
     // Wire audio-reactive → intensity system (per-band envelopes)
     this.audioReactive.onKick = (level) => {
       // Kick detected — boost bass and sub envelopes
@@ -308,13 +321,13 @@ export class Engine {
           },
           onScreenshot: () => takeScreenshot(this.ctx.renderer.domElement),
           onShowcase: () => {
-            if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive) this.showcase.enter();
+            if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive && !this.media.isActive) this.showcase.enter();
           },
           onGallery: () => {
-            if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive) this.gallery.enter();
+            if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive) this.gallery.enter();
           },
           onEditor: () => {
-            if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive) {
+            if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.media.isActive) {
               this.editor.promptEntry(
                 this.current?.regions,
                 this.current ? this.current.elementTypeMap : undefined,
@@ -911,7 +924,7 @@ export class Engine {
   update(dt: number): void {
     if (this.disposed) return;
 
-    // Editor/showcase/gallery mode takes over update/render
+    // Editor/showcase/gallery/media mode takes over update/render
     if (this.editor.isActive) {
       this.editor.update(dt);
       return;
@@ -922,6 +935,10 @@ export class Engine {
     }
     if (this.gallery.isActive) {
       this.gallery.update(dt);
+      return;
+    }
+    if (this.media.isActive) {
+      this.media.update(dt);
       return;
     }
 
@@ -1161,6 +1178,10 @@ export class Engine {
     }
     if (this.gallery.isActive) {
       this.gallery.render();
+      return;
+    }
+    if (this.media.isActive) {
+      this.media.render();
       return;
     }
     this.pipeline.composer.render();
@@ -1419,12 +1440,9 @@ export class Engine {
           }
           break;
         case 'v':
-          if (this.recorder.isRecording) {
-            this.recorder.stop();
-            showToast('Recording stopped');
-          } else {
-            this.recorder.start();
-            showToast('Recording...');
+          if (!this.media.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive) {
+            this.media.enter();
+            showToast('Media mode');
           }
           break;
         case 'f':
@@ -1464,13 +1482,13 @@ export class Engine {
           }
           break;
         case 'g':
-          if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive) {
+          if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive && !this.media.isActive) {
             this.showcase.enter();
             showToast('Showcase mode');
           }
           break;
         case 'b':
-          if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive) {
+          if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive) {
             this.gallery.enter();
             showToast('Gallery mode');
           }
@@ -1481,7 +1499,7 @@ export class Engine {
           this.generate(this.config.seed);
           break;
         case 'e':
-          if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive) {
+          if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.media.isActive) {
             this.editor.promptEntry(
               this.current?.regions,
               this.current ? this.current.elementTypeMap : undefined,

@@ -6,6 +6,7 @@ import type { AudioReactive } from '../audio/audio-reactive';
 import { paletteNames } from '../color/palettes';
 import { templateNames } from '../layout/templates';
 import { setDividerBrightness, setDividerThickness } from '../elements/separator';
+import { openPaletteEditor } from './palette-editor';
 
 export interface GUIControls {
   gui: GUI;
@@ -30,7 +31,32 @@ export function createGUI(
   // Generation
   const genFolder = gui.addFolder('Generation');
   genFolder.add(config, 'seed', 0, 99999, 1).name('Seed').onFinishChange(onRegenerate);
-  genFolder.add(config, 'palette', paletteNames()).name('Palette').onChange(onRegenerate);
+  const paletteCtrl = genFolder.add(config, 'palette', paletteNames()).name('Palette').onChange(onRegenerate);
+  genFolder.add({
+    editPalette: () => {
+      openPaletteEditor({
+        currentPalette: config.palette,
+        onChange: (name: string) => {
+          config.palette = name;
+          onRegenerate();
+        },
+        onRefreshList: () => {
+          // Rebuild the palette dropdown options
+          const select = paletteCtrl.domElement.querySelector('select');
+          if (select) {
+            select.innerHTML = '';
+            for (const n of paletteNames()) {
+              const opt = document.createElement('option');
+              opt.value = n;
+              opt.textContent = n;
+              if (n === config.palette) opt.selected = true;
+              select.appendChild(opt);
+            }
+          }
+        },
+      });
+    }
+  }, 'editPalette').name('Edit Palette...');
   genFolder.add(config, 'template', templateNames()).name('Template').onChange(onRegenerate);
   genFolder.add(config, 'hexLayout').name('Hex Layout (X)').onChange(onRegenerate);
   genFolder.add(config, 'aspectRatio', ASPECT_RATIOS).name('Aspect Ratio').onChange(() => {
