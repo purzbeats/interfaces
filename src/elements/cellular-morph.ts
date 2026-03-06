@@ -69,8 +69,8 @@ export class CellularMorphElement extends BaseElement {
     this.killRate = p.killRate;
     this.stepsPerFrame = p.stepsPerFrame;
 
-    this.gw = Math.min(Math.round(w / 1.5), 160);
-    this.gh = Math.min(Math.round(h / 1.5), 160);
+    this.gw = Math.max(64, Math.round(w));
+    this.gh = Math.max(64, Math.round(h));
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.gw;
@@ -95,7 +95,9 @@ export class CellularMorphElement extends BaseElement {
     for (let s = 0; s < seedCount; s++) {
       const sx = this.rng.int(this.gw * 0.1, this.gw * 0.9);
       const sy = this.rng.int(this.gh * 0.1, this.gh * 0.9);
-      const sr = this.rng.int(4, 12);
+      const minSeed = Math.max(4, Math.round(Math.min(this.gw, this.gh) * 0.02));
+      const maxSeed = Math.max(minSeed + 1, Math.round(Math.min(this.gw, this.gh) * 0.06));
+      const sr = this.rng.int(minSeed, maxSeed);
       for (let dy = -sr; dy <= sr; dy++) {
         for (let dx = -sr; dx <= sr; dx++) {
           const px = sx + dx;
