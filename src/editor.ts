@@ -346,9 +346,8 @@ export class EditorMode {
         if (drag.isDragging) {
           const nx = (e.clientX - canvasRect.left) / canvasRect.width;
           const ny = 1 - (e.clientY - canvasRect.top) / canvasRect.height;
-          if (nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1) {
-            this.placeElementAt(drag.elementType, nx, ny);
-          }
+          // Allow placement anywhere — clampRegion will keep it within bounds
+          this.placeElementAt(drag.elementType, Math.max(0, Math.min(1, nx)), Math.max(0, Math.min(1, ny)));
         } else {
           this.placeElementAtCenter(drag.elementType);
         }
@@ -1252,10 +1251,10 @@ export class EditorMode {
 
   private applyAspect(): void {
     const isMobile = this.isMobileCheck();
-    const topInset = this.active ? EDITOR_TOOLBAR_H : 0;
-    const bottomInset = this.active ? this.overlay.bottomPanelHeight : 0;
-    const mobileInset = isMobile ? TOOLBAR_HEIGHT : 0;
-    const viewportH = window.innerHeight - topInset - bottomInset - mobileInset;
+    // In editor mode, canvas spans full viewport so elements can be placed anywhere
+    // (toolbars float translucently over the canvas)
+    const mobileInset = !this.active && isMobile ? TOOLBAR_HEIGHT : 0;
+    const viewportH = window.innerHeight - mobileInset;
     const { width, height, offsetX, offsetY } = computeAspectSize(
       this.config.aspectRatio,
       window.innerWidth,
@@ -1266,7 +1265,7 @@ export class EditorMode {
     const canvas = this.ctx.renderer.domElement;
     canvas.style.position = 'absolute';
     canvas.style.left = `${offsetX}px`;
-    canvas.style.top = `${topInset + offsetY}px`;
+    canvas.style.top = `${offsetY}px`;
   }
 
   private updateStatus(): void {
