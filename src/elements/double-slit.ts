@@ -46,7 +46,7 @@ export class DoubleSlitElement extends BaseElement {
     this.particlesPerFrame = p.ppf;
 
     this.canvas = document.createElement('canvas');
-    const maxRes = 400;
+    const maxRes = 800;
     const scale = Math.min(1, maxRes / Math.max(w, h));
     this.canvas.width = Math.max(64, Math.floor(w * scale));
     this.canvas.height = Math.max(64, Math.floor(h * scale));
