@@ -405,8 +405,7 @@ export class EditorOverlay {
       pointerEvents: 'auto', cursor: 'move', zIndex: '910',
     });
     outline.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      if (e.pointerType !== 'touch') e.preventDefault();
+      e.stopPropagation(); e.preventDefault();
       this.onPointerDownOutside?.(e);
     });
     outline.addEventListener('contextmenu', (e) => {
@@ -460,8 +459,7 @@ export class EditorOverlay {
         cursor: p.cur, pointerEvents: 'auto', zIndex: '920',
       });
       handle.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        if (e.pointerType !== 'touch') e.preventDefault();
+        e.stopPropagation(); e.preventDefault();
         this.onPointerDownOutside?.(e);
       });
       this.handlesContainer.appendChild(handle);
@@ -869,13 +867,17 @@ export class EditorOverlay {
         name.style.color = 'rgba(255,255,255,0.4)';
       });
 
-      // Interaction (click + drag)
+      // Interaction: mouse = click/drag via overlay handler, touch = tap to place
       tile.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         e.stopPropagation();
-        // Don't preventDefault on touch — allow horizontal scroll in tile area
-        if (e.pointerType !== 'touch') e.preventDefault();
-        this.onPointerDownOutside?.(e);
+        if (e.pointerType === 'touch') {
+          // On touch, tap places element at center — no drag (preserves scroll)
+          this.callbacks.onPaletteElementClick(type);
+        } else {
+          e.preventDefault();
+          this.onPointerDownOutside?.(e);
+        }
       });
 
       this.tileScroll.appendChild(tile);
