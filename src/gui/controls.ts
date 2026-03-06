@@ -167,7 +167,6 @@ export function createGUI(
     fxModFolder.add(config.audioReactive, 'chromaticKick').name('Chromatic Kick');
     fxModFolder.add(config.audioReactive, 'cameraKick').name('Camera Kick');
     fxModFolder.add(config.audioReactive, 'cameraKickStrength', 0.1, 3.0, 0.1).name('Kick Strength');
-    fxModFolder.add(config.audioReactive, 'bgFlash').name('BG Flash');
   }
 
   // Post-FX

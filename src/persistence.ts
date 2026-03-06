@@ -36,7 +36,6 @@ export function loadConfig(): Partial<Config> {
         chromaticKick: data.audioReactive.chromaticKick ?? true,
         cameraKick: data.audioReactive.cameraKick ?? true,
         cameraKickStrength: data.audioReactive.cameraKickStrength ?? 1.0,
-        bgFlash: data.audioReactive.bgFlash ?? true,
       };
     }
     if (typeof data.rollingSwap === 'boolean') result.rollingSwap = data.rollingSwap;

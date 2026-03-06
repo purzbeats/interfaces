@@ -91,7 +91,6 @@ export interface Config {
     chromaticKick: boolean;
     cameraKick: boolean;
     cameraKickStrength: number;
-    bgFlash: boolean;
   };
   hexLayout: boolean;
   rollingSwap: boolean;
@@ -150,7 +149,6 @@ export const DEFAULT_CONFIG: Config = {
     chromaticKick: true,
     cameraKick: true,
     cameraKickStrength: 1.0,
-    bgFlash: true,
   },
   hexLayout: false,
   rollingSwap: true,

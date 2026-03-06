@@ -95,8 +95,6 @@ export class Engine {
   private audioCameraZoom: number = 0;
   private audioCameraShakeX: number = 0;
   private audioCameraShakeY: number = 0;
-  private audioBgFlash: number = 0;
-  private bassPalette: THREE.Color | null = null;
 
   /** Hex border overlay — present only when current layout is hex-based. */
   private hexBorder: HexBorderOverlay | null = null;
@@ -1054,9 +1052,6 @@ export class Engine {
             this.audioCameraShakeX = (Math.random() - 0.5) * kickPower * 8 * str;
             this.audioCameraShakeY = (Math.random() - 0.5) * kickPower * 8 * str;
           }
-          if (ar.bgFlash) {
-            this.audioBgFlash = Math.max(this.audioBgFlash, kickPower * 0.04);
-          }
         }
       }
     }
@@ -1231,7 +1226,6 @@ export class Engine {
       this.audioCameraZoom *= decayMed;
       this.audioCameraShakeX *= decayFast;
       this.audioCameraShakeY *= decayFast;
-      this.audioBgFlash *= decayFast;
 
       // Bloom: add envelope on top of user setting
       if (this.config.audioReactive.bloomPump) {
@@ -1258,20 +1252,10 @@ export class Engine {
         cam.updateProjectionMatrix();
       }
 
-      // Background flash — always reset to palette bg, then lerp toward white
-      const bg = this.ctx.scene.background;
-      if (bg instanceof THREE.Color) {
-        bg.copy(this.palette.bg);
-        if (this.config.audioReactive.bgFlash && this.audioBgFlash > 0.001) {
-          if (!this.bassPalette) this.bassPalette = new THREE.Color(1, 1, 1);
-          bg.lerp(this.bassPalette, this.audioBgFlash);
-        }
-      }
     } else {
       // Reset all audio FX envelopes when audio stops
       this.audioBloomEnvelope = 0;
       this.audioChromaticEnvelope = 0;
-      this.audioBgFlash = 0;
       if (this.audioCameraZoom > 0.0001 || Math.abs(this.audioCameraShakeX) > 0.01) {
         const cam = this.ctx.camera;
         cam.left = 0;
