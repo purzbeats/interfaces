@@ -51,7 +51,7 @@ interface MediaTile {
   loaded: boolean;
 }
 
-/* Palette remap shader — does luminance→palette mapping entirely on GPU */
+/* Palette remap shader with per-tile glitch effects */
 const PALETTE_REMAP_VERT = /* glsl */ `
 varying vec2 vUv;
 void main() {
@@ -63,6 +63,8 @@ void main() {
 const PALETTE_REMAP_FRAG = /* glsl */ `
 uniform sampler2D tVideo;
 uniform float opacity;
+uniform float uTime;
+uniform float uSeed;
 uniform vec3 uBg;
 uniform vec3 uDim;
 uniform vec3 uPrimary;
@@ -71,22 +73,44 @@ uniform vec2 uCoverScale;
 uniform vec2 uCoverOffset;
 varying vec2 vUv;
 
+// --- Noise helpers ---
+float hash(float n) { return fract(sin(n) * 43758.5453); }
+float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+vec3 paletteRemap(float lum) {
+  if (lum < 0.25) return mix(uBg, uDim, lum / 0.25);
+  if (lum < 0.5)  return mix(uDim, uPrimary, (lum - 0.25) / 0.25);
+  if (lum < 0.75) return mix(uPrimary, uSecondary, (lum - 0.5) / 0.25);
+  return mix(uSecondary, vec3(1.0), (lum - 0.75) / 0.25);
+}
+
 void main() {
-  // Cover-fit: scale + crop UVs to fill tile without stretching
   vec2 coverUv = vUv * uCoverScale + uCoverOffset;
+  float t = uTime;
+  float seed = uSeed;
+
+  // --- Sample video ---
   vec4 tex = texture2D(tVideo, coverUv);
   float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
+  vec3 col = paletteRemap(lum);
 
-  vec3 col;
-  if (lum < 0.25) {
-    col = mix(uBg, uDim, lum / 0.25);
-  } else if (lum < 0.5) {
-    col = mix(uDim, uPrimary, (lum - 0.25) / 0.25);
-  } else if (lum < 0.75) {
-    col = mix(uPrimary, uSecondary, (lum - 0.5) / 0.25);
-  } else {
-    col = mix(uSecondary, vec3(1.0), (lum - 0.75) / 0.25);
-  }
+  // --- Power dips (rare, gentle) ---
+  float dipCycle = sin(t * (0.15 + seed * 0.05)) * sin(t * (0.09 + seed * 0.03));
+  float dip = smoothstep(0.8, 1.0, dipCycle) * 0.15;
+  col *= 1.0 - dip;
+
+  // --- Subtle flicker (rare single-frame drops) ---
+  float flickEpoch = floor(t * 2.0 + seed * 13.0);
+  float flickHit = step(0.96, hash(flickEpoch));
+  col *= 1.0 - flickHit * 0.15;
+
+  // --- Scanlines (very subtle) ---
+  float scanline = 0.97 + 0.03 * step(0.5, fract(vUv.y * 150.0));
+  col *= scanline;
+
+  // --- Fine grain ---
+  float grain = hash2(vUv * 300.0 + floor(t * 8.0) * 17.0) * 0.015;
+  col += grain;
 
   gl_FragColor = vec4(col, opacity);
 }
@@ -247,7 +271,13 @@ export class MediaMode {
       }
     }
 
-    // Video textures update automatically via THREE.VideoTexture — no CPU work needed
+    // Update time uniform on video tiles for shader effects
+    for (const tile of this.tiles) {
+      if (tile.item.type === 'video') {
+        const mat = tile.mesh.material as THREE.ShaderMaterial;
+        if (mat.uniforms?.uTime) mat.uniforms.uTime.value = this.elapsed;
+      }
+    }
 
     // Tick divider elements (separators animate)
     for (const el of this.dividers) {
@@ -479,6 +509,8 @@ export class MediaMode {
         uniforms: {
           tVideo: { value: texture },
           opacity: { value: 0 },
+          uTime: { value: 0 },
+          uSeed: { value: Math.random() * 100 },
           uBg: { value: this.palette.bg.clone() },
           uDim: { value: this.palette.dim.clone() },
           uPrimary: { value: this.palette.primary.clone() },
