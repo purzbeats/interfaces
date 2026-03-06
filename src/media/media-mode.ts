@@ -996,7 +996,7 @@ export class MediaMode {
       text-align:center;
       flex-shrink:0;
       letter-spacing:1px;
-    ">R rearrange &middot; TAB toggle browser &middot; ESC exit</div>`;
+    ">R rearrange &middot; P palette &middot; TAB browser &middot; &larr;&rarr; pages &middot; ESC exit</div>`;
 
     this.overlay.innerHTML = html;
 
@@ -1076,6 +1076,18 @@ export class MediaMode {
         this.multiPalette = !this.multiPalette;
         showToast(this.multiPalette ? 'Multi-palette: on' : 'Multi-palette: off');
         this.rollingRearrange();
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        if (this.browserPage > 0) {
+          this.browserPage--;
+          this.updateBrowser();
+        }
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        this.browserPage++;
+        this.updateBrowser(); // updateBrowser clamps to max page
         break;
     }
   }
