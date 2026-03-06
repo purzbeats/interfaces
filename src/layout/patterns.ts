@@ -598,6 +598,282 @@ function splitOps(rng: SeededRandom): Region[] {
   ];
 }
 
+// --- Pattern P: "quad-hero" (4 equal heroes in a 2×2 grid) ---
+function quadHero(rng: SeededRandom): Region[] {
+  const mx = jitter(0.50, rng, 0.02, 0.42, 0.58);
+  const my = jitter(0.50, rng, 0.02, 0.42, 0.58);
+  return [
+    createTieredRegion('hero-0', 'hero', 0, 0, mx, my),
+    createTieredRegion('hero-1', 'hero', mx, 0, 1 - mx, my),
+    createTieredRegion('hero-2', 'hero', 0, my, mx, 1 - my),
+    createTieredRegion('hero-3', 'hero', mx, my, 1 - mx, 1 - my),
+  ];
+}
+
+// --- Pattern Q: "letterbox" (wide cinematic hero with thin strips) ---
+function letterbox(rng: SeededRandom): Region[] {
+  const topH = jitter(0.12, rng, 0.02, 0.08, 0.16);
+  const botH = jitter(0.14, rng, 0.02, 0.10, 0.18);
+  const botY = 1 - botH;
+  // Top strip widgets
+  const tw1 = jitter(0.20, rng, 0.015);
+  const tw2 = jitter(0.40, rng, 0.015);
+  const tw3 = jitter(0.60, rng, 0.015);
+  const tw4 = jitter(0.80, rng, 0.015);
+  // Bottom strip widgets
+  const bw1 = jitter(0.16, rng, 0.015);
+  const bw2 = jitter(0.33, rng, 0.015);
+  const bw3 = jitter(0.50, rng, 0.015);
+  const bw4 = jitter(0.67, rng, 0.015);
+  const bw5 = jitter(0.84, rng, 0.015);
+
+  return [
+    // Top instrument strip
+    createTieredRegion('widget-0', 'widget', 0, 0, tw1, topH),
+    createTieredRegion('widget-1', 'widget', tw1, 0, tw2 - tw1, topH),
+    createTieredRegion('widget-2', 'widget', tw2, 0, tw3 - tw2, topH),
+    createTieredRegion('widget-3', 'widget', tw3, 0, tw4 - tw3, topH),
+    createTieredRegion('widget-4', 'widget', tw4, 0, 1 - tw4, topH),
+    // Wide hero
+    createTieredRegion('hero-0', 'hero', 0, topH, 1, botY - topH),
+    // Bottom instrument strip
+    createTieredRegion('widget-5', 'widget', 0, botY, bw1, botH),
+    createTieredRegion('widget-6', 'widget', bw1, botY, bw2 - bw1, botH),
+    createTieredRegion('widget-7', 'widget', bw2, botY, bw3 - bw2, botH),
+    createTieredRegion('widget-8', 'widget', bw3, botY, bw4 - bw3, botH),
+    createTieredRegion('widget-9', 'widget', bw4, botY, bw5 - bw4, botH),
+    createTieredRegion('widget-10', 'widget', bw5, botY, 1 - bw5, botH),
+  ];
+}
+
+// --- Pattern R: "tall-spine" (vertical hero spine with flanking panels) ---
+function tallSpine(rng: SeededRandom): Region[] {
+  const spineW = jitter(0.30, rng, 0.02, 0.24, 0.36);
+  const spineX = jitter(0.35, rng, 0.02, 0.30, 0.40);
+  const rightX = spineX + spineW;
+  // Left column splits
+  const lSplit1 = jitter(0.33, rng, 0.02, 0.25, 0.42);
+  const lSplit2 = jitter(0.66, rng, 0.02, 0.58, 0.75);
+  // Right column splits
+  const rSplit1 = jitter(0.25, rng, 0.02, 0.18, 0.32);
+  const rSplit2 = jitter(0.50, rng, 0.02, 0.42, 0.58);
+  const rSplit3 = jitter(0.75, rng, 0.02, 0.68, 0.82);
+
+  return [
+    // Left column: 3 panels
+    createTieredRegion('panel-0', 'panel', 0, 0, spineX, lSplit1),
+    createTieredRegion('panel-1', 'panel', 0, lSplit1, spineX, lSplit2 - lSplit1),
+    createTieredRegion('panel-2', 'panel', 0, lSplit2, spineX, 1 - lSplit2),
+    // Center spine: hero
+    createTieredRegion('hero-0', 'hero', spineX, 0, spineW, 1),
+    // Right column: 4 widgets
+    createTieredRegion('widget-0', 'widget', rightX, 0, 1 - rightX, rSplit1),
+    createTieredRegion('widget-1', 'widget', rightX, rSplit1, 1 - rightX, rSplit2 - rSplit1),
+    createTieredRegion('widget-2', 'widget', rightX, rSplit2, 1 - rightX, rSplit3 - rSplit2),
+    createTieredRegion('widget-3', 'widget', rightX, rSplit3, 1 - rightX, 1 - rSplit3),
+  ];
+}
+
+// --- Pattern S: "golden-ratio" (Fibonacci spiral-inspired nested rectangles) ---
+function goldenRatio(rng: SeededRandom): Region[] {
+  // Golden ratio ≈ 0.618
+  const phi = 0.618;
+  const p1 = jitter(phi, rng, 0.02, 0.56, 0.68);        // main split
+  const p2 = jitter(1 - phi, rng, 0.02, 0.32, 0.44);     // secondary
+
+  return [
+    // Large hero (golden rectangle)
+    createTieredRegion('hero-0', 'hero', 0, 0, p1, 1),
+    // Right column: stacked subdivisions
+    createTieredRegion('panel-0', 'panel', p1, 0, 1 - p1, p2),
+    createTieredRegion('panel-1', 'panel', p1, p2, (1 - p1) * p1, 1 - p2),
+    createTieredRegion('widget-0', 'widget', p1 + (1 - p1) * p1, p2, (1 - p1) * (1 - p1), (1 - p2) * p1),
+    createTieredRegion('widget-1', 'widget', p1 + (1 - p1) * p1, p2 + (1 - p2) * p1, (1 - p1) * (1 - p1), (1 - p2) * (1 - p1)),
+  ];
+}
+
+// --- Pattern T: "film-strip" (horizontal ribbon of equal panels) ---
+function filmStrip(rng: SeededRandom): Region[] {
+  const topH = jitter(0.10, rng, 0.015, 0.06, 0.14);
+  const botH = jitter(0.10, rng, 0.015, 0.06, 0.14);
+  const botY = 1 - botH;
+  const midH = botY - topH;
+  const cols = rng.pick([4, 5, 6]);
+  const colW = 1 / cols;
+
+  const regions: Region[] = [];
+  // Top strip: 2 wide widgets
+  const tSplit = jitter(0.50, rng, 0.015);
+  regions.push(createTieredRegion('widget-t0', 'widget', 0, 0, tSplit, topH));
+  regions.push(createTieredRegion('widget-t1', 'widget', tSplit, 0, 1 - tSplit, topH));
+
+  // Middle: equal panels
+  for (let c = 0; c < cols; c++) {
+    const tier = c === Math.floor(cols / 2) ? 'hero' as const : 'panel' as const;
+    regions.push(createTieredRegion(`panel-${c}`, tier, c * colW, topH, colW, midH));
+  }
+
+  // Bottom strip: 2 wide widgets
+  const bSplit = jitter(0.50, rng, 0.015);
+  regions.push(createTieredRegion('widget-b0', 'widget', 0, botY, bSplit, botH));
+  regions.push(createTieredRegion('widget-b1', 'widget', bSplit, botY, 1 - bSplit, botH));
+
+  return regions;
+}
+
+// --- Pattern U: "cross" (+ shaped hero with corner panels) ---
+function crossLayout(rng: SeededRandom): Region[] {
+  const armW = jitter(0.30, rng, 0.02, 0.24, 0.36);
+  const armH = jitter(0.30, rng, 0.02, 0.24, 0.36);
+  const cx = (1 - armW) / 2;
+  const cy = (1 - armH) / 2;
+
+  return [
+    // Four corner panels
+    createTieredRegion('panel-0', 'panel', 0, 0, cx, cy),
+    createTieredRegion('panel-1', 'panel', cx + armW, 0, 1 - cx - armW, cy),
+    createTieredRegion('panel-2', 'panel', 0, cy + armH, cx, 1 - cy - armH),
+    createTieredRegion('panel-3', 'panel', cx + armW, cy + armH, 1 - cx - armW, 1 - cy - armH),
+    // Cross arms (hero pieces)
+    createTieredRegion('hero-0', 'hero', cx, 0, armW, 1),           // vertical arm
+    createTieredRegion('hero-1', 'hero', 0, cy, cx, armH),          // left arm
+    createTieredRegion('hero-2', 'hero', cx + armW, cy, 1 - cx - armW, armH), // right arm
+  ];
+}
+
+// --- Pattern V: "staircase" (diagonal stepping layout) ---
+function staircase(rng: SeededRandom): Region[] {
+  const steps = rng.pick([3, 4]);
+  const stepW = 1 / steps;
+  const stepH = 1 / steps;
+  const regions: Region[] = [];
+
+  for (let i = 0; i < steps; i++) {
+    const x = i * stepW;
+    const y = i * stepH;
+    // Each step has a panel portion and widget strip
+    const tier = i === 0 ? 'hero' as const : 'panel' as const;
+    // Main block
+    regions.push(createTieredRegion(`step-${i}`, tier, x, y, stepW, 1 - y));
+    // Top sliver widget (above the step, filling the gap)
+    if (i > 0) {
+      regions.push(createTieredRegion(`widget-${i}`, 'widget', x, 0, stepW, y));
+    }
+  }
+
+  return regions;
+}
+
+// --- Pattern W: "mosaic" (irregular tile grid with varied sizes) ---
+function mosaic(rng: SeededRandom): Region[] {
+  // 4 columns, varied heights per column
+  const c1 = jitter(0.25, rng, 0.02, 0.20, 0.30);
+  const c2 = jitter(0.50, rng, 0.02, 0.45, 0.55);
+  const c3 = jitter(0.75, rng, 0.02, 0.70, 0.80);
+
+  // Each column has 2-3 splits
+  const r1a = jitter(0.45, rng, 0.03, 0.35, 0.55);
+  const r2a = jitter(0.35, rng, 0.03, 0.25, 0.45);
+  const r2b = jitter(0.70, rng, 0.03, 0.60, 0.80);
+  const r3a = jitter(0.55, rng, 0.03, 0.45, 0.65);
+  const r4a = jitter(0.40, rng, 0.03, 0.30, 0.50);
+  const r4b = jitter(0.75, rng, 0.03, 0.65, 0.85);
+
+  return [
+    // Column 1: 2 tiles
+    createTieredRegion('panel-0', 'panel', 0, 0, c1, r1a),
+    createTieredRegion('hero-0', 'hero', 0, r1a, c1, 1 - r1a),
+    // Column 2: 3 tiles
+    createTieredRegion('widget-0', 'widget', c1, 0, c2 - c1, r2a),
+    createTieredRegion('panel-1', 'panel', c1, r2a, c2 - c1, r2b - r2a),
+    createTieredRegion('widget-1', 'widget', c1, r2b, c2 - c1, 1 - r2b),
+    // Column 3: 2 tiles
+    createTieredRegion('hero-1', 'hero', c2, 0, c3 - c2, r3a),
+    createTieredRegion('panel-2', 'panel', c2, r3a, c3 - c2, 1 - r3a),
+    // Column 4: 3 tiles
+    createTieredRegion('widget-2', 'widget', c3, 0, 1 - c3, r4a),
+    createTieredRegion('panel-3', 'panel', c3, r4a, 1 - c3, r4b - r4a),
+    createTieredRegion('widget-3', 'widget', c3, r4b, 1 - c3, 1 - r4b),
+  ];
+}
+
+// --- Pattern X: "l-shaped" (L-shaped hero with widgets filling the corner) ---
+function lShaped(rng: SeededRandom): Region[] {
+  const heroW = jitter(0.62, rng, 0.02, 0.55, 0.70);
+  const heroH = jitter(0.60, rng, 0.02, 0.52, 0.68);
+  const cornerW = 1 - heroW;
+  const cornerH = 1 - heroH;
+  // Split the corner area
+  const cSplitY = jitter(0.50, rng, 0.02, 0.35, 0.65) * cornerH;
+  // Split the bottom strip
+  const bSplit = jitter(0.50, rng, 0.02, 0.35, 0.65) * heroW;
+
+  return [
+    // L-shaped hero (top-left block)
+    createTieredRegion('hero-0', 'hero', 0, 0, heroW, heroH),
+    // Corner: 2 panels stacked
+    createTieredRegion('panel-0', 'panel', heroW, 0, cornerW, heroH * 0.5),
+    createTieredRegion('panel-1', 'panel', heroW, heroH * 0.5, cornerW, heroH * 0.5),
+    // Bottom strip: 2 widgets + 1 panel
+    createTieredRegion('widget-0', 'widget', 0, heroH, bSplit, cornerH),
+    createTieredRegion('widget-1', 'widget', bSplit, heroH, heroW - bSplit, cornerH),
+    createTieredRegion('panel-2', 'panel', heroW, heroH, cornerW, cornerH),
+  ];
+}
+
+// --- Pattern Y: "ticker-board" (many small equal widgets like an airport departures board) ---
+function tickerBoard(rng: SeededRandom): Region[] {
+  const headerH = jitter(0.12, rng, 0.015, 0.08, 0.16);
+  const footerH = jitter(0.08, rng, 0.015, 0.05, 0.12);
+  const footerY = 1 - footerH;
+  const gridH = footerY - headerH;
+  const cols = rng.pick([3, 4, 5]);
+  const rows = rng.pick([3, 4]);
+  const cellW = 1 / cols;
+  const cellH = gridH / rows;
+
+  const regions: Region[] = [];
+  // Header: hero
+  regions.push(createTieredRegion('hero-0', 'hero', 0, 0, 1, headerH));
+  // Grid of widgets
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      regions.push(createTieredRegion(
+        `cell-${r}-${c}`, 'widget',
+        c * cellW, headerH + r * cellH, cellW, cellH,
+      ));
+    }
+  }
+  // Footer: 2 panel strips
+  const fSplit = jitter(0.50, rng, 0.02);
+  regions.push(createTieredRegion('panel-0', 'panel', 0, footerY, fSplit, footerH));
+  regions.push(createTieredRegion('panel-1', 'panel', fSplit, footerY, 1 - fSplit, footerH));
+
+  return regions;
+}
+
+// --- Pattern Z: "diamond" (rotated square hero with triangular corner widgets) ---
+function diamond(rng: SeededRandom): Region[] {
+  const inset = jitter(0.28, rng, 0.02, 0.22, 0.34);
+  const cx = 0.50;
+  const cy = 0.50;
+
+  return [
+    // Central hero diamond (approximated as rectangle)
+    createTieredRegion('hero-0', 'hero', inset, inset, 1 - 2 * inset, 1 - 2 * inset),
+    // Top triangle zone → 2 widgets
+    createTieredRegion('widget-0', 'widget', 0, 0, cx, inset),
+    createTieredRegion('widget-1', 'widget', cx, 0, 1 - cx, inset),
+    // Bottom triangle zone → 2 widgets
+    createTieredRegion('widget-2', 'widget', 0, 1 - inset, cx, inset),
+    createTieredRegion('widget-3', 'widget', cx, 1 - inset, 1 - cx, inset),
+    // Left triangle → panel
+    createTieredRegion('panel-0', 'panel', 0, inset, inset, 1 - 2 * inset),
+    // Right triangle → panel
+    createTieredRegion('panel-1', 'panel', 1 - inset, inset, inset, 1 - 2 * inset),
+  ];
+}
+
 // --- Pattern registry ---
 
 export const PATTERNS: Record<string, LayoutPattern> = {
@@ -616,6 +892,17 @@ export const PATTERNS: Record<string, LayoutPattern> = {
   'ops-center':         { name: 'ops-center',          generate: opsCenter },
   'bridge':             { name: 'bridge',              generate: bridge },
   'split-ops':          { name: 'split-ops',           generate: splitOps },
+  'quad-hero':          { name: 'quad-hero',           generate: quadHero },
+  'letterbox':          { name: 'letterbox',           generate: letterbox },
+  'tall-spine':         { name: 'tall-spine',          generate: tallSpine },
+  'golden-ratio':       { name: 'golden-ratio',        generate: goldenRatio },
+  'film-strip':         { name: 'film-strip',          generate: filmStrip },
+  'cross':              { name: 'cross',               generate: crossLayout },
+  'staircase':          { name: 'staircase',           generate: staircase },
+  'mosaic':             { name: 'mosaic',              generate: mosaic },
+  'l-shaped':           { name: 'l-shaped',            generate: lShaped },
+  'ticker-board':       { name: 'ticker-board',        generate: tickerBoard },
+  'diamond':            { name: 'diamond',             generate: diamond },
   'hex-cluster':        { name: 'hex-cluster',         generate: hexCluster },
   'hex-grid':           { name: 'hex-grid',            generate: hexGrid },
   'hex-wall':           { name: 'hex-wall',            generate: hexWall },

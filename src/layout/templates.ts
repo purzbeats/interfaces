@@ -298,6 +298,97 @@ export const TEMPLATES: Record<string, TemplateConfig> = {
       'boids-swarm': 1, 'flow-field': 1, 'plasma-field': 1,
     },
   },
+  'cinema': {
+    name: 'cinema',
+    layoutPattern: 'letterbox',
+    createRegions: () => [
+      createRegion('full', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    tagWeights: {
+      'decorative': 2, 'data-display': 1, 'ambient': 2,
+    },
+    elementWeights: {
+      'waveform': 2, 'spectrogram': 2, 'freq-analyzer': 2,
+      'audio-meter': 2, 'heart-monitor': 2, 'oscilloscope': 2,
+      'pulse-wave': 2, 'signal-bars': 1, 'progress-bar': 1,
+      'harmonograph': 3, 'lorenz-attractor': 3, 'pendulum-wave': 2,
+      'flow-field': 2, 'plasma-field': 2, 'star-field': 2,
+      'boids-swarm': 2, 'neural-mesh': 2, 'grid-distortion': 2,
+      'wave-interference': 2, 'dna-helix': 2, 'fractal-tree': 2,
+    },
+  },
+
+  'quad-view': {
+    name: 'quad-view',
+    layoutPattern: 'quad-hero',
+    createRegions: () => [
+      createRegion('full', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    tagWeights: {
+      'data-display': 2, 'scanner': 2, 'gauge': 1,
+    },
+    elementWeights: {
+      'radar-sweep': 2, 'cross-scope': 2, 'radial-scanner': 2,
+      'target-lock': 2, 'ring-gauge': 2, 'concentric-rings': 2,
+      'hex-tunnel': 2, 'orbital-display': 2, 'topology-map': 2,
+      'lorenz-attractor': 2, 'flow-field': 2, 'boids-swarm': 2,
+      'plasma-field': 2, 'grid-distortion': 2, 'wave-interference': 2,
+      'cellular-morph': 2, 'distance-field': 2, 'double-slit': 2,
+    },
+  },
+
+  'mosaic': {
+    name: 'mosaic',
+    layoutPattern: 'mosaic',
+    createRegions: () => [
+      createRegion('full', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    tagWeights: {
+      'decorative': 2, 'data-display': 1, 'diagnostic': 1, 'ambient': 2,
+    },
+  },
+
+  'mission-board': {
+    name: 'mission-board',
+    layoutPattern: 'ticker-board',
+    dominantMood: 'tactical',
+    createRegions: () => [
+      createRegion('full', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    elementWeights: {
+      'segment-display': 3, 'clock-display': 3, 'countdown-timer': 3,
+      'status-readout': 3, 'text-label': 2, 'progress-bar': 2,
+      'signal-bars': 2, 'threat-meter': 2, 'uptime-counter': 2,
+      'binary-stream': 2, 'ring-gauge': 1, 'phase-indicator': 1,
+      'data-table': 2, 'cpu-cores': 1, 'power-grid': 1,
+      'barcode-strip': 2, 'dot-matrix': 2, 'ticker-tape': 2,
+      'scrolling-numbers': 2, 'flight-ladder': 2,
+    },
+  },
+
+  'golden': {
+    name: 'golden',
+    layoutPattern: 'golden-ratio',
+    createRegions: () => [
+      createRegion('full', 0.0, 0.0, 1.0, 1.0, 0.005),
+    ],
+    bspOptions: { maxDepth: 0 },
+    tagWeights: {
+      'decorative': 2, 'data-display': 1,
+    },
+    elementWeights: {
+      'harmonograph': 3, 'lorenz-attractor': 3, 'spiral-vortex': 3,
+      'fractal-tree': 2, 'mandelbrot-zoom': 2, 'julia-morph': 2,
+      'pendulum-wave': 2, 'flow-field': 2, 'plasma-field': 2,
+      'cellular-morph': 2, 'reaction-diffuse': 2,
+      'dna-helix': 1, 'wave-interference': 1, 'star-field': 1,
+    },
+  },
+
   'ops-hud': {
     name: 'ops-hud',
     dominantMood: 'tactical',
