@@ -35,6 +35,7 @@ export class ThermalGradientElement extends BaseElement {
   private hotSide: string = 'left';
   private speedMult: number = 1;
   private hotPulse: number = 0;
+  private renderAccum: number = 0;
 
   build(): void {
     this.glitchAmount = 4;
@@ -52,12 +53,15 @@ export class ThermalGradientElement extends BaseElement {
     this.alpha = p.alpha;
     this.hotSide = p.hotSide;
 
+    // Cap grid resolution for performance — heat equation iterates 6× per frame
+    const maxGrid = 200;
+    const gridScale = Math.min(p.gridScale, maxGrid / Math.max(w, h));
     if (this.mode === '1d') {
-      this.gridW = Math.max(16, Math.floor(w * p.gridScale));
+      this.gridW = Math.max(16, Math.floor(w * gridScale));
       this.gridH = 1;
     } else {
-      this.gridW = Math.max(16, Math.floor(w * p.gridScale));
-      this.gridH = Math.max(16, Math.floor(h * p.gridScale));
+      this.gridW = Math.max(16, Math.floor(w * gridScale));
+      this.gridH = Math.max(16, Math.floor(h * gridScale));
     }
 
     this.temp = new Float32Array(this.gridW * this.gridH);
@@ -155,6 +159,12 @@ export class ThermalGradientElement extends BaseElement {
       this.tempNext = swap;
     }
 
+    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;
+
+    this.renderAccum += dt;
+    if (this.renderAccum < 0.066) return; // ~15fps render
+    this.renderAccum = 0;
+
     // Render to canvas
     const canvasH = this.canvas.height;
     const imgData = this.ctx.createImageData(this.gridW, canvasH);
@@ -193,8 +203,6 @@ export class ThermalGradientElement extends BaseElement {
 
     this.ctx.putImageData(imgData, 0, 0);
     this.texture.needsUpdate = true;
-
-    (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;
   }
 
   onAction(action: string): void {

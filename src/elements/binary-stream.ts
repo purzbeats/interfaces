@@ -38,8 +38,9 @@ export class BinaryStreamElement extends BaseElement {
     const { x, y, w, h } = this.px;
     const charW = p.cw;
     const charH = p.ch;
-    this.columns = Math.max(4, Math.floor(w / charW));
-    this.rows = Math.max(1, Math.floor(h / charH));
+    // Cap grid to avoid 40K+ fillText calls per render
+    this.columns = Math.min(120, Math.max(4, Math.floor(w / charW)));
+    this.rows = Math.min(60, Math.max(1, Math.floor(h / charH)));
     this.isHex = this.rng.chance(p.hexChance);
     this.scrollSpeed = this.rng.float(p.speedMin, p.speedMax);
     this.RENDER_INTERVAL = 1 / p.renderFps;

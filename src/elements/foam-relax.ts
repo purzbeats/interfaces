@@ -59,8 +59,11 @@ export class FoamRelaxElement extends BaseElement {
     this.relaxInterval = p.relaxInt;
     this.relaxStrength = p.relaxStr;
 
-    this.gridW = Math.max(16, Math.floor(w / p.gridScale));
-    this.gridH = Math.max(16, Math.floor(h / p.gridScale));
+    // Cap grid to prevent O(gridW*gridH*siteCount) blowup in computeVoronoi
+    const maxGrid = 200;
+    const gScale = Math.max(p.gridScale, Math.max(w, h) / maxGrid);
+    this.gridW = Math.max(16, Math.floor(w / gScale));
+    this.gridH = Math.max(16, Math.floor(h / gScale));
     this.cellOwner = new Int16Array(this.gridW * this.gridH);
 
     this.siteX = new Float32Array(this.siteCount);
@@ -259,18 +262,18 @@ export class FoamRelaxElement extends BaseElement {
       this.voronoiDirty = true;
     }
 
-    // Throttle Voronoi recomputation to ~15fps
+    (this.lineMesh.material as THREE.LineBasicMaterial).opacity = opacity;
+    (this.borderMesh.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
+
+    // Throttle Voronoi recomputation + edge rendering to ~15fps
     this.simAccum += dt;
     if (this.voronoiDirty || this.simAccum >= 0.067) {
       this.simAccum = 0;
       this.voronoiDirty = false;
       this.computeVoronoi();
+      const vi = this.renderEdges();
+      this.lineMesh.geometry.setDrawRange(0, vi);
     }
-    const vi = this.renderEdges();
-    this.lineMesh.geometry.setDrawRange(0, vi);
-
-    (this.lineMesh.material as THREE.LineBasicMaterial).opacity = opacity;
-    (this.borderMesh.material as THREE.LineBasicMaterial).opacity = opacity * 0.3;
   }
 
   onAction(action: string): void {

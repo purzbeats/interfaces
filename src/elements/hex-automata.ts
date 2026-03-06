@@ -207,53 +207,75 @@ export class HexAutomataElement extends BaseElement {
   }
 
   private renderHexGrid(): void {
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
     const s = this.hexSize * this.canvasScale;
     const pr = this.palette.primary;
     const sr = this.palette.secondary;
     const dm = this.palette.dim;
 
-    this.ctx.fillStyle = 'black';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // Use ImageData for fast pixel-level rendering instead of per-cell canvas paths
+    const imgData = this.ctx.createImageData(cw, ch);
+    const data = imgData.data;
+
+    // Background: black
+    // (Uint8ClampedArray defaults to 0 which is already black with alpha 0)
+    // Set alpha to 255 for all pixels as base
+    for (let i = 3; i < data.length; i += 4) data[i] = 255;
+
+    // Pre-compute cell colors
+    const dmR = Math.floor(dm.r * 255 * 0.18);
+    const dmG = Math.floor(dm.g * 255 * 0.18);
+    const dmB = Math.floor(dm.b * 255 * 0.18);
 
     for (let gy = 0; gy < this.gridRows; gy++) {
       for (let gx = 0; gx < this.gridCols; gx++) {
         const val = this.grid[gy * this.gridCols + gx];
         const xOff = (gy % 2) * s * 0.866;
-        const px = gx * s * 1.732 + xOff + s;
-        const py = gy * s * 1.5 + s;
+        const cx = gx * s * 1.732 + xOff + s;
+        const cy = gy * s * 1.5 + s;
 
+        let cr: number, cg: number, cb: number;
         if (val > 0) {
-          // Age-based coloring: young = primary, old = secondary, very old = dim
           const ageT = Math.min(1, val / this.maxAge);
-          let r: number, g: number, b: number;
           if (ageT < 0.5) {
             const t = ageT * 2;
-            r = pr.r + (sr.r - pr.r) * t;
-            g = pr.g + (sr.g - pr.g) * t;
-            b = pr.b + (sr.b - pr.b) * t;
+            cr = Math.floor((pr.r + (sr.r - pr.r) * t) * 255);
+            cg = Math.floor((pr.g + (sr.g - pr.g) * t) * 255);
+            cb = Math.floor((pr.b + (sr.b - pr.b) * t) * 255);
           } else {
             const t = (ageT - 0.5) * 2;
-            r = sr.r + (dm.r - sr.r) * t;
-            g = sr.g + (dm.g - sr.g) * t;
-            b = sr.b + (dm.b - sr.b) * t;
+            cr = Math.floor((sr.r + (dm.r - sr.r) * t) * 255);
+            cg = Math.floor((sr.g + (dm.g - sr.g) * t) * 255);
+            cb = Math.floor((sr.b + (dm.b - sr.b) * t) * 255);
           }
-          this.ctx.fillStyle = `rgb(${Math.floor(r * 255)},${Math.floor(g * 255)},${Math.floor(b * 255)})`;
         } else {
-          this.ctx.fillStyle = `rgba(${Math.floor(dm.r * 255)},${Math.floor(dm.g * 255)},${Math.floor(dm.b * 255)},0.18)`;
+          cr = dmR; cg = dmG; cb = dmB;
         }
 
-        this.ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i - Math.PI / 6;
-          const hx = px + s * 0.88 * Math.cos(angle);
-          const hy = py + s * 0.88 * Math.sin(angle);
-          if (i === 0) this.ctx.moveTo(hx, hy);
-          else this.ctx.lineTo(hx, hy);
+        // Fill hex area as a rect approximation (fast, looks fine at low res)
+        const hr = s * 0.88;
+        const x0 = Math.max(0, Math.floor(cx - hr));
+        const x1 = Math.min(cw - 1, Math.floor(cx + hr));
+        const y0 = Math.max(0, Math.floor(cy - hr * 0.866));
+        const y1 = Math.min(ch - 1, Math.floor(cy + hr * 0.866));
+        for (let py = y0; py <= y1; py++) {
+          // Narrow the row width to approximate hex shape
+          const dy = Math.abs(py - cy) / (hr * 0.866);
+          const rowHalf = hr * (1 - dy * 0.5); // taper toward top/bottom
+          const rx0 = Math.max(x0, Math.floor(cx - rowHalf));
+          const rx1 = Math.min(x1, Math.floor(cx + rowHalf));
+          for (let px = rx0; px <= rx1; px++) {
+            const idx = (py * cw + px) * 4;
+            data[idx] = cr;
+            data[idx + 1] = cg;
+            data[idx + 2] = cb;
+          }
         }
-        this.ctx.closePath();
-        this.ctx.fill();
       }
     }
+
+    this.ctx.putImageData(imgData, 0, 0);
     this.texture.needsUpdate = true;
   }
 

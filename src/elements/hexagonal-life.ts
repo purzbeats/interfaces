@@ -162,20 +162,34 @@ export class HexagonalLifeElement extends BaseElement {
   }
 
   private renderGrid(): void {
-    const ctx = this.ctx;
     const cw = this.canvas.width;
     const ch = this.canvas.height;
     const bg = this.palette.bg;
+    const pr = this.palette.primary;
+    const dm = this.palette.dim;
 
-    ctx.fillStyle = `rgb(${Math.floor(bg.r * 255)},${Math.floor(bg.g * 255)},${Math.floor(bg.b * 255)})`;
-    ctx.fillRect(0, 0, cw, ch);
+    // Use ImageData instead of per-cell canvas path operations
+    const imgData = this.ctx.createImageData(cw, ch);
+    const data = imgData.data;
+
+    // Fill background
+    const bgR = Math.floor(bg.r * 255);
+    const bgG = Math.floor(bg.g * 255);
+    const bgB = Math.floor(bg.b * 255);
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = bgR; data[i + 1] = bgG; data[i + 2] = bgB; data[i + 3] = 255;
+    }
 
     const hexW = cw / this.gridW;
     const hexH = ch / this.gridH;
     const r = Math.min(hexW, hexH) * 0.45;
 
-    const pr = this.palette.primary;
-    const dm = this.palette.dim;
+    const prR = Math.floor(pr.r * 255);
+    const prG = Math.floor(pr.g * 255);
+    const prB = Math.floor(pr.b * 255);
+    const dmR = Math.floor(dm.r * 255 * 0.15);
+    const dmG = Math.floor(dm.g * 255 * 0.15);
+    const dmB = Math.floor(dm.b * 255 * 0.15);
 
     for (let row = 0; row < this.gridH; row++) {
       for (let col = 0; col < this.gridW; col++) {
@@ -183,30 +197,29 @@ export class HexagonalLifeElement extends BaseElement {
         const cx = col * hexW * 0.75 + hexW * 0.5;
         const cy = row * hexH + hexH * 0.5 + (col % 2 === 1 ? hexH * 0.5 : 0);
 
-        if (alive) {
-          ctx.fillStyle = `rgb(${Math.floor(pr.r * 255)},${Math.floor(pr.g * 255)},${Math.floor(pr.b * 255)})`;
-          this.drawHex(ctx, cx, cy, r);
-          ctx.fill();
-        } else {
-          ctx.strokeStyle = `rgba(${Math.floor(dm.r * 255)},${Math.floor(dm.g * 255)},${Math.floor(dm.b * 255)},0.15)`;
-          ctx.lineWidth = 0.5;
-          this.drawHex(ctx, cx, cy, r);
-          ctx.stroke();
+        const cr = alive ? prR : dmR;
+        const cg = alive ? prG : dmG;
+        const cb = alive ? prB : dmB;
+
+        // Hex approximation via tapered rect
+        const x0 = Math.max(0, Math.floor(cx - r));
+        const x1 = Math.min(cw - 1, Math.floor(cx + r));
+        const y0 = Math.max(0, Math.floor(cy - r * 0.866));
+        const y1 = Math.min(ch - 1, Math.floor(cy + r * 0.866));
+        for (let py = y0; py <= y1; py++) {
+          const dy = Math.abs(py - cy) / (r * 0.866);
+          const rowHalf = r * (1 - dy * 0.5);
+          const rx0 = Math.max(x0, Math.floor(cx - rowHalf));
+          const rx1 = Math.min(x1, Math.floor(cx + rowHalf));
+          for (let px = rx0; px <= rx1; px++) {
+            const idx = (py * cw + px) * 4;
+            data[idx] = cr; data[idx + 1] = cg; data[idx + 2] = cb;
+          }
         }
       }
     }
-  }
 
-  private drawHex(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i - Math.PI / 6;
-      const hx = cx + r * Math.cos(angle);
-      const hy = cy + r * Math.sin(angle);
-      if (i === 0) ctx.moveTo(hx, hy);
-      else ctx.lineTo(hx, hy);
-    }
-    ctx.closePath();
+    this.ctx.putImageData(imgData, 0, 0);
   }
 
   update(dt: number, _time: number): void {
