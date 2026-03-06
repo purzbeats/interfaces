@@ -75,6 +75,7 @@ uniform vec2 uCoverScale;
 uniform vec2 uCoverOffset;
 uniform float uKenBurnsZoom;
 uniform vec2 uKenBurnsPan;
+uniform float uReveal;
 varying vec2 vUv;
 
 // --- Noise helpers ---
@@ -89,11 +90,16 @@ vec3 paletteRemap(float lum) {
 }
 
 void main() {
+  // Per-tile variation derived from seed (no extra uniforms needed)
+  float seed = uSeed;
+  float scanlineCount = 120.0 + fract(seed * 3.7) * 100.0;
+  float grainAmt = 0.008 + fract(seed * 7.3) * 0.015;
+  float flickerRate = 1.5 + fract(seed * 11.1) * 2.5;
+
   // Apply Ken Burns (slow pan/zoom for stills — identity for video)
   vec2 kb = (vUv - 0.5) / uKenBurnsZoom + 0.5 + uKenBurnsPan;
   vec2 coverUv = kb * uCoverScale + uCoverOffset;
   float t = uTime;
-  float seed = uSeed;
 
   // --- Horizontal glitch shift (rare, per-scanline) ---
   float glitchEpoch = floor(t * 1.5 + seed * 7.0);
@@ -107,23 +113,38 @@ void main() {
   float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
   vec3 col = paletteRemap(lum);
 
-  // --- Power dips (rare, gentle) ---
-  float dipCycle = sin(t * (0.15 + seed * 0.05)) * sin(t * (0.09 + seed * 0.03));
+  // --- CRT scan sweep (slow bright line moving down, per-tile speed) ---
+  float sweepSpeed = 0.03 + fract(seed * 2.3) * 0.04;
+  float sweepY = fract(t * sweepSpeed + seed * 0.5);
+  float sweep = 1.0 - smoothstep(0.0, 0.025, abs(vUv.y - sweepY));
+  col += sweep * uPrimary * 0.1;
+
+  // --- Power dips (rare, gentle, phase-shifted per tile) ---
+  float dipPhase = seed * 17.0;
+  float dipCycle = sin((t + dipPhase) * (0.15 + fract(seed * 0.37) * 0.05))
+                 * sin((t + dipPhase) * (0.09 + fract(seed * 0.19) * 0.03));
   float dip = smoothstep(0.8, 1.0, dipCycle) * 0.15;
   col *= 1.0 - dip;
 
-  // --- Subtle flicker (rare single-frame drops) ---
-  float flickEpoch = floor(t * 2.0 + seed * 13.0);
+  // --- Subtle flicker (rare single-frame drops, per-tile rate) ---
+  float flickEpoch = floor(t * flickerRate + seed * 13.0);
   float flickHit = step(0.96, hash(flickEpoch));
   col *= 1.0 - flickHit * 0.15;
 
-  // --- Scanlines (very subtle) ---
-  float scanline = 0.97 + 0.03 * step(0.5, fract(vUv.y * 150.0));
+  // --- Scanlines (per-tile density) ---
+  float scanline = 0.97 + 0.03 * step(0.5, fract(vUv.y * scanlineCount));
   col *= scanline;
 
-  // --- Fine grain ---
-  float grain = hash2(vUv * 300.0 + floor(t * 8.0) * 17.0) * 0.015;
+  // --- Fine grain (per-tile intensity) ---
+  float grain = hash2(vUv * 300.0 + floor(t * 8.0) * 17.0) * grainAmt;
   col += grain;
+
+  // --- Boot-up reveal (top-to-bottom scan-on) ---
+  float revealEdge = smoothstep(uReveal - 0.06, uReveal, 1.0 - vUv.y);
+  col *= (1.0 - revealEdge);
+  // Bright scan line at the reveal edge
+  float revealLine = (1.0 - smoothstep(0.0, 0.015, abs((1.0 - vUv.y) - uReveal)));
+  col += revealLine * uPrimary * 0.3 * step(0.01, uReveal) * step(uReveal, 0.99);
 
   gl_FragColor = vec4(col, opacity);
 }
@@ -146,6 +167,7 @@ export class MediaMode {
   private palette!: Palette;
   private multiPalette = false;
   private elapsed = 0;
+  private resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Tile display
   private tiles: MediaTile[] = [];
@@ -176,6 +198,10 @@ export class MediaMode {
   private resizeHandler: () => void;
   private dropHandler: (e: DragEvent) => void;
   private dragOverHandler: (e: DragEvent) => void;
+  private dragEnterHandler: (e: DragEvent) => void;
+  private dragLeaveHandler: (e: DragEvent) => void;
+  private dropZone!: HTMLDivElement;
+  private dragCounter = 0;
 
   constructor(
     ctx: RendererContext,
@@ -206,6 +232,35 @@ export class MediaMode {
     this.resizeHandler = () => this.handleResize();
     this.dropHandler = (e: DragEvent) => this.handleDrop(e);
     this.dragOverHandler = (e: DragEvent) => { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; };
+
+    this.dragEnterHandler = (e: DragEvent) => {
+      e.preventDefault();
+      if (!this.active) return;
+      this.dragCounter++;
+      this.dropZone.style.display = 'flex';
+    };
+    this.dragLeaveHandler = (e: DragEvent) => {
+      e.preventDefault();
+      this.dragCounter--;
+      if (this.dragCounter <= 0) {
+        this.dragCounter = 0;
+        this.dropZone.style.display = 'none';
+      }
+    };
+
+    // Drop zone visual feedback
+    this.dropZone = document.createElement('div');
+    Object.assign(this.dropZone.style, {
+      position: 'fixed', inset: '0', zIndex: '960',
+      background: 'rgba(170, 255, 170, 0.06)',
+      border: '3px dashed rgba(170, 255, 170, 0.4)',
+      display: 'none', pointerEvents: 'none',
+      fontFamily: '"JetBrains Mono", monospace', color: 'rgba(170, 255, 170, 0.5)',
+      fontSize: '14px', letterSpacing: '3px', textTransform: 'uppercase',
+      justifyContent: 'center', alignItems: 'center',
+    });
+    this.dropZone.textContent = 'DROP FILES';
+    document.body.appendChild(this.dropZone);
   }
 
   get isActive(): boolean {
@@ -247,6 +302,8 @@ export class MediaMode {
     window.addEventListener('resize', this.resizeHandler);
     window.addEventListener('drop', this.dropHandler);
     window.addEventListener('dragover', this.dragOverHandler);
+    window.addEventListener('dragenter', this.dragEnterHandler);
+    window.addEventListener('dragleave', this.dragLeaveHandler);
 
     this.overlay.style.display = '';
     this.spawnTiles();
@@ -256,11 +313,16 @@ export class MediaMode {
   exit(): void {
     this.active = false;
     this.overlay.style.display = 'none';
+    if (this.resizeTimer) { clearTimeout(this.resizeTimer); this.resizeTimer = null; }
 
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('resize', this.resizeHandler);
     window.removeEventListener('drop', this.dropHandler);
     window.removeEventListener('dragover', this.dragOverHandler);
+    window.removeEventListener('dragenter', this.dragEnterHandler);
+    window.removeEventListener('dragleave', this.dragLeaveHandler);
+    this.dropZone.style.display = 'none';
+    this.dragCounter = 0;
 
     this.cancelAndClearAll();
     revokeAllObjectUrls();
@@ -279,11 +341,16 @@ export class MediaMode {
     this.elapsed += dt;
     this.pipeline.update(this.elapsed, this.config);
 
-    // Fade in new tiles
+    // Fade in new tiles with scan-on reveal
     for (const tile of this.tiles) {
       if (tile.opacity < tile.targetOpacity) {
         tile.opacity = Math.min(tile.targetOpacity, tile.opacity + FADE_SPEED * dt);
         this.setTileOpacity(tile, tile.opacity);
+        // Drive reveal uniform: 0→1 maps to top-to-bottom scan-on
+        const mat = tile.mesh.material as THREE.ShaderMaterial;
+        if (mat.uniforms?.uReveal) {
+          mat.uniforms.uReveal.value = Math.min(1.0, tile.opacity * 1.2);
+        }
       }
     }
 
@@ -345,10 +412,14 @@ export class MediaMode {
     this.clearOutgoing();
     this.overlay.remove();
     this.fileInput.remove();
+    this.dropZone.remove();
+    if (this.resizeTimer) clearTimeout(this.resizeTimer);
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('resize', this.resizeHandler);
     window.removeEventListener('drop', this.dropHandler);
     window.removeEventListener('dragover', this.dragOverHandler);
+    window.removeEventListener('dragenter', this.dragEnterHandler);
+    window.removeEventListener('dragleave', this.dragLeaveHandler);
   }
 
   // --- Layout & tile management ---
@@ -401,11 +472,13 @@ export class MediaMode {
     tile.texture.dispose();
     tile.mesh.geometry.dispose();
     (tile.mesh.material as THREE.Material).dispose();
-    // Pause video if playing
+    // Release video resources fully
     if (tile.source instanceof HTMLVideoElement) {
       tile.source.pause();
-      tile.source.src = '';
+      tile.source.removeAttribute('src');
+      tile.source.load();
     }
+    tile.source = null;
   }
 
   /** Generate layout regions using the main compositor. */
@@ -630,6 +703,7 @@ export class MediaMode {
         uCoverOffset: { value: new THREE.Vector2(0, 0) },
         uKenBurnsZoom: { value: 1.0 },
         uKenBurnsPan: { value: new THREE.Vector2(0, 0) },
+        uReveal: { value: 0.0 },
       },
       vertexShader: PALETTE_REMAP_VERT,
       fragmentShader: PALETTE_REMAP_FRAG,
@@ -1006,16 +1080,23 @@ export class MediaMode {
     }
   }
 
-  private async handleResize(): Promise<void> {
+  private handleResize(): void {
     if (!this.active) return;
     this.applyAspect();
     resizeRenderer(this.ctx, this.config.width, this.config.height);
     this.pipeline.resize(this.config.width, this.config.height);
-    await this.spawnTiles();
+    // Debounce tile respawn during rapid resizing
+    if (this.resizeTimer) clearTimeout(this.resizeTimer);
+    this.resizeTimer = setTimeout(() => {
+      this.resizeTimer = null;
+      if (this.active) this.spawnTiles();
+    }, 250);
   }
 
   private handleDrop(e: DragEvent): void {
     e.preventDefault();
+    this.dropZone.style.display = 'none';
+    this.dragCounter = 0;
     if (!this.active) return;
     const files = e.dataTransfer?.files;
     if (files) this.handleFiles(files);
