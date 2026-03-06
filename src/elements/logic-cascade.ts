@@ -65,7 +65,7 @@ export class LogicCascadeElement extends BaseElement {
     this.clockInterval = p.clock;
 
     // Cap resolution while preserving tile aspect ratio to prevent stretching
-    const maxRes = 400;
+    const maxRes = 600;
     const scale = Math.min(1, maxRes / Math.max(w, h));
     const cw = Math.max(64, Math.floor(w * scale));
     const ch = Math.max(64, Math.floor(h * scale));
@@ -104,8 +104,8 @@ export class LogicCascadeElement extends BaseElement {
 
     // Keep gates proportional regardless of tile aspect ratio
     const cellSize = Math.min(colW, rowH);
-    this.gateW = cellSize * 0.7;
-    this.gateH = cellSize * 0.5;
+    this.gateW = cellSize * 0.5;
+    this.gateH = cellSize * 0.35;
 
     // Primary inputs (not real gates, but stored for wiring)
     this.primaryInputs = [];
@@ -210,19 +210,20 @@ export class LogicCascadeElement extends BaseElement {
       const iy = rowH * (i + 1) + (ch - rowH * (this.inputCount + 1)) / 2;
       ctx.fillStyle = this.primaryInputs[i] ? colorHi : colorLo;
       ctx.beginPath();
-      ctx.arc(inputX, iy, Math.max(4, rowH * 0.15), 0, Math.PI * 2);
+      ctx.arc(inputX, iy, Math.max(2, rowH * 0.12), 0, Math.PI * 2);
       ctx.fill();
 
       // Label
       ctx.fillStyle = colorGate;
-      ctx.font = `${Math.max(8, rowH * 0.2)}px monospace`;
+      ctx.font = `${Math.max(6, Math.floor(rowH * 0.18))}px monospace`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(String(this.primaryInputs[i]), inputX, iy);
     }
 
     // Draw wires first (behind gates)
-    ctx.lineWidth = 1;
+    const wireWidth = Math.max(0.5, Math.min(cw, ch) * 0.003);
+    ctx.lineWidth = wireWidth;
     for (const gate of this.gates) {
       for (const inp of gate.inputs) {
         let sx: number, sy: number;
@@ -254,7 +255,7 @@ export class LogicCascadeElement extends BaseElement {
 
       // Gate body
       ctx.strokeStyle = colorGate;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(0.5, Math.min(cw, ch) * 0.004);
 
       switch (gate.type) {
         case 'AND':
@@ -274,12 +275,13 @@ export class LogicCascadeElement extends BaseElement {
           ctx.quadraticCurveTo(gx + this.gateW * 0.3, gate.y, gx, gy);
           ctx.stroke();
           break;
-        case 'XOR':
+        case 'XOR': {
+          const xorOff = this.gateW * 0.08;
           ctx.beginPath();
-          ctx.moveTo(gx + 3, gy);
+          ctx.moveTo(gx + xorOff, gy);
           ctx.quadraticCurveTo(gx + this.gateW * 0.8, gy, gx + this.gateW, gate.y);
-          ctx.quadraticCurveTo(gx + this.gateW * 0.8, gy + this.gateH, gx + 3, gy + this.gateH);
-          ctx.quadraticCurveTo(gx + this.gateW * 0.3, gate.y, gx + 3, gy);
+          ctx.quadraticCurveTo(gx + this.gateW * 0.8, gy + this.gateH, gx + xorOff, gy + this.gateH);
+          ctx.quadraticCurveTo(gx + this.gateW * 0.3, gate.y, gx + xorOff, gy);
           ctx.stroke();
           // Extra curve for XOR
           ctx.beginPath();
@@ -287,6 +289,7 @@ export class LogicCascadeElement extends BaseElement {
           ctx.quadraticCurveTo(gx + this.gateW * 0.25, gate.y, gx, gy + this.gateH);
           ctx.stroke();
           break;
+        }
         case 'NOT':
           ctx.beginPath();
           ctx.moveTo(gx, gy);
@@ -303,7 +306,7 @@ export class LogicCascadeElement extends BaseElement {
 
       // Gate label
       ctx.fillStyle = colorGate;
-      ctx.font = `${Math.max(7, this.gateH * 0.3)}px monospace`;
+      ctx.font = `${Math.max(6, Math.floor(this.gateH * 0.3))}px monospace`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(gate.type, gate.x, gate.y);
@@ -311,7 +314,7 @@ export class LogicCascadeElement extends BaseElement {
       // Output value
       ctx.fillStyle = gate.output ? colorHi : colorLo;
       ctx.beginPath();
-      ctx.arc(gate.x + this.gateW * 0.55, gate.y, Math.max(2, this.gateH * 0.1), 0, Math.PI * 2);
+      ctx.arc(gate.x + this.gateW * 0.55, gate.y, Math.max(1, this.gateH * 0.08), 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -321,7 +324,7 @@ export class LogicCascadeElement extends BaseElement {
       for (let i = lastStart; i < this.gates.length; i++) {
         const gate = this.gates[i];
         ctx.strokeStyle = gate.output ? colorHi : colorWire;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = wireWidth;
         ctx.beginPath();
         ctx.moveTo(gate.x + this.gateW * 0.5, gate.y);
         ctx.lineTo(cw - colW * 0.3, gate.y);
@@ -330,7 +333,7 @@ export class LogicCascadeElement extends BaseElement {
         // Output dot
         ctx.fillStyle = gate.output ? colorHi : colorLo;
         ctx.beginPath();
-        ctx.arc(cw - colW * 0.3, gate.y, Math.max(3, rowH * 0.1), 0, Math.PI * 2);
+        ctx.arc(cw - colW * 0.3, gate.y, Math.max(1, rowH * 0.08), 0, Math.PI * 2);
         ctx.fill();
       }
     }
