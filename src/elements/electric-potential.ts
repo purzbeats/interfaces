@@ -54,7 +54,7 @@ export class ElectricPotentialElement extends BaseElement {
     this.chargeCount = p.charges;
     this.contourLevels = p.contours;
 
-    const maxRes = 240;
+    const maxRes = 400;
     const scale = Math.min(1, maxRes / Math.max(w, h));
     this.canvasW = Math.max(64, Math.floor(w * scale));
     this.canvasH = Math.max(64, Math.floor(h * scale));
