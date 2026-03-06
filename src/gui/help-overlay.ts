@@ -11,7 +11,7 @@ const SHORTCUTS: [string, string][] = [
   ['M', 'Mute / Unmute'],
   ['F', 'Fullscreen'],
   ['S', 'Screenshot'],
-  ['V', 'Media mode'],
+  ['V', 'Media mode (Tab/P/R inside)'],
   ['G', 'Showcase mode'],
   ['B', 'Gallery mode'],
   ['X', 'Toggle hex layout'],

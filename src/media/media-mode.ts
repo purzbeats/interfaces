@@ -39,8 +39,6 @@ const ROLLING_INTERVAL = 15;
 interface MediaTile {
   mesh: THREE.Mesh;
   texture: THREE.Texture;
-  canvas: HTMLCanvasElement | null;
-  ctx2d: CanvasRenderingContext2D | null;
   region: Region;
   item: MediaItem;
   objectUrl: string;
@@ -49,9 +47,13 @@ interface MediaTile {
   opacity: number;
   targetOpacity: number;
   loaded: boolean;
+  /** Ken Burns animation params (images only) */
+  kenBurns: { zoomStart: number; zoomEnd: number; panX: number; panY: number } | null;
+  /** Time offset when this tile was created (for Ken Burns interpolation) */
+  spawnTime: number;
 }
 
-/* Palette remap shader with per-tile glitch effects */
+/* Palette remap shader with per-tile glitch effects (shared by image + video tiles) */
 const PALETTE_REMAP_VERT = /* glsl */ `
 varying vec2 vUv;
 void main() {
@@ -61,7 +63,7 @@ void main() {
 `;
 
 const PALETTE_REMAP_FRAG = /* glsl */ `
-uniform sampler2D tVideo;
+uniform sampler2D tMedia;
 uniform float opacity;
 uniform float uTime;
 uniform float uSeed;
@@ -71,6 +73,8 @@ uniform vec3 uPrimary;
 uniform vec3 uSecondary;
 uniform vec2 uCoverScale;
 uniform vec2 uCoverOffset;
+uniform float uKenBurnsZoom;
+uniform vec2 uKenBurnsPan;
 varying vec2 vUv;
 
 // --- Noise helpers ---
@@ -85,12 +89,21 @@ vec3 paletteRemap(float lum) {
 }
 
 void main() {
-  vec2 coverUv = vUv * uCoverScale + uCoverOffset;
+  // Apply Ken Burns (slow pan/zoom for stills — identity for video)
+  vec2 kb = (vUv - 0.5) / uKenBurnsZoom + 0.5 + uKenBurnsPan;
+  vec2 coverUv = kb * uCoverScale + uCoverOffset;
   float t = uTime;
   float seed = uSeed;
 
-  // --- Sample video ---
-  vec4 tex = texture2D(tVideo, coverUv);
+  // --- Horizontal glitch shift (rare, per-scanline) ---
+  float glitchEpoch = floor(t * 1.5 + seed * 7.0);
+  float glitchActive = step(0.92, hash(glitchEpoch));
+  float lineHash = hash(floor(coverUv.y * 80.0) + glitchEpoch * 3.7);
+  float glitchShift = glitchActive * step(0.7, lineHash) * (lineHash - 0.7) * 0.08;
+  coverUv.x += glitchShift;
+
+  // --- Sample media ---
+  vec4 tex = texture2D(tMedia, coverUv);
   float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
   vec3 col = paletteRemap(lum);
 
@@ -274,22 +287,35 @@ export class MediaMode {
       }
     }
 
-    // Fade out and clean up outgoing tiles
+    // Fade out and clean up outgoing tiles (keep shader time ticking during fade)
     for (let i = this.outgoingTiles.length - 1; i >= 0; i--) {
       const tile = this.outgoingTiles[i];
       tile.opacity = Math.max(0, tile.opacity - FADE_SPEED * dt);
       this.setTileOpacity(tile, tile.opacity);
+      const outMat = tile.mesh.material as THREE.ShaderMaterial;
+      if (outMat.uniforms?.uTime) outMat.uniforms.uTime.value = this.elapsed;
       if (tile.opacity <= 0) {
         this.disposeTile(tile);
         this.outgoingTiles.splice(i, 1);
       }
     }
 
-    // Update time uniform on video tiles for shader effects
+    // Update shader uniforms on all tiles (time, Ken Burns)
+    const rollingDur = this.config.rollingInterval || ROLLING_INTERVAL;
     for (const tile of this.tiles) {
-      if (tile.item.type === 'video') {
-        const mat = tile.mesh.material as THREE.ShaderMaterial;
-        if (mat.uniforms?.uTime) mat.uniforms.uTime.value = this.elapsed;
+      const mat = tile.mesh.material as THREE.ShaderMaterial;
+      if (!mat.uniforms) continue;
+      mat.uniforms.uTime.value = this.elapsed;
+
+      // Ken Burns: smooth pan/zoom interpolation for image tiles
+      if (tile.kenBurns) {
+        const age = this.elapsed - tile.spawnTime;
+        const t = Math.min(1, age / rollingDur);
+        const ease = t * t * (3 - 2 * t); // smoothstep
+        const kb = tile.kenBurns;
+        const zoom = kb.zoomStart + (kb.zoomEnd - kb.zoomStart) * ease;
+        mat.uniforms.uKenBurnsZoom.value = zoom;
+        mat.uniforms.uKenBurnsPan.value.set(kb.panX * ease, kb.panY * ease);
       }
     }
 
@@ -298,10 +324,11 @@ export class MediaMode {
       el.tick(dt, this.elapsed);
     }
 
-    // Rolling rearrangement on a slower cadence
-    if (this.tiles.length > 0) {
+    // Rolling rearrangement using config interval
+    if (this.tiles.length > 0 && this.config.rollingSwap) {
       this.rollingTimer += dt;
-      if (this.rollingTimer >= ROLLING_INTERVAL) {
+      const interval = this.config.rollingInterval || ROLLING_INTERVAL;
+      if (this.rollingTimer >= interval) {
         this.rollingTimer = 0;
         this.rollingRearrange();
       }
@@ -366,12 +393,7 @@ export class MediaMode {
   }
 
   private setTileOpacity(tile: MediaTile, opacity: number): void {
-    const mat = tile.mesh.material;
-    if (mat instanceof THREE.ShaderMaterial) {
-      mat.uniforms.opacity.value = opacity;
-    } else {
-      (mat as THREE.MeshBasicMaterial).opacity = opacity;
-    }
+    (tile.mesh.material as THREE.ShaderMaterial).uniforms.opacity.value = opacity;
   }
 
   private disposeTile(tile: MediaTile): void {
@@ -580,62 +602,69 @@ export class MediaMode {
     const px = regionToPixels(region, canvasW, canvasH);
     const geo = new THREE.PlaneGeometry(px.w, px.h);
 
-    let texture: THREE.Texture;
-    let mat: THREE.Material;
-    let canvas: HTMLCanvasElement | null = null;
-    let ctx2d: CanvasRenderingContext2D | null = null;
+    // Both image and video use the same GPU shader — placeholder texture initially
+    const texture = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+    texture.needsUpdate = true;
 
-    if (item.type === 'video') {
-      // Video tiles: GPU shader path — no canvas, no CPU pixel ops
-      // VideoTexture is created later in loadTileMedia once the video element exists.
-      // Use a placeholder 1x1 texture initially.
-      texture = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
-      texture.needsUpdate = true;
-      mat = new THREE.ShaderMaterial({
-        uniforms: {
-          tVideo: { value: texture },
-          opacity: { value: 0 },
-          uTime: { value: 0 },
-          uSeed: { value: Math.random() * 100 },
-          uBg: { value: pal.bg.clone() },
-          uDim: { value: pal.dim.clone() },
-          uPrimary: { value: pal.primary.clone() },
-          uSecondary: { value: pal.secondary.clone() },
-          uCoverScale: { value: new THREE.Vector2(1, 1) },
-          uCoverOffset: { value: new THREE.Vector2(0, 0) },
-        },
-        vertexShader: PALETTE_REMAP_VERT,
-        fragmentShader: PALETTE_REMAP_FRAG,
-        transparent: true,
-      });
-    } else {
-      // Image tiles: canvas path (one-shot draw, no per-frame cost)
-      canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(px.w));
-      canvas.height = Math.max(1, Math.round(px.h));
-      ctx2d = canvas.getContext('2d')!;
+    // Ken Burns for images: gentle random pan/zoom over the rolling interval
+    const isImage = item.type === 'image';
+    const rng = new SeededRandom(this.layoutSeed + region.x * 1000 + region.y * 7777);
+    const kenBurns = isImage ? {
+      zoomStart: 1.0 + rng.float(0, 0.08),
+      zoomEnd: 1.0 + rng.float(0.04, 0.14),
+      panX: rng.float(-0.02, 0.02),
+      panY: rng.float(-0.02, 0.02),
+    } : null;
 
-      ctx2d.fillStyle = '#' + pal.dim.getHexString();
-      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
-
-      texture = new THREE.CanvasTexture(canvas);
-      texture.minFilter = THREE.NearestFilter;
-      texture.magFilter = THREE.NearestFilter;
-
-      mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0 });
-    }
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        tMedia: { value: texture },
+        opacity: { value: 0 },
+        uTime: { value: 0 },
+        uSeed: { value: rng.float(0, 100) },
+        uBg: { value: pal.bg.clone() },
+        uDim: { value: pal.dim.clone() },
+        uPrimary: { value: pal.primary.clone() },
+        uSecondary: { value: pal.secondary.clone() },
+        uCoverScale: { value: new THREE.Vector2(1, 1) },
+        uCoverOffset: { value: new THREE.Vector2(0, 0) },
+        uKenBurnsZoom: { value: 1.0 },
+        uKenBurnsPan: { value: new THREE.Vector2(0, 0) },
+      },
+      vertexShader: PALETTE_REMAP_VERT,
+      fragmentShader: PALETTE_REMAP_FRAG,
+      transparent: true,
+    });
 
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(px.x + px.w / 2, px.y + px.h / 2, 0);
     this.ctx.scene.add(mesh);
 
     return {
-      mesh, texture, canvas, ctx2d, region, item, objectUrl,
+      mesh, texture, region, item, objectUrl,
       source: null, palette: pal, opacity: 0, targetOpacity: 1, loaded: false,
+      kenBurns, spawnTime: this.elapsed,
     };
   }
 
-  /** Load media for a tile. Awaitable so callers can stagger. */
+  /** Compute cover-fit UV scale/offset so media fills tile without stretching. */
+  private setCoverFitUniforms(tile: MediaTile, mediaW: number, mediaH: number): void {
+    const px = regionToPixels(tile.region, this.config.width, this.config.height);
+    const tileAspect = px.w / px.h;
+    const mediaAspect = mediaW / mediaH;
+    const uniforms = (tile.mesh.material as THREE.ShaderMaterial).uniforms;
+    if (mediaAspect > tileAspect) {
+      const scale = tileAspect / mediaAspect;
+      uniforms.uCoverScale.value.set(scale, 1);
+      uniforms.uCoverOffset.value.set((1 - scale) / 2, 0);
+    } else {
+      const scale = mediaAspect / tileAspect;
+      uniforms.uCoverScale.value.set(1, scale);
+      uniforms.uCoverOffset.value.set(0, (1 - scale) / 2);
+    }
+  }
+
+  /** Load media for a tile (fire-and-forget). Both images and videos use GPU shader. */
   private loadTileMedia(tile: MediaTile): Promise<void> {
     const { item, objectUrl } = tile;
 
@@ -643,16 +672,29 @@ export class MediaMode {
       return new Promise<void>(resolve => {
         const img = new Image();
         img.onload = () => {
-          if (this.active && tile.ctx2d && tile.canvas) {
+          if (this.active) {
             tile.source = img;
             tile.loaded = true;
-            this.drawMediaToCanvas(tile.ctx2d, img, tile.canvas.width, tile.canvas.height);
-            this.applyPaletteRemap(tile.ctx2d, tile.canvas.width, tile.canvas.height, tile.palette);
-            (tile.texture as THREE.CanvasTexture).needsUpdate = true;
+
+            // Create texture from image and swap into shader
+            const imgTex = new THREE.Texture(img);
+            imgTex.minFilter = THREE.LinearFilter;
+            imgTex.magFilter = THREE.LinearFilter;
+            imgTex.needsUpdate = true;
+            tile.texture.dispose();
+            tile.texture = imgTex;
+
+            const uniforms = (tile.mesh.material as THREE.ShaderMaterial).uniforms;
+            uniforms.tMedia.value = imgTex;
+            this.setCoverFitUniforms(tile, img.width, img.height);
           }
           resolve();
         };
-        img.onerror = () => resolve();
+        img.onerror = () => {
+          // Mark as loaded so it doesn't block — shows dim placeholder
+          tile.loaded = true;
+          resolve();
+        };
         img.src = objectUrl;
       });
     } else {
@@ -670,142 +712,30 @@ export class MediaMode {
 
             // Swap placeholder texture for a VideoTexture
             const vidTex = new THREE.VideoTexture(video);
-            vidTex.minFilter = THREE.NearestFilter;
-            vidTex.magFilter = THREE.NearestFilter;
+            vidTex.minFilter = THREE.LinearFilter;
+            vidTex.magFilter = THREE.LinearFilter;
             tile.texture.dispose();
             tile.texture = vidTex;
 
             const uniforms = (tile.mesh.material as THREE.ShaderMaterial).uniforms;
-            uniforms.tVideo.value = vidTex;
-
-            // Compute cover-fit UV transform so video fills tile without stretching
-            const px = regionToPixels(tile.region, this.config.width, this.config.height);
-            const tileAspect = px.w / px.h;
-            const vidAspect = video.videoWidth / video.videoHeight;
-            if (vidAspect > tileAspect) {
-              // Video wider than tile: crop sides
-              const scale = tileAspect / vidAspect;
-              uniforms.uCoverScale.value.set(scale, 1);
-              uniforms.uCoverOffset.value.set((1 - scale) / 2, 0);
-            } else {
-              // Video taller than tile: crop top/bottom
-              const scale = vidAspect / tileAspect;
-              uniforms.uCoverScale.value.set(1, scale);
-              uniforms.uCoverOffset.value.set(0, (1 - scale) / 2);
-            }
+            uniforms.tMedia.value = vidTex;
+            this.setCoverFitUniforms(tile, video.videoWidth, video.videoHeight);
           } else {
-            // Media mode exited while loading — clean up orphaned video
             video.pause();
             video.src = '';
             video.load();
           }
           resolve();
         };
-        video.onerror = () => resolve();
+        video.onerror = () => {
+          tile.loaded = true;
+          resolve();
+        };
         video.src = objectUrl;
       });
     }
   }
 
-  private drawMediaToCanvas(
-    ctx: CanvasRenderingContext2D,
-    source: HTMLImageElement | HTMLVideoElement,
-    w: number,
-    h: number,
-  ): void {
-    const srcW = source instanceof HTMLVideoElement ? source.videoWidth : source.width;
-    const srcH = source instanceof HTMLVideoElement ? source.videoHeight : source.height;
-    if (srcW === 0 || srcH === 0) return;
-
-    // Cover fit: scale to fill, crop excess
-    const scale = Math.max(w / srcW, h / srcH);
-    const drawW = srcW * scale;
-    const drawH = srcH * scale;
-    const ox = (w - drawW) / 2;
-    const oy = (h - drawH) / 2;
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(source, ox, oy, drawW, drawH);
-  }
-
-  /** Precomputed LUT: for each luminance 0-255, stores [R, G, B]. Built once per palette. */
-  private paletteLUT: Uint8Array | null = null;
-  private paletteLUTKey: string = '';
-
-  private buildPaletteLUT(pal?: Palette): Uint8Array {
-    const p = pal ?? this.palette;
-    const lut = new Uint8Array(256 * 3);
-    const bgR = Math.round(p.bg.r * 255);
-    const bgG = Math.round(p.bg.g * 255);
-    const bgB = Math.round(p.bg.b * 255);
-    const dimR = Math.round(p.dim.r * 255);
-    const dimG = Math.round(p.dim.g * 255);
-    const dimB = Math.round(p.dim.b * 255);
-    const priR = Math.round(p.primary.r * 255);
-    const priG = Math.round(p.primary.g * 255);
-    const priB = Math.round(p.primary.b * 255);
-    const secR = Math.round(p.secondary.r * 255);
-    const secG = Math.round(p.secondary.g * 255);
-    const secB = Math.round(p.secondary.b * 255);
-
-    for (let L = 0; L < 256; L++) {
-      const lum = L / 255;
-      let r: number, g: number, b: number;
-      if (lum < 0.25) {
-        const t = lum / 0.25;
-        r = bgR + (dimR - bgR) * t;
-        g = bgG + (dimG - bgG) * t;
-        b = bgB + (dimB - bgB) * t;
-      } else if (lum < 0.5) {
-        const t = (lum - 0.25) / 0.25;
-        r = dimR + (priR - dimR) * t;
-        g = dimG + (priG - dimG) * t;
-        b = dimB + (priB - dimB) * t;
-      } else if (lum < 0.75) {
-        const t = (lum - 0.5) / 0.25;
-        r = priR + (secR - priR) * t;
-        g = priG + (secG - priG) * t;
-        b = priB + (secB - priB) * t;
-      } else {
-        const t = (lum - 0.75) / 0.25;
-        r = secR + (255 - secR) * t;
-        g = secG + (255 - secG) * t;
-        b = secB + (255 - secB) * t;
-      }
-      const off = L * 3;
-      lut[off] = r | 0;
-      lut[off + 1] = g | 0;
-      lut[off + 2] = b | 0;
-    }
-    return lut;
-  }
-
-  private getPaletteLUT(): Uint8Array {
-    const key = this.palette.primary.getHexString() + this.palette.bg.getHexString();
-    if (!this.paletteLUT || this.paletteLUTKey !== key) {
-      this.paletteLUT = this.buildPaletteLUT();
-      this.paletteLUTKey = key;
-    }
-    return this.paletteLUT;
-  }
-
-  private applyPaletteRemap(ctx: CanvasRenderingContext2D, w: number, h: number, pal?: Palette): void {
-    if (w === 0 || h === 0) return;
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const data = imageData.data;
-    const lut = pal ? this.buildPaletteLUT(pal) : this.getPaletteLUT();
-
-    for (let i = 0; i < data.length; i += 4) {
-      // Integer luminance 0-255 (fixed-point weighted sum, no division by 255)
-      const L = (data[i] * 77 + data[i + 1] * 150 + data[i + 2] * 29) >> 8;
-      const off = L * 3;
-      data[i]     = lut[off];
-      data[i + 1] = lut[off + 1];
-      data[i + 2] = lut[off + 2];
-    }
-
-    ctx.putImageData(imageData, 0, 0);
-  }
 
   // --- File browser overlay ---
 
