@@ -871,33 +871,22 @@ export class EditorOverlay {
         name.style.color = 'rgba(255,255,255,0.4)';
       });
 
-      // Interaction: mouse = click/drag via overlay handler, touch = tap to place
+      // Interaction: mouse = pointerdown drag, touch = native click (tap only)
+      let lastPointerWasTouch = false;
       tile.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
-        if (e.pointerType === 'touch') {
-          // Don't stop propagation or preventDefault — let scroll container handle it.
-          // Record touch start for tap detection on pointerup.
-          const startX = e.clientX;
-          const startY = e.clientY;
-          const onUp = (ue: PointerEvent) => {
-            tile.removeEventListener('pointerup', onUp);
-            tile.removeEventListener('pointercancel', onCancel);
-            const dx = Math.abs(ue.clientX - startX);
-            const dy = Math.abs(ue.clientY - startY);
-            if (dx < 10 && dy < 10) {
-              this.callbacks.onPaletteElementClick(type);
-            }
-          };
-          const onCancel = () => {
-            tile.removeEventListener('pointerup', onUp);
-            tile.removeEventListener('pointercancel', onCancel);
-          };
-          tile.addEventListener('pointerup', onUp);
-          tile.addEventListener('pointercancel', onCancel);
-        } else {
+        lastPointerWasTouch = e.pointerType === 'touch';
+        if (!lastPointerWasTouch) {
           e.stopPropagation();
           e.preventDefault();
           this.onPointerDownOutside?.(e);
+        }
+        // Touch: do nothing here — let browser handle scroll vs tap
+      });
+      // click only fires for real taps, never during scroll — perfect for touch
+      tile.addEventListener('click', () => {
+        if (lastPointerWasTouch) {
+          this.callbacks.onPaletteElementClick(type);
         }
       });
 
