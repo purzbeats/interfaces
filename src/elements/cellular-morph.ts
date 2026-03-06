@@ -69,8 +69,10 @@ export class CellularMorphElement extends BaseElement {
     this.killRate = p.killRate;
     this.stepsPerFrame = p.stepsPerFrame;
 
-    this.gw = Math.max(64, Math.round(w));
-    this.gh = Math.max(64, Math.round(h));
+    const maxRes = 240;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.gw = Math.max(64, Math.round(w * scale));
+    this.gh = Math.max(64, Math.round(h * scale));
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.gw;
