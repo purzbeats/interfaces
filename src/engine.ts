@@ -1526,7 +1526,7 @@ export class Engine {
     window.addEventListener('keydown', (e) => {
       // Help overlay toggle — ? key (shift+/ or dedicated ?)
       if (e.key === '?') {
-        toggleHelp();
+        if (!this.editor.isActive) toggleHelp();
         return;
       }
       // While help is visible, swallow all other keys
@@ -1545,6 +1545,9 @@ export class Engine {
         const intensityLevel = parseInt(e.key);
         if (intensityLevel >= 1 && intensityLevel <= 5) return;
       }
+
+      // Editor handles its own key events — don't interfere
+      if (this.editor.isActive) return;
 
       switch (e.key.toLowerCase()) {
         case 'h':

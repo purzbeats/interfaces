@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests/perf',
+  testDir: './tests',
   timeout: 0, // no timeout — profiling all elements takes a while
   use: {
     baseURL: 'http://localhost:5173',

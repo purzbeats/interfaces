@@ -39,6 +39,15 @@ type ActiveDrag =
   | { kind: 'move'; regionId: string; startNX: number; startNY: number; startRegionX: number; startRegionY: number; lastX: number; lastY: number }
   | { kind: 'resize'; regionId: string; handle: string; startRegion: EditorRegion; startClientX: number; startClientY: number; lastRegion: EditorRegion };
 
+/* ---------- Undo system ---------- */
+
+interface UndoSnapshot {
+  regions: EditorRegion[];
+  selectedId: string | null;
+}
+
+const MAX_UNDO = 50;
+
 /* ---------- EditorMode class ---------- */
 
 export class EditorMode {
@@ -61,10 +70,12 @@ export class EditorMode {
   private overlay: EditorOverlay;
   private snapEnabled: boolean = true;
 
+  // Undo/redo
+  private undoStack: UndoSnapshot[] = [];
+  private redoStack: UndoSnapshot[] = [];
+
   /**
    * Full-screen transparent div that captures ALL pointer events during a drag.
-   * Created once, shown/hidden as needed. This prevents pointer events from being
-   * swallowed by the toolbar, palette, handles, or anything else during drag ops.
    */
   private dragCapture: HTMLDivElement;
 
@@ -89,7 +100,7 @@ export class EditorMode {
     this.keyHandler = (e) => this.handleKey(e);
     this.resizeHandler = () => this.handleResize();
 
-    // Create drag-capture overlay (invisible, only active during drags)
+    // Create drag-capture overlay
     this.dragCapture = document.createElement('div');
     this.dragCapture.id = 'editor-drag-capture';
     Object.assign(this.dragCapture.style, {
@@ -118,6 +129,17 @@ export class EditorMode {
       onExitEditor: () => this.exit(),
       onPaletteElementClick: (type) => this.placeElementAtCenter(type),
       onTogglePalette: () => this.overlay.togglePalette(),
+      onDuplicate: () => this.duplicateSelected(),
+      onDelete: () => this.deleteSelected(),
+      onUndo: () => this.undo(),
+      onRedo: () => this.redo(),
+      onBringToFront: () => this.bringToFront(),
+      onSendToBack: () => this.sendToBack(),
+      onToggleGrid: () => this.toggleGrid(),
+      onSwapType: (newType) => this.swapSelectedType(newType),
+      onUpdateRegion: (x, y, w, h) => this.updateSelectedRegion(x, y, w, h),
+      onRenameLayout: (name) => this.renameLayout(name),
+      onChangePalette: (pal) => this.changePalette(pal),
     });
   }
 
@@ -126,26 +148,93 @@ export class EditorMode {
   }
 
   /* ============================================
-   *  DRAG CAPTURE — the single source of truth
-   *  for all pointer-drag operations.
+   *  UNDO / REDO
    * ============================================ */
 
-  /**
-   * Begin a drag operation. Shows the full-screen capture overlay and captures
-   * the pointer so that ALL subsequent move/up events come through here,
-   * regardless of what DOM element the cursor is over.
-   */
+  private pushUndo(): void {
+    this.undoStack.push({
+      regions: this.layout.regions.map(r => ({ ...r })),
+      selectedId: this.selectedRegionId,
+    });
+    if (this.undoStack.length > MAX_UNDO) {
+      this.undoStack.shift();
+    }
+    // Clear redo stack on new action
+    this.redoStack = [];
+  }
+
+  private undo(): void {
+    if (this.undoStack.length === 0) return;
+
+    // Save current state to redo
+    this.redoStack.push({
+      regions: this.layout.regions.map(r => ({ ...r })),
+      selectedId: this.selectedRegionId,
+    });
+
+    const snap = this.undoStack.pop()!;
+    this.applySnapshot(snap);
+    showToast('Undo');
+  }
+
+  private redo(): void {
+    if (this.redoStack.length === 0) return;
+
+    // Save current state to undo
+    this.undoStack.push({
+      regions: this.layout.regions.map(r => ({ ...r })),
+      selectedId: this.selectedRegionId,
+    });
+
+    const snap = this.redoStack.pop()!;
+    this.applySnapshot(snap);
+    showToast('Redo');
+  }
+
+  private applySnapshot(snap: UndoSnapshot): void {
+    // Dispose all current elements
+    this.disposeAllElements();
+
+    // Restore regions
+    this.layout.regions = snap.regions.map(r => ({ ...r }));
+    this.layout.modified = Date.now();
+
+    // Respawn all elements
+    this.spawnAllElements();
+
+    // Restore selection
+    this.selectedRegionId = snap.selectedId;
+    if (this.selectedRegionId) {
+      const region = this.layout.regions.find(r => r.id === this.selectedRegionId);
+      if (region) {
+        this.showSelectionHandles();
+        this.overlay.showProperties(region);
+      } else {
+        this.selectedRegionId = null;
+        this.overlay.clearHandles();
+        this.overlay.hideProperties();
+      }
+    } else {
+      this.overlay.clearHandles();
+      this.overlay.hideProperties();
+    }
+
+    this.updateStatus();
+  }
+
+  /* ============================================
+   *  DRAG CAPTURE
+   * ============================================ */
+
   private beginDrag(drag: ActiveDrag, e: PointerEvent): void {
     this.activeDrag = drag;
     this.dragCapture.style.display = '';
     this.dragCapture.setPointerCapture(e.pointerId);
   }
 
-  /** Cancel any active drag without applying changes. */
   private cancelDrag(): void {
     if (!this.activeDrag) return;
 
-    // Reset wrapper position if we were mid-move
     if (this.activeDrag.kind === 'move') {
       const wrapper = this.wrappers.get(this.activeDrag.regionId);
       if (wrapper) wrapper.position.set(0, 0, 0);
@@ -199,7 +288,6 @@ export class EditorMode {
         const region = this.layout.regions.find(r => r.id === drag.regionId);
         if (!region) break;
 
-        // Live preview: shift the THREE.Group wrapper
         const wrapper = this.wrappers.get(drag.regionId);
         if (wrapper) {
           const pxDx = (newX - region.x) * this.config.width;
@@ -216,7 +304,7 @@ export class EditorMode {
         const { handle, startRegion, startClientX, startClientY } = drag;
 
         const dx = (e.clientX - startClientX) / canvasRect.width;
-        const dy = -(e.clientY - startClientY) / canvasRect.height; // flip Y for GL
+        const dy = -(e.clientY - startClientY) / canvasRect.height;
 
         let { x, y, width, height } = startRegion;
 
@@ -249,14 +337,12 @@ export class EditorMode {
       case 'palette': {
         const drag = this.activeDrag;
         if (drag.isDragging) {
-          // Dragged onto canvas — place at drop position
           const nx = (e.clientX - canvasRect.left) / canvasRect.width;
           const ny = 1 - (e.clientY - canvasRect.top) / canvasRect.height;
           if (nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1) {
             this.placeElementAt(drag.elementType, nx, ny);
           }
         } else {
-          // Simple click (no drag movement) — place at center
           this.placeElementAtCenter(drag.elementType);
         }
         break;
@@ -266,12 +352,14 @@ export class EditorMode {
         const drag = this.activeDrag;
         const region = this.layout.regions.find(r => r.id === drag.regionId);
         if (region) {
+          this.pushUndo();
           const clamped = clampRegion({ ...region, x: drag.lastX, y: drag.lastY });
           region.x = clamped.x;
           region.y = clamped.y;
           this.layout.modified = Date.now();
           this.recreateElement(region.id);
           this.showSelectionHandles();
+          this.overlay.showProperties(region);
           this.updateStatus();
         }
         break;
@@ -281,6 +369,7 @@ export class EditorMode {
         const drag = this.activeDrag;
         const region = this.layout.regions.find(r => r.id === drag.regionId);
         if (region) {
+          this.pushUndo();
           region.x = drag.lastRegion.x;
           region.y = drag.lastRegion.y;
           region.width = drag.lastRegion.width;
@@ -288,6 +377,7 @@ export class EditorMode {
           this.layout.modified = Date.now();
           this.recreateElement(region.id);
           this.showSelectionHandles();
+          this.overlay.showProperties(region);
           this.updateStatus();
         }
         break;
@@ -343,6 +433,8 @@ export class EditorMode {
     this.layout = layout;
     this.selectedRegionId = null;
     this.activeDrag = null;
+    this.undoStack = [];
+    this.redoStack = [];
 
     // Stash scene children
     this.stashedChildren = [...this.ctx.scene.children];
@@ -358,12 +450,13 @@ export class EditorMode {
     // Set palette
     this.palette = getPalette(layout.palette || this.config.palette);
     this.ctx.scene.background = this.palette.bg;
+    this.overlay.setPalette(layout.palette || this.config.palette);
 
     // Register event listeners
     window.addEventListener('keydown', this.keyHandler);
     window.addEventListener('resize', this.resizeHandler);
 
-    // Listen for pointerdown on the canvas AND on the overlay (for handle/outline clicks)
+    // Listen for pointerdown on the canvas AND on the overlay
     this.overlay.onPointerDownOutside = (e) => this.handleOverlayPointerDown(e);
     const canvas = this.ctx.renderer.domElement;
     canvas.addEventListener('pointerdown', this.onCanvasPointerDown);
@@ -373,6 +466,7 @@ export class EditorMode {
 
     // Show overlay
     this.overlay.show();
+    this.updateGridPosition();
     this.updateStatus();
 
     showToast('Editor mode');
@@ -491,6 +585,7 @@ export class EditorMode {
    * ============================================ */
 
   private placeElementAtCenter(elementType: string): void {
+    this.pushUndo();
     const { w, h } = defaultRegionSize(elementType);
     const x = snapToGrid(0.5 - w / 2);
     const y = snapToGrid(0.5 - h / 2);
@@ -509,12 +604,14 @@ export class EditorMode {
     this.spawnElement(nudged, this.config.width, this.config.height);
     this.selectedRegionId = nudged.id;
     this.showSelectionHandles();
+    this.overlay.showProperties(nudged);
     this.updateStatus();
 
     showToast(`Added ${elementType}`);
   }
 
   private placeElementAt(elementType: string, nx: number, ny: number): void {
+    this.pushUndo();
     const { w, h } = defaultRegionSize(elementType);
     const x = this.snapEnabled ? snapToGrid(nx - w / 2) : nx - w / 2;
     const y = this.snapEnabled ? snapToGrid(ny - h / 2) : ny - h / 2;
@@ -533,6 +630,7 @@ export class EditorMode {
     this.spawnElement(nudged, this.config.width, this.config.height);
     this.selectedRegionId = nudged.id;
     this.showSelectionHandles();
+    this.overlay.showProperties(nudged);
     this.updateStatus();
 
     showToast(`Placed ${elementType}`);
@@ -554,21 +652,15 @@ export class EditorMode {
 
   /* ============================================
    *  POINTER-DOWN HANDLERS
-   *
-   *  Two entry points:
-   *  1. Canvas pointerdown — clicks that pass through the overlay
-   *  2. Overlay pointerdown — clicks on handles, outline, palette tiles
-   *
-   *  Both funnel into beginDrag() which activates the
-   *  full-screen drag-capture overlay for move/up events.
    * ============================================ */
 
-  /** Arrow function so `this` is bound for addEventListener. */
   private onCanvasPointerDown = (e: PointerEvent): void => {
     if (!this.active || this.subMode !== 'edit') return;
-    if (this.activeDrag) return; // already dragging
+    if (this.activeDrag) return;
 
-    // Canvas click → hit-test for region selection
+    // Hide context menu on any click
+    this.overlay.hideContextMenu();
+
     const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
     const nx = (e.clientX - canvasRect.left) / canvasRect.width;
     const ny = 1 - (e.clientY - canvasRect.top) / canvasRect.height;
@@ -577,15 +669,12 @@ export class EditorMode {
     this.selectRegionAt(nx, ny);
   };
 
-  /**
-   * Called from the overlay when a pointerdown occurs on:
-   *  - A resize handle → start resize drag
-   *  - The selection outline body → start move drag
-   *  - A palette tile → start palette drag
-   */
   private handleOverlayPointerDown(e: PointerEvent): void {
     if (!this.active || this.subMode !== 'edit') return;
     if (this.activeDrag) return;
+
+    // Hide context menu on any click
+    this.overlay.hideContextMenu();
 
     const target = e.target as HTMLElement;
 
@@ -657,11 +746,13 @@ export class EditorMode {
       if (nx >= r.x && nx <= r.x + r.width && ny >= r.y && ny <= r.y + r.height) {
         this.selectedRegionId = r.id;
         this.showSelectionHandles();
+        this.overlay.showProperties(r);
         return true;
       }
     }
     this.selectedRegionId = null;
     this.overlay.clearHandles();
+    this.overlay.hideProperties();
     return false;
   }
 
@@ -690,15 +781,189 @@ export class EditorMode {
     const idx = this.layout.regions.findIndex(r => r.id === this.selectedRegionId);
     if (idx === -1) return;
 
+    this.pushUndo();
     const type = this.layout.regions[idx].elementType;
     this.disposeElement(this.selectedRegionId);
     this.layout.regions.splice(idx, 1);
     this.layout.modified = Date.now();
     this.selectedRegionId = null;
     this.overlay.clearHandles();
+    this.overlay.hideProperties();
     this.updateStatus();
 
     showToast(`Removed ${type}`);
+  }
+
+  /* ============================================
+   *  DUPLICATE
+   * ============================================ */
+
+  private duplicateSelected(): void {
+    if (!this.selectedRegionId) return;
+    const region = this.layout.regions.find(r => r.id === this.selectedRegionId);
+    if (!region) return;
+
+    this.pushUndo();
+    const newRegion: EditorRegion = {
+      ...region,
+      id: nextRegionId(),
+      x: region.x + 0.02,
+      y: region.y - 0.02,
+    };
+    const clamped = clampRegion(newRegion);
+    const nudged = this.nudgeIfOverlapping(clamped);
+
+    this.layout.regions.push(nudged);
+    this.layout.modified = Date.now();
+    this.spawnElement(nudged, this.config.width, this.config.height);
+    this.selectedRegionId = nudged.id;
+    this.showSelectionHandles();
+    this.overlay.showProperties(nudged);
+    this.updateStatus();
+
+    showToast(`Duplicated ${region.elementType}`);
+  }
+
+  /* ============================================
+   *  ELEMENT TYPE SWAP
+   * ============================================ */
+
+  private swapSelectedType(newType: string): void {
+    if (!this.selectedRegionId) return;
+    const region = this.layout.regions.find(r => r.id === this.selectedRegionId);
+    if (!region || region.elementType === newType) return;
+
+    this.pushUndo();
+    region.elementType = newType;
+    this.layout.modified = Date.now();
+    this.recreateElement(region.id);
+    this.showSelectionHandles();
+    this.updateStatus();
+
+    showToast(`Swapped to ${newType}`);
+  }
+
+  /* ============================================
+   *  REGION UPDATE (from properties panel)
+   * ============================================ */
+
+  private updateSelectedRegion(x: number, y: number, w: number, h: number): void {
+    if (!this.selectedRegionId) return;
+    const region = this.layout.regions.find(r => r.id === this.selectedRegionId);
+    if (!region) return;
+
+    this.pushUndo();
+    const clamped = clampRegion({ ...region, x, y, width: w, height: h });
+    region.x = clamped.x;
+    region.y = clamped.y;
+    region.width = clamped.width;
+    region.height = clamped.height;
+    this.layout.modified = Date.now();
+    this.recreateElement(region.id);
+    this.showSelectionHandles();
+    this.overlay.updatePropertiesPosition(region);
+    this.updateStatus();
+  }
+
+  /* ============================================
+   *  BRING TO FRONT / SEND TO BACK
+   * ============================================ */
+
+  private bringToFront(): void {
+    if (!this.selectedRegionId) return;
+    const idx = this.layout.regions.findIndex(r => r.id === this.selectedRegionId);
+    if (idx === -1 || idx === this.layout.regions.length - 1) return;
+
+    this.pushUndo();
+    const [region] = this.layout.regions.splice(idx, 1);
+    this.layout.regions.push(region);
+    this.layout.modified = Date.now();
+    this.updateStatus();
+    showToast('Brought to front');
+  }
+
+  private sendToBack(): void {
+    if (!this.selectedRegionId) return;
+    const idx = this.layout.regions.findIndex(r => r.id === this.selectedRegionId);
+    if (idx <= 0) return;
+
+    this.pushUndo();
+    const [region] = this.layout.regions.splice(idx, 1);
+    this.layout.regions.unshift(region);
+    this.layout.modified = Date.now();
+    this.updateStatus();
+    showToast('Sent to back');
+  }
+
+  /* ============================================
+   *  ARROW NUDGE
+   * ============================================ */
+
+  private nudgeSelected(dx: number, dy: number): void {
+    if (!this.selectedRegionId) return;
+    const region = this.layout.regions.find(r => r.id === this.selectedRegionId);
+    if (!region) return;
+
+    this.pushUndo();
+    const gridSize = 1 / 12;
+    const clamped = clampRegion({
+      ...region,
+      x: region.x + dx * gridSize,
+      y: region.y + dy * gridSize,
+    });
+    region.x = clamped.x;
+    region.y = clamped.y;
+    this.layout.modified = Date.now();
+    this.recreateElement(region.id);
+    this.showSelectionHandles();
+    this.overlay.showProperties(region);
+    this.updateStatus();
+  }
+
+  /* ============================================
+   *  GRID TOGGLE
+   * ============================================ */
+
+  private toggleGrid(): void {
+    this.overlay.toggleGrid();
+    this.updateGridPosition();
+    showToast(this.overlay.gridVisible ? 'Grid on' : 'Grid off');
+  }
+
+  private updateGridPosition(): void {
+    const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
+    this.overlay.updateGridPosition(canvasRect);
+  }
+
+  /* ============================================
+   *  PALETTE CHANGE
+   * ============================================ */
+
+  private changePalette(paletteName: string): void {
+    this.layout.palette = paletteName;
+    this.palette = getPalette(paletteName);
+    this.ctx.scene.background = this.palette.bg;
+    this.layout.modified = Date.now();
+
+    // Respawn all elements with new palette
+    this.spawnAllElements();
+    if (this.selectedRegionId) {
+      this.showSelectionHandles();
+      const region = this.layout.regions.find(r => r.id === this.selectedRegionId);
+      if (region) this.overlay.showProperties(region);
+    }
+    this.updateStatus();
+    showToast(`Palette: ${paletteName}`);
+  }
+
+  /* ============================================
+   *  LAYOUT RENAME
+   * ============================================ */
+
+  private renameLayout(name: string): void {
+    this.layout.name = name;
+    this.layout.modified = Date.now();
+    this.updateStatus();
   }
 
   /* ============================================
@@ -715,6 +980,7 @@ export class EditorMode {
     } else {
       this.subMode = 'edit';
       this.overlay.exitPerformMode();
+      this.updateGridPosition();
       this.updateStatus();
       showToast('Edit mode');
     }
@@ -725,10 +991,14 @@ export class EditorMode {
    * ============================================ */
 
   private newLayout(): void {
+    this.pushUndo();
     this.disposeAllElements();
     this.layout = createBlankLayout(this.config.palette);
     this.selectedRegionId = null;
     this.overlay.clearHandles();
+    this.overlay.hideProperties();
+    this.undoStack = [];
+    this.redoStack = [];
     this.updateStatus();
     showToast('New layout');
   }
@@ -765,9 +1035,13 @@ export class EditorMode {
       this.layout = { ...saved.layouts[index] };
       this.selectedRegionId = null;
       this.overlay.clearHandles();
+      this.overlay.hideProperties();
       this.palette = getPalette(this.layout.palette || this.config.palette);
       this.ctx.scene.background = this.palette.bg;
+      this.overlay.setPalette(this.layout.palette || this.config.palette);
       this.spawnAllElements();
+      this.undoStack = [];
+      this.redoStack = [];
       this.updateStatus();
       showToast(`Loaded: ${this.layout.name}`);
     });
@@ -794,19 +1068,25 @@ export class EditorMode {
     this.layout = layout;
     this.selectedRegionId = null;
     this.overlay.clearHandles();
+    this.overlay.hideProperties();
     this.palette = getPalette(this.layout.palette || this.config.palette);
     this.ctx.scene.background = this.palette.bg;
+    this.overlay.setPalette(this.layout.palette || this.config.palette);
     this.spawnAllElements();
+    this.undoStack = [];
+    this.redoStack = [];
     this.updateStatus();
     showToast(`Imported: ${layout.name}`);
   }
 
   private clearLayout(): void {
+    this.pushUndo();
     this.disposeAllElements();
     this.layout.regions = [];
     this.layout.modified = Date.now();
     this.selectedRegionId = null;
     this.overlay.clearHandles();
+    this.overlay.hideProperties();
     this.updateStatus();
     showToast('Layout cleared');
   }
@@ -818,10 +1098,15 @@ export class EditorMode {
   private handleKey(e: KeyboardEvent): void {
     if (!this.active) return;
 
+    // Don't handle keys when help dialog is showing (except Escape)
+    if (this.overlay.helpVisible && e.key !== 'Escape') return;
+
     switch (e.key) {
       case 'Escape':
         e.preventDefault();
-        if (this.activeDrag) {
+        if (this.overlay.helpVisible) {
+          this.overlay.hideHelp();
+        } else if (this.activeDrag) {
           this.cancelDrag();
         } else {
           this.exit();
@@ -844,10 +1129,61 @@ export class EditorMode {
           this.saveLayout();
         }
         break;
+      case 'z':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          this.undo();
+        }
+        break;
+      case 'y':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          this.redo();
+        }
+        break;
+      case 'd':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          this.duplicateSelected();
+        }
+        break;
       case 'p':
       case 'P':
         if (!e.ctrlKey && !e.metaKey) {
           this.overlay.togglePalette();
+        }
+        break;
+      case 'g':
+      case 'G':
+        if (!e.ctrlKey && !e.metaKey && this.subMode === 'edit') {
+          this.toggleGrid();
+        }
+        break;
+      case '?':
+        this.overlay.showHelp();
+        break;
+      case 'ArrowLeft':
+        if (this.subMode === 'edit' && this.selectedRegionId) {
+          e.preventDefault();
+          this.nudgeSelected(-1, 0);
+        }
+        break;
+      case 'ArrowRight':
+        if (this.subMode === 'edit' && this.selectedRegionId) {
+          e.preventDefault();
+          this.nudgeSelected(1, 0);
+        }
+        break;
+      case 'ArrowUp':
+        if (this.subMode === 'edit' && this.selectedRegionId) {
+          e.preventDefault();
+          this.nudgeSelected(0, 1);
+        }
+        break;
+      case 'ArrowDown':
+        if (this.subMode === 'edit' && this.selectedRegionId) {
+          e.preventDefault();
+          this.nudgeSelected(0, -1);
         }
         break;
     }
@@ -863,6 +1199,7 @@ export class EditorMode {
     if (this.selectedRegionId) {
       this.showSelectionHandles();
     }
+    this.updateGridPosition();
   }
 
   /* ============================================
@@ -886,7 +1223,12 @@ export class EditorMode {
   }
 
   private updateStatus(): void {
-    this.overlay.updateStatus(this.layout, this.snapEnabled);
+    this.overlay.updateStatus(
+      this.layout,
+      this.snapEnabled,
+      this.undoStack.length,
+      this.redoStack.length,
+    );
   }
 
   dispose(): void {
