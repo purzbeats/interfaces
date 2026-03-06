@@ -1,5 +1,58 @@
 # Changelog
 
+## v5.5.0
+
+Editor UX redesign with bottom-panel layout, element thumbnail previews, and polished styling.
+
+### Added
+- **Element thumbnail previews**: palette tiles now show live-rendered previews of each element type, generated progressively via offscreen WebGLRenderTarget (batches of 4/frame, ~1.5s for all 380+ elements)
+- **Thumbnail generator** (`src/editor/thumbnail-generator.ts`): renders each element type at 120x72px to an offscreen target, reads pixels back with Y-flip, exports as JPEG data URLs
+- **Thumbnails regenerate on palette change** so previews always match the active color scheme
+
+### Changed
+- **Bottom-anchored panel layout**: element palette and inspector moved from left sidebar to a 140px bottom panel — better for both desktop and mobile (thumb-reachable, doesn't eat canvas width)
+- **Horizontal scrolling palette**: element tiles scroll horizontally with custom styled scrollbar (thin green-tinted track/thumb matching the accent scheme)
+- **Hamburger menu**: toolbar overflow items (New/Save/Load/Export/Import/Clear/Toggle Panel) collapsed into a dropdown menu
+- **Inspector/palette mode switching**: bottom panel toggles between palette view (browse elements) and inspector view (edit selected element properties)
+- **Canvas positioning**: viewport now accounts for toolbar (40px top) and bottom panel (140px) insets, keeping the rendered scene properly centered
+- **Tile hover effects**: cards lift 2px with green glow shadow on hover, placeholder uses diagonal hatching pattern
+- **Panel styling**: gradient backgrounds with drop shadows and inset highlights on toolbar and bottom panel, dark-tinted header rows, focus glow on search input
+- **Custom scrollbar**: thin styled scrollbar via CSS (webkit + Firefox `scrollbar-width`) instead of default browser chrome
+- **Pixel-crisp thumbnails**: `image-rendering: pixelated` on thumbnail images for sharp rendering
+
+### Fixed
+- **`togglePalette` → `togglePanel`**: key handler referenced removed method
+- **Missing `startThumbnailGenerator` method**: was called but never defined
+
+---
+
+## v5.4.0
+
+Massive editor overhaul with search, inspector panel, undo/redo, and Playwright test coverage.
+
+### Added
+- **Search box** in element palette — filters 380+ elements by name in real-time
+- **Inspector/properties panel** with type swap dropdown, position/size number inputs
+- **Undo/redo system** (Ctrl+Z / Ctrl+Y) with 50-level snapshot stack
+- **Duplicate element** (Ctrl+D) with offset placement
+- **Arrow key nudge** moves selected element by one grid unit
+- **Element type swap** via inspector dropdown — replaces element in-place
+- **Bring to front / Send to back** z-ordering
+- **12-column grid overlay** toggle (G key)
+- **Right-click context menu** with Duplicate, Delete, z-order, Undo/Redo
+- **Keyboard shortcuts help dialog** (? key)
+- **Inline layout rename** — click layout name in status bar to edit
+- **Palette selector** in toolbar — switch palettes without leaving editor
+- **Selection labels** — element type name above, dimensions below selection outline
+- **Filter by tag** dropdown (shape, role, mood categories)
+- **13 Playwright tests** covering all new editor features
+
+### Fixed
+- Engine key handler no longer interferes with editor shortcuts (guard added before main switch)
+- Help dialog (`?` key) now shows editor shortcuts instead of engine help when editor is active
+
+---
+
 ## v5.3.0
 
 ### Added

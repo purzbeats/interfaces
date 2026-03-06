@@ -30,7 +30,7 @@ npm run preview
 | G | Showcase mode (cycle through all elements) |
 | F | Toggle fullscreen / multi-aspect proof sheet (in showcase) |
 | B | Gallery mode (paginated grid of live previews) |
-| E | Edit/Performance mode (bespoke interface building) |
+| E | Editor mode (bespoke interface building with visual palette) |
 | M | Toggle sound |
 | 1–5 | Intensity broadcast (tap = one-shot, hold = sustained, release = baseline) |
 | +/− | Adjust overscan padding (for CRT TVs) |
@@ -62,6 +62,41 @@ Shareable links with full state control:
 ?seed=12345&perf=1                          # specific seed with debug overlay
 ```
 
+## Editor Mode
+
+Press **E** to open the visual layout editor. Build custom interface compositions by placing, sizing, and arranging elements on a canvas.
+
+### Layout
+- **Top toolbar** (40px): undo/redo, grid toggle, palette selector, layout name, status
+- **Canvas workspace**: drag-to-place, click-to-select, resize handles on selection
+- **Bottom panel** (140px): horizontally scrolling palette with live thumbnail previews, or inspector view for selected element
+
+### Editor Controls
+
+| Key | Action |
+|-----|--------|
+| Click tile | Place element at center |
+| Drag tile | Place element at position |
+| Arrow keys | Nudge selected element |
+| Ctrl+D | Duplicate selected |
+| Ctrl+Z / Ctrl+Y | Undo / redo (50 levels) |
+| Ctrl+S | Save layout |
+| Del / Backspace | Delete selected |
+| G | Toggle 12-column grid overlay |
+| P | Toggle bottom panel |
+| Tab | Perform mode (hide all UI) |
+| ? | Keyboard shortcuts help |
+| Right-click | Context menu |
+| Esc | Exit editor |
+
+### Features
+- **Thumbnail previews**: each element tile shows a live-rendered preview, generated progressively in the background
+- **Search & filter**: search by name or filter by tag (shape, role, mood)
+- **Inspector panel**: swap element type, edit position/size numerically, duplicate, delete, z-order
+- **Palette selector**: switch color palettes live — thumbnails regenerate automatically
+- **Undo/redo**: full 50-level snapshot stack
+- **Save/load**: layouts persist to localStorage, with JSON export/import
+
 ## Architecture
 
 ```
@@ -80,6 +115,11 @@ src/
 │   ├── templates.ts     # 7 template configs (regions, weights, BSP options)
 │   ├── compositor.ts    # Smart element selection (shape fitness, diversity)
 │   └── dividers.ts      # Inter-region divider lines
+├── editor/              # Visual layout editor
+│   ├── editor-overlay.ts        # UI overlay (toolbar, bottom panel, handles)
+│   ├── editor-layout.ts         # Region management, snap, overlap detection
+│   ├── editor-persistence.ts    # Save/load/export/import layouts
+│   └── thumbnail-generator.ts   # Offscreen element preview renderer
 ├── renderer/            # Three.js rendering
 ├── animation/           # Timeline, state machine, easing, retro text effects
 ├── audio/               # Web Audio API synthesis (keystroke, blip, glitch, alert)

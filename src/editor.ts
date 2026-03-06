@@ -20,7 +20,7 @@ import {
   createBlankLayout,
   nextRegionId,
 } from './editor/editor-layout';
-import { EditorOverlay } from './editor/editor-overlay';
+import { EditorOverlay, EDITOR_TOOLBAR_H, EDITOR_PANEL_H } from './editor/editor-overlay';
 import {
   saveEditorLayouts,
   loadEditorLayouts,
@@ -29,6 +29,8 @@ import {
   downloadJSON,
   pickJSONFile,
 } from './editor/editor-persistence';
+import { ThumbnailGenerator } from './editor/thumbnail-generator';
+import { elementTypes } from './elements/registry';
 import { TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
 
 /* ---------- Internal types ---------- */
@@ -73,6 +75,9 @@ export class EditorMode {
   // Undo/redo
   private undoStack: UndoSnapshot[] = [];
   private redoStack: UndoSnapshot[] = [];
+
+  // Thumbnail generator
+  private thumbGen: ThumbnailGenerator | null = null;
 
   /**
    * Full-screen transparent div that captures ALL pointer events during a drag.
@@ -128,7 +133,6 @@ export class EditorMode {
       onTogglePerform: () => this.togglePerform(),
       onExitEditor: () => this.exit(),
       onPaletteElementClick: (type) => this.placeElementAtCenter(type),
-      onTogglePalette: () => this.overlay.togglePalette(),
       onDuplicate: () => this.duplicateSelected(),
       onDelete: () => this.deleteSelected(),
       onUndo: () => this.undo(),
@@ -140,6 +144,7 @@ export class EditorMode {
       onUpdateRegion: (x, y, w, h) => this.updateSelectedRegion(x, y, w, h),
       onRenameLayout: (name) => this.renameLayout(name),
       onChangePalette: (pal) => this.changePalette(pal),
+      onPanelResize: () => this.handleResize(),
     });
   }
 
@@ -452,6 +457,9 @@ export class EditorMode {
     this.ctx.scene.background = this.palette.bg;
     this.overlay.setPalette(layout.palette || this.config.palette);
 
+    // Start thumbnail generator
+    this.startThumbnailGenerator();
+
     // Register event listeners
     window.addEventListener('keydown', this.keyHandler);
     window.addEventListener('resize', this.resizeHandler);
@@ -487,6 +495,13 @@ export class EditorMode {
     const canvas = this.ctx.renderer.domElement;
     canvas.removeEventListener('pointerdown', this.onCanvasPointerDown);
 
+    // Dispose thumbnail generator
+    if (this.thumbGen) {
+      this.thumbGen.dispose();
+      this.thumbGen = null;
+    }
+    this.overlay.getThumbnail = null;
+
     // Dispose all editor elements
     this.disposeAllElements();
 
@@ -509,6 +524,11 @@ export class EditorMode {
 
     for (const el of this.elements.values()) {
       el.tick(dt, this.elapsed);
+    }
+
+    // Process thumbnail generation batches
+    if (this.thumbGen) {
+      this.thumbGen.processBatch();
     }
 
     this.pipeline.update(this.elapsed, this.config);
@@ -936,6 +956,23 @@ export class EditorMode {
   }
 
   /* ============================================
+   *  THUMBNAIL GENERATOR
+   * ============================================ */
+
+  private startThumbnailGenerator(): void {
+    if (this.thumbGen) {
+      this.thumbGen.dispose();
+    }
+    this.thumbGen = new ThumbnailGenerator(
+      this.ctx.renderer,
+      this.palette,
+      elementTypes(),
+      () => this.overlay.refreshThumbnails(),
+    );
+    this.overlay.getThumbnail = (type: string) => this.thumbGen?.get(type);
+  }
+
+  /* ============================================
    *  PALETTE CHANGE
    * ============================================ */
 
@@ -953,6 +990,10 @@ export class EditorMode {
       if (region) this.overlay.showProperties(region);
     }
     this.updateStatus();
+
+    // Regenerate thumbnails with new palette
+    this.startThumbnailGenerator();
+
     showToast(`Palette: ${paletteName}`);
   }
 
@@ -1150,7 +1191,7 @@ export class EditorMode {
       case 'p':
       case 'P':
         if (!e.ctrlKey && !e.metaKey) {
-          this.overlay.togglePalette();
+          this.overlay.togglePanel();
         }
         break;
       case 'g':
@@ -1208,7 +1249,10 @@ export class EditorMode {
 
   private applyAspect(): void {
     const isMobile = this.isMobileCheck();
-    const viewportH = isMobile ? window.innerHeight - TOOLBAR_HEIGHT : window.innerHeight;
+    const topInset = this.active ? EDITOR_TOOLBAR_H : 0;
+    const bottomInset = this.active ? this.overlay.bottomPanelHeight : 0;
+    const mobileInset = isMobile ? TOOLBAR_HEIGHT : 0;
+    const viewportH = window.innerHeight - topInset - bottomInset - mobileInset;
     const { width, height, offsetX, offsetY } = computeAspectSize(
       this.config.aspectRatio,
       window.innerWidth,
@@ -1219,7 +1263,7 @@ export class EditorMode {
     const canvas = this.ctx.renderer.domElement;
     canvas.style.position = 'absolute';
     canvas.style.left = `${offsetX}px`;
-    canvas.style.top = `${offsetY}px`;
+    canvas.style.top = `${topInset + offsetY}px`;
   }
 
   private updateStatus(): void {
