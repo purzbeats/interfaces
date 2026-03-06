@@ -235,6 +235,7 @@ export class EditorMode {
     this.activeDrag = drag;
     this.dragCapture.style.display = '';
     this.dragCapture.setPointerCapture(e.pointerId);
+    this.overlay.setDragTranslucent(true);
   }
 
   private cancelDrag(): void {
@@ -248,6 +249,7 @@ export class EditorMode {
     this.activeDrag = null;
     this.dragCapture.style.display = 'none';
     this.overlay.hideGhostRect();
+    this.overlay.setDragTranslucent(false);
   }
 
   private onDragMove(e: PointerEvent): void {
@@ -393,6 +395,7 @@ export class EditorMode {
     this.dragCapture.style.display = 'none';
     this.dragCapture.style.cursor = 'default';
     this.overlay.hideGhostRect();
+    this.overlay.setDragTranslucent(false);
   }
 
   /* ============================================

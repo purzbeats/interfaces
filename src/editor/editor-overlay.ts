@@ -229,6 +229,7 @@ export class EditorOverlay {
     this._performMode = false;
     this.panelMode = 'palette';
     this.showEditUI();
+    this.hideMobileToolbar();
   }
 
   hide(): void {
@@ -236,6 +237,27 @@ export class EditorOverlay {
     this.clearHandles();
     this.hideHamburger();
     this.hideContextMenu();
+    this.showMobileToolbar();
+  }
+
+  /** Make toolbar/panel translucent so the user can see and place elements behind them. */
+  setDragTranslucent(translucent: boolean): void {
+    const opacity = translucent ? '0.35' : '1';
+    const events = translucent ? 'none' : 'auto';
+    this.toolbar.style.opacity = opacity;
+    this.toolbar.style.pointerEvents = events;
+    this.bottomPanel.style.opacity = opacity;
+    this.bottomPanel.style.pointerEvents = events;
+  }
+
+  private hideMobileToolbar(): void {
+    const mt = document.getElementById('mobile-toolbar');
+    if (mt) mt.style.display = 'none';
+  }
+
+  private showMobileToolbar(): void {
+    const mt = document.getElementById('mobile-toolbar');
+    if (mt) mt.style.display = '';
   }
 
   get visible(): boolean {
@@ -505,6 +527,7 @@ export class EditorOverlay {
       boxShadow: '0 2px 12px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(51,255,102,0.06)',
       display: 'flex', alignItems: 'center', gap: '4px', padding: '0 10px',
       pointerEvents: 'auto', zIndex: '950',
+      transition: 'opacity 0.15s',
     });
 
     // Hamburger
@@ -647,6 +670,7 @@ export class EditorOverlay {
       boxShadow: '0 -4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(51,255,102,0.06)',
       pointerEvents: 'auto', zIndex: '940',
       display: 'flex', flexDirection: 'column',
+      transition: 'opacity 0.15s',
     });
 
     this.paletteView = this.buildPaletteView();
