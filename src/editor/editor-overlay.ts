@@ -767,6 +767,8 @@ export class EditorOverlay {
       flex: '1', overflowX: 'auto', overflowY: 'hidden',
       display: 'flex', gap: '8px', padding: '8px 12px 6px',
       alignItems: 'stretch',
+      touchAction: 'pan-x',
+      WebkitOverflowScrolling: 'touch',
     });
     view.appendChild(this.tileScroll);
 
@@ -872,11 +874,28 @@ export class EditorOverlay {
       // Interaction: mouse = click/drag via overlay handler, touch = tap to place
       tile.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
-        e.stopPropagation();
         if (e.pointerType === 'touch') {
-          // On touch, tap places element at center — no drag (preserves scroll)
-          this.callbacks.onPaletteElementClick(type);
+          // Don't stop propagation or preventDefault — let scroll container handle it.
+          // Record touch start for tap detection on pointerup.
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const onUp = (ue: PointerEvent) => {
+            tile.removeEventListener('pointerup', onUp);
+            tile.removeEventListener('pointercancel', onCancel);
+            const dx = Math.abs(ue.clientX - startX);
+            const dy = Math.abs(ue.clientY - startY);
+            if (dx < 10 && dy < 10) {
+              this.callbacks.onPaletteElementClick(type);
+            }
+          };
+          const onCancel = () => {
+            tile.removeEventListener('pointerup', onUp);
+            tile.removeEventListener('pointercancel', onCancel);
+          };
+          tile.addEventListener('pointerup', onUp);
+          tile.addEventListener('pointercancel', onCancel);
         } else {
+          e.stopPropagation();
           e.preventDefault();
           this.onPointerDownOutside?.(e);
         }
