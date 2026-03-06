@@ -64,11 +64,9 @@ export class LogicCascadeElement extends BaseElement {
     this.inputCount = p.inputs;
     this.clockInterval = p.clock;
 
-    // Cap resolution while preserving tile aspect ratio to prevent stretching
-    const maxRes = 600;
-    const scale = Math.min(1, maxRes / Math.max(w, h));
-    const cw = Math.max(64, Math.floor(w * scale));
-    const ch = Math.max(64, Math.floor(h * scale));
+    // Use full tile resolution — this element draws simple vector shapes, not heavy pixel ops
+    const cw = Math.max(64, Math.floor(w));
+    const ch = Math.max(64, Math.floor(h));
     this.canvas = document.createElement('canvas');
     this.canvas.width = cw;
     this.canvas.height = ch;
