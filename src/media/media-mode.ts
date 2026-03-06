@@ -146,6 +146,11 @@ export class MediaMode {
   private layoutSeed: number = 0;
   private spawnGeneration = 0;
 
+  // Stable layout snapshot for debug overlay (survives async tile spawning)
+  private currentContentRegions: Region[] = [];
+  private currentDividerRegions: Region[] = [];
+  private currentAssignments: { region: Region; label: string }[] = [];
+
   // Browser overlay
   private overlay: HTMLDivElement;
   private browserPage = 0;
@@ -191,6 +196,14 @@ export class MediaMode {
 
   get isActive(): boolean {
     return this.active;
+  }
+
+  /** Expose layout regions for the debug overlay (stable snapshot, not in-progress tiles). */
+  getDebugRegions(): { tiles: { region: Region; label: string }[]; dividers: Region[] } {
+    return {
+      tiles: this.currentAssignments,
+      dividers: this.currentDividerRegions,
+    };
   }
 
   private get isMobile(): boolean {
@@ -381,11 +394,18 @@ export class MediaMode {
     // Use the main compositor for layout
     const { content, dividers } = this.generateLayout();
 
+    // Store layout snapshot for debug overlay
+    this.currentContentRegions = content;
+    this.currentDividerRegions = dividers;
+
     // Create divider elements (separators)
     this.spawnDividers(dividers, w, h);
 
     const lib = loadLibrary();
-    if (lib.items.length === 0) return;
+    if (lib.items.length === 0) {
+      this.currentAssignments = [];
+      return;
+    }
 
     // Assign media items to content regions — cycle if more regions than items
     const rng = new SeededRandom(this.layoutSeed);
@@ -399,6 +419,12 @@ export class MediaMode {
         region: content[i],
       });
     }
+
+    // Store assignments for debug overlay
+    this.currentAssignments = assignedItems.map(a => ({
+      region: a.region,
+      label: `${a.item.type}: ${a.item.name}`,
+    }));
 
     // Fetch object URLs for unique items
     const uniqueIds = [...new Set(assignedItems.map(a => a.item.id))];
@@ -417,7 +443,12 @@ export class MediaMode {
       this.setTileOpacity(tile, 0);
       this.tiles.push(tile);
       await this.loadTileMedia(tile);
-      if (gen !== this.spawnGeneration) return;
+      if (gen !== this.spawnGeneration) {
+        // Dispose the tile we just created — it's stale
+        this.tiles.pop();
+        this.disposeTile(tile);
+        return;
+      }
       await yieldFrames(TILE_STAGGER_FRAMES);
     }
   }
@@ -438,10 +469,14 @@ export class MediaMode {
     }
   }
 
-  /** Rolling rearrangement: crossfade to a new layout. */
-  private async rollingRearrange(): Promise<void> {
+  /** Rolling rearrangement: crossfade to a new layout.
+   *  @param newSeed — if true (default), generate a fresh seed. False when R key already set one. */
+  private async rollingRearrange(newSeed = true): Promise<void> {
     const lib = loadLibrary();
     if (lib.items.length === 0) return;
+
+    // Dispose any already-outgoing tiles immediately to avoid accumulation
+    this.clearOutgoing();
 
     // Move current tiles to outgoing (they'll fade out)
     for (const tile of this.tiles) {
@@ -453,13 +488,20 @@ export class MediaMode {
     // Clear old dividers
     this.clearDividers();
 
-    // New layout seed
-    this.layoutSeed = Math.floor(Math.random() * 100000);
+    if (newSeed) {
+      // Auto-rolling: pick a fresh seed and sync to config
+      this.config.seed = Math.floor(Math.random() * 100000);
+      this.layoutSeed = this.config.seed;
+    }
     this.palette = getPalette(this.config.palette);
 
     const w = this.config.width;
     const h = this.config.height;
     const { content, dividers } = this.generateLayout();
+
+    // Store layout snapshot for debug overlay
+    this.currentContentRegions = content;
+    this.currentDividerRegions = dividers;
 
     // Spawn new dividers
     this.spawnDividers(dividers, w, h);
@@ -467,6 +509,12 @@ export class MediaMode {
     const rng = new SeededRandom(this.layoutSeed);
     const shuffled = [...lib.items];
     rng.shuffle(shuffled);
+
+    // Store assignments for debug overlay
+    this.currentAssignments = content.map((region, i) => ({
+      region,
+      label: `${shuffled[i % shuffled.length].type}: ${shuffled[i % shuffled.length].name}`,
+    }));
 
     // Fetch object URLs
     const uniqueIds = [...new Set(shuffled.map(a => a.id))];
@@ -485,7 +533,12 @@ export class MediaMode {
       this.setTileOpacity(tile, 0);
       this.tiles.push(tile);
       await this.loadTileMedia(tile);
-      if (gen !== this.spawnGeneration) return;
+      if (gen !== this.spawnGeneration) {
+        // Dispose the tile we just created — it's stale
+        this.tiles.pop();
+        this.disposeTile(tile);
+        return;
+      }
       await yieldFrames(TILE_STAGGER_FRAMES);
     }
   }
@@ -607,6 +660,11 @@ export class MediaMode {
               uniforms.uCoverScale.value.set(1, scale);
               uniforms.uCoverOffset.value.set(0, (1 - scale) / 2);
             }
+          } else {
+            // Media mode exited while loading — clean up orphaned video
+            video.pause();
+            video.src = '';
+            video.load();
           }
           resolve();
         };
@@ -970,7 +1028,9 @@ export class MediaMode {
       case 'r':
       case 'R':
         e.preventDefault();
-        this.rollingRearrange();
+        // Use config.seed (already updated by engine's R handler) for layout
+        this.layoutSeed = this.config.seed;
+        this.rollingRearrange(false);
         break;
     }
   }

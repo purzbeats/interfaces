@@ -58,11 +58,10 @@ export function deleteCustomPalette(name: string): void {
   delete PALETTES[name];
 }
 
+/** Snapshot of built-in palette keys taken at module init (before custom palettes are registered). */
+const BUILTIN_NAMES = new Set(Object.keys(PALETTES));
+
 /** Check if a palette name is a built-in (non-deletable). */
 export function isBuiltinPalette(name: string): boolean {
-  const builtins = [
-    'phosphor-green', 'amber', 'cyan-magenta', 'military',
-    'ice-blue', 'synthwave', 'backrooms', 'bioluminescent',
-  ];
-  return builtins.includes(name);
+  return BUILTIN_NAMES.has(name);
 }

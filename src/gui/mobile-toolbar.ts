@@ -8,6 +8,7 @@ export interface MobileToolbarCallbacks {
   onShowcase: () => void;
   onGallery: () => void;
   onEditor: () => void;
+  onMedia: () => void;
   onToggleLoop: () => void;
   onToggleSettings: () => void;
   onResumeAudio: () => void;
@@ -151,10 +152,13 @@ export class MobileToolbar {
     const editor = this.makeBtn('\u270E', 'EDIT');
     this.wireTap(editor, () => this.fire(this.callbacks.onEditor));
 
+    const media = this.makeBtn('\u25B6', 'MEDIA');
+    this.wireTap(media, () => this.fire(this.callbacks.onMedia));
+
     this.loopBtn = this.makeBtn('\u21BB', 'LOOP');
     this.wireTap(this.loopBtn, () => this.fire(this.callbacks.onToggleLoop));
 
-    botRow.append(showcase, gallery, editor, this.loopBtn);
+    botRow.append(showcase, gallery, editor, media, this.loopBtn);
 
     wrapper.append(topRow, botRow);
     return wrapper;

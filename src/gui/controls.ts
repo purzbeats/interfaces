@@ -181,7 +181,7 @@ export function createGUI(
   // Export
   const exportFolder = gui.addFolder('Export');
   exportFolder.add({ screenshot: onScreenshot }, 'screenshot').name('Screenshot (S)');
-  exportFolder.add({ record: onRecord }, 'record').name('Record Video (V)');
+  exportFolder.add({ record: onRecord }, 'record').name('Record Video');
   exportFolder.add(config.export, 'fps', 24, 60, 1).name('Video FPS');
   exportFolder.add(config.export, 'duration', 5, 120, 1).name('Video Duration');
   exportFolder.close();

@@ -283,7 +283,7 @@ export class SpeedometerElement extends BaseElement {
     // Render readout at reduced rate
     this.renderAccum += dt;
     if (this.renderAccum >= 1 / 8) {
-      this.renderAccum = 0;
+      this.renderAccum %= 1 / 8;
       this.renderReadout();
     }
     (this.labelMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.8;

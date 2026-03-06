@@ -299,7 +299,7 @@ export class Engine {
         this.shakeDetector = new ShakeDetector(() => {
           if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 80]);
           this.config.seed = Math.floor(Math.random() * 100000);
-          this.generate(this.config.seed);
+          if (!this.media.isActive) this.generate(this.config.seed);
         });
         // Request permission on first canvas touch
         canvas.addEventListener('touchstart', () => {
@@ -309,7 +309,7 @@ export class Engine {
         this.mobileToolbar = new MobileToolbar({
           onRegenerate: () => {
             this.config.seed = Math.floor(Math.random() * 100000);
-            this.generate(this.config.seed);
+            if (!this.media.isActive) this.generate(this.config.seed);
           },
           onTogglePause: () => {
             this.togglePause();
@@ -333,6 +333,11 @@ export class Engine {
                 this.current ? this.current.elementTypeMap : undefined,
                 this.config.palette,
               );
+            }
+          },
+          onMedia: () => {
+            if (!this.media.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive) {
+              this.media.enter();
             }
           },
           onToggleLoop: () => {
@@ -939,6 +944,14 @@ export class Engine {
     }
     if (this.media.isActive) {
       this.media.update(dt);
+      // Refresh debug overlay during media mode (~2Hz)
+      if (this.debugVisible) {
+        this.debugRefreshTimer += dt;
+        if (this.debugRefreshTimer >= 0.5) {
+          this.debugRefreshTimer = 0;
+          this.renderDebugOverlay();
+        }
+      }
       return;
     }
 
@@ -1153,8 +1166,8 @@ export class Engine {
       this.hexBorder.update(dt, this.elapsed);
     }
 
-    // Refresh debug overlay periodically during rolling swaps (~2Hz)
-    if (this.debugVisible && this.config.rollingSwap) {
+    // Refresh debug overlay periodically during rolling swaps or media mode (~2Hz)
+    if (this.debugVisible && (this.config.rollingSwap || this.media.isActive)) {
       this.debugRefreshTimer += dt;
       if (this.debugRefreshTimer >= 0.5) {
         this.debugRefreshTimer = 0;
@@ -1274,7 +1287,6 @@ export class Engine {
 
   /** Build/rebuild the debug overlay showing region outlines, IDs, and element types. */
   private renderDebugOverlay(): void {
-    if (!this.current) return;
     this.debugOverlay?.remove();
 
     const canvas = this.ctx.renderer.domElement;
@@ -1296,20 +1308,31 @@ export class Engine {
     const cw = rect.width;
     const ch = rect.height;
 
-    // Content elements
-    for (const el of this.current.elements) {
-      const r = el.region;
-      const elType = this.current.elementTypeMap.get(el.id) ?? '?';
-      const isBorder = this.current.borderByRegion.has(r.id);
-      overlay.appendChild(this.createDebugCell(r, cw, ch, el.id, elType, r.isDivider ? '#555' : '#0f0', isBorder));
-    }
+    if (this.media.isActive) {
+      // Media mode: show tile and divider regions from media layout
+      const { tiles, dividers } = this.media.getDebugRegions();
+      for (let i = 0; i < tiles.length; i++) {
+        const { region, label } = tiles[i];
+        overlay.appendChild(this.createDebugCell(region, cw, ch, `tile-${i}`, label, '#0f0', false));
+      }
+      for (let i = 0; i < dividers.length; i++) {
+        overlay.appendChild(this.createDebugCell(dividers[i], cw, ch, `divider-${i}`, dividers[i].elementType ?? 'separator', '#555', false));
+      }
+    } else if (this.current) {
+      // Normal mode: show engine compositor regions
+      for (const el of this.current.elements) {
+        const r = el.region;
+        const elType = this.current.elementTypeMap.get(el.id) ?? '?';
+        const isBorder = this.current.borderByRegion.has(r.id);
+        overlay.appendChild(this.createDebugCell(r, cw, ch, el.id, elType, r.isDivider ? '#555' : '#0f0', isBorder));
+      }
 
-    // Border overlay elements
-    for (const el of this.current.borderOverlays) {
-      const r = el.region;
-      // Find what border type this is
-      const bType = el.constructor?.toString().match(/class (\w+)/)?.[1] ?? 'border';
-      overlay.appendChild(this.createDebugCell(r, cw, ch, `B:${el.id}`, bType, '#f0f', false, true));
+      // Border overlay elements
+      for (const el of this.current.borderOverlays) {
+        const r = el.region;
+        const bType = el.constructor?.toString().match(/class (\w+)/)?.[1] ?? 'border';
+        overlay.appendChild(this.createDebugCell(r, cw, ch, `B:${el.id}`, bType, '#f0f', false, true));
+      }
     }
 
     document.body.appendChild(overlay);
@@ -1358,19 +1381,24 @@ export class Engine {
     return div;
   }
 
+  private resizeHandler: (() => void) | null = null;
+
   private setupEvents(): void {
-    window.addEventListener('resize', () => {
+    this.resizeHandler = () => {
       // Immediately update canvas size for smooth visual feedback
       this.applyAspect();
       resizeRenderer(this.ctx, this.config.width, this.config.height);
       this.pipeline.resize(this.config.width, this.config.height);
+      // Skip expensive regeneration if media mode is active (it handles its own resize)
+      if (this.media.isActive) return;
       // Debounce the expensive regeneration (layout + element rebuild)
       if (this.resizeTimer) clearTimeout(this.resizeTimer);
       this.resizeTimer = setTimeout(() => {
         this.resizeTimer = null;
         this.generate(this.config.seed);
       }, 250);
-    });
+    };
+    window.addEventListener('resize', this.resizeHandler);
 
     // Click/touch on an element → intensity 5 one-shot on that element
     const canvas = this.ctx.renderer.domElement;
@@ -1430,7 +1458,15 @@ export class Engine {
           if (!e.ctrlKey && !e.metaKey) {
             this.config.seed = Math.floor(Math.random() * 100000);
             showToast(`Seed: ${this.config.seed}`);
-            this.generate(this.config.seed);
+            if (this.media.isActive) {
+              // Media mode handles its own R key rearrangement using config.seed
+              // Refresh debug overlay after a short delay to let media mode update its layout
+              if (this.debugVisible) {
+                requestAnimationFrame(() => this.renderDebugOverlay());
+              }
+            } else {
+              this.generate(this.config.seed);
+            }
           }
           break;
         case 's':
@@ -1559,6 +1595,10 @@ export class Engine {
 
   dispose(): void {
     this.disposed = true;
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+    }
     if (this.current) {
       for (const el of this.current.elements) {
         if (el._built) el.dispose();
