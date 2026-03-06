@@ -68,10 +68,10 @@ export class DistanceFieldElement extends BaseElement {
     this.contourSpacing = p.contourSpacing;
     this.operation = p.operation;
 
-    const maxRes = 160;
+    const maxRes = 240;
     const resScale = Math.min(1, maxRes / Math.max(w, h));
-    this.cw = Math.max(32, Math.floor(w * resScale));
-    this.ch = Math.max(32, Math.floor(h * resScale));
+    this.cw = Math.max(64, Math.floor(w * resScale));
+    this.ch = Math.max(64, Math.floor(h * resScale));
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.cw;
     this.canvas.height = this.ch;

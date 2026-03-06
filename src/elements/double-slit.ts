@@ -46,7 +46,7 @@ export class DoubleSlitElement extends BaseElement {
     this.particlesPerFrame = p.ppf;
 
     this.canvas = document.createElement('canvas');
-    const maxRes = 300;
+    const maxRes = 400;
     const scale = Math.min(1, maxRes / Math.max(w, h));
     this.canvas.width = Math.max(64, Math.floor(w * scale));
     this.canvas.height = Math.max(64, Math.floor(h * scale));
@@ -129,9 +129,10 @@ export class DoubleSlitElement extends BaseElement {
     const slitHalfW = (this.slitWidth / 0.8) * ch / 2;
 
     ctx.fillStyle = `rgba(${Math.round(this.palette.dim.r * 255)}, ${Math.round(this.palette.dim.g * 255)}, ${Math.round(this.palette.dim.b * 255)}, 0.5)`;
-    ctx.fillRect(barrierX - 2, 0, 4, slitCenterY - slitHalfSep - slitHalfW);
-    ctx.fillRect(barrierX - 2, slitCenterY - slitHalfSep + slitHalfW, 4, slitHalfSep * 2 - slitHalfW * 2);
-    ctx.fillRect(barrierX - 2, slitCenterY + slitHalfSep + slitHalfW, 4, ch - (slitCenterY + slitHalfSep + slitHalfW));
+    const barW = Math.max(2, cw * 0.012);
+    ctx.fillRect(barrierX - barW / 2, 0, barW, slitCenterY - slitHalfSep - slitHalfW);
+    ctx.fillRect(barrierX - barW / 2, slitCenterY - slitHalfSep + slitHalfW, barW, slitHalfSep * 2 - slitHalfW * 2);
+    ctx.fillRect(barrierX - barW / 2, slitCenterY + slitHalfSep + slitHalfW, barW, ch - (slitCenterY + slitHalfSep + slitHalfW));
 
     // Draw incoming plane wave (left side)
     const waveCount = 8;

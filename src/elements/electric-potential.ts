@@ -45,16 +45,19 @@ export class ElectricPotentialElement extends BaseElement {
     const { x, y, w, h } = this.px;
     const variant = this.rng.int(0, 3);
     const presets = [
-      { charges: 4, cw: 120, ch: 90, contours: 12 },
-      { charges: 6, cw: 150, ch: 112, contours: 16 },
-      { charges: 3, cw: 100, ch: 75, contours: 10 },
-      { charges: 8, cw: 130, ch: 97, contours: 20 },
+      { charges: 4, contours: 12 },
+      { charges: 6, contours: 16 },
+      { charges: 3, contours: 10 },
+      { charges: 8, contours: 20 },
     ];
     const p = presets[variant];
     this.chargeCount = p.charges;
-    this.canvasW = p.cw;
-    this.canvasH = p.ch;
     this.contourLevels = p.contours;
+
+    const maxRes = 240;
+    const scale = Math.min(1, maxRes / Math.max(w, h));
+    this.canvasW = Math.max(64, Math.floor(w * scale));
+    this.canvasH = Math.max(64, Math.floor(h * scale));
 
     // Initialize charges
     this.chargeX = new Float32Array(this.chargeCount);
@@ -98,7 +101,7 @@ export class ElectricPotentialElement extends BaseElement {
       color: this.palette.secondary,
       transparent: true,
       opacity: 0,
-      size: 5,
+      size: Math.max(3, Math.min(w, h) * 0.015),
       sizeAttenuation: false,
     });
     this.chargeDots = new THREE.Points(cpGeo, this.chargeMat);
