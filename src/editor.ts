@@ -65,6 +65,7 @@ export class EditorMode {
   private pipeline: PostFXPipeline;
   private config: Config;
   private onExit: () => void;
+  private onEnter: () => void;
   private isMobileCheck: () => boolean;
 
   private active: boolean = false;
@@ -103,11 +104,13 @@ export class EditorMode {
     config: Config,
     onExit: () => void,
     isMobile: () => boolean,
+    onEnter?: () => void,
   ) {
     this.ctx = ctx;
     this.pipeline = pipeline;
     this.config = config;
     this.onExit = onExit;
+    this.onEnter = onEnter || (() => {});
     this.isMobileCheck = isMobile;
 
     // Bind event handlers
@@ -543,6 +546,9 @@ export class EditorMode {
 
     // Spawn all layout elements
     this.spawnAllElements();
+
+    // Notify engine (disables touch manager etc.)
+    this.onEnter();
 
     // Show overlay
     this.overlay.show();

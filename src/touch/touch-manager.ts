@@ -34,6 +34,9 @@ export class TouchManager {
   private sustainHandle: { stop(): void } | null = null;
   private currentTargetId: string | null = null;
 
+  /** When false, all touch events pass through without being captured. */
+  enabled: boolean = true;
+
   private boundStart: (e: TouchEvent) => void;
   private boundMove: (e: TouchEvent) => void;
   private boundEnd: (e: TouchEvent) => void;
@@ -54,6 +57,7 @@ export class TouchManager {
   }
 
   private handleStart(e: TouchEvent): void {
+    if (!this.enabled) return;
     e.preventDefault(); // prevent scroll
 
     const count = Math.min(e.touches.length, 5);
@@ -82,6 +86,7 @@ export class TouchManager {
   }
 
   private handleMove(e: TouchEvent): void {
+    if (!this.enabled) return;
     e.preventDefault();
 
     // Cancel long-press on any movement
@@ -94,6 +99,7 @@ export class TouchManager {
   }
 
   private handleEnd(e: TouchEvent): void {
+    if (!this.enabled) return;
     e.preventDefault();
 
     this.cancelLongPress();

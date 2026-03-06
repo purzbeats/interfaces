@@ -231,11 +231,15 @@ export class Engine {
 
     this.editor = new EditorMode(this.ctx, this.pipeline, this.config, () => {
       // On exit: restore aspect, regenerate the normal composition
+      if (this.touchManager) this.touchManager.enabled = true;
       this.applyAspect();
       resizeRenderer(this.ctx, this.config.width, this.config.height);
       this.pipeline.resize(this.config.width, this.config.height);
       this.generate(this.config.seed);
-    }, () => !!this.mobileToolbar);
+    }, () => !!this.mobileToolbar, () => {
+      // On enter: disable touch manager so editor gets touch events
+      if (this.touchManager) this.touchManager.enabled = false;
+    });
 
     this.media = new MediaMode(this.ctx, this.pipeline, this.config, () => {
       // On exit: restore aspect, regenerate the normal composition
