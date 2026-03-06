@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { resizeRenderer, type RendererContext } from '../renderer/setup';
 import { type PostFXPipeline } from '../postfx/pipeline';
 import { type Config, computeAspectSize } from '../config';
-import { getPalette, type Palette } from '../color/palettes';
+import { getPalette, paletteNames, type Palette } from '../color/palettes';
 import { loadLibrary, addFile, removeItem, getObjectUrl, revokeAllObjectUrls, type MediaItem } from './storage';
 import { TOOLBAR_HEIGHT } from '../gui/mobile-toolbar';
 import { showToast } from '../gui/toast';
@@ -29,11 +29,10 @@ const yieldFrames = (n: number): Promise<void> => {
 };
 
 /** Stagger delay in frames between each tile appearing */
-const TILE_STAGGER_FRAMES = 6;
+const TILE_STAGGER_FRAMES = 8;
 
-/** Cap video canvas resolution — videos redraw every frame so lower res saves CPU */
 /** Opacity fade speed per second */
-const FADE_SPEED = 3.5;
+const FADE_SPEED = 1.8;
 /** Seconds between rolling rearrangements */
 const ROLLING_INTERVAL = 15;
 
@@ -46,6 +45,7 @@ interface MediaTile {
   item: MediaItem;
   objectUrl: string;
   source: HTMLImageElement | HTMLVideoElement | null;
+  palette: Palette;
   opacity: number;
   targetOpacity: number;
   loaded: boolean;
@@ -131,6 +131,7 @@ export class MediaMode {
   private active = false;
   private stashedChildren: THREE.Object3D[] = [];
   private palette!: Palette;
+  private multiPalette = false;
   private elapsed = 0;
 
   // Tile display
@@ -248,8 +249,8 @@ export class MediaMode {
     window.removeEventListener('drop', this.dropHandler);
     window.removeEventListener('dragover', this.dragOverHandler);
 
-    this.clearTiles();
-    this.clearOutgoing();
+    this.cancelAndClearAll();
+    revokeAllObjectUrls();
 
     // Restore stashed scene children
     for (const child of this.stashedChildren) {
@@ -341,6 +342,20 @@ export class MediaMode {
     this.outgoingTiles = [];
   }
 
+  /** Nuclear cleanup: bump generation to cancel in-flight spawns, dispose all tracked tiles. */
+  private cancelAndClearAll(): void {
+    this.spawnGeneration++;
+    for (const tile of this.tiles) {
+      this.disposeTile(tile);
+    }
+    this.tiles = [];
+    for (const tile of this.outgoingTiles) {
+      this.disposeTile(tile);
+    }
+    this.outgoingTiles = [];
+    this.clearDividers();
+  }
+
   private clearDividers(): void {
     for (let i = 0; i < this.dividers.length; i++) {
       this.ctx.scene.remove(this.dividerWrappers[i]);
@@ -383,7 +398,7 @@ export class MediaMode {
   }
 
   private async spawnTiles(): Promise<void> {
-    this.clearTiles();
+    this.cancelAndClearAll();
 
     this.palette = getPalette(this.config.palette);
     this.ctx.scene.background = this.palette.bg;
@@ -430,25 +445,31 @@ export class MediaMode {
     const uniqueIds = [...new Set(assignedItems.map(a => a.item.id))];
     await Promise.all(uniqueIds.map(id => getObjectUrl(id)));
 
-    // Create tiles staggered across frames — await load+remap so work is spread out
+    // Create all tile meshes immediately (dim placeholders)
     this.spawnGeneration++;
     const gen = this.spawnGeneration;
+    const isStale = () => gen !== this.spawnGeneration;
+    const allPaletteNames = paletteNames();
+    const palRng = new SeededRandom(this.layoutSeed + 777);
+    const newTiles: MediaTile[] = [];
     for (const { item, region } of assignedItems) {
-      if (gen !== this.spawnGeneration) return;
       const objectUrl = await getObjectUrl(item.id);
-      if (!objectUrl || gen !== this.spawnGeneration) continue;
-      const tile = this.createTile(region, item, objectUrl, w, h);
+      if (!objectUrl || isStale()) return;
+      const tilePal = this.multiPalette
+        ? getPalette(allPaletteNames[palRng.int(0, allPaletteNames.length - 1)])
+        : undefined;
+      const tile = this.createTile(region, item, objectUrl, w, h, tilePal);
       tile.targetOpacity = 1;
       tile.opacity = 0;
       this.setTileOpacity(tile, 0);
       this.tiles.push(tile);
-      await this.loadTileMedia(tile);
-      if (gen !== this.spawnGeneration) {
-        // Dispose the tile we just created — it's stale
-        this.tiles.pop();
-        this.disposeTile(tile);
-        return;
-      }
+      newTiles.push(tile);
+    }
+
+    // Load media in background with staggered fade-in
+    for (let i = 0; i < newTiles.length; i++) {
+      if (isStale()) return;
+      this.loadTileMedia(newTiles[i]);
       await yieldFrames(TILE_STAGGER_FRAMES);
     }
   }
@@ -475,10 +496,13 @@ export class MediaMode {
     const lib = loadLibrary();
     if (lib.items.length === 0) return;
 
-    // Dispose any already-outgoing tiles immediately to avoid accumulation
+    // Cancel any in-flight spawn loop (but don't dispose tiles yet — crossfade them)
+    this.spawnGeneration++;
+
+    // Dispose any already-fading outgoing tiles to prevent accumulation
     this.clearOutgoing();
 
-    // Move current tiles to outgoing (they'll fade out)
+    // Move current tiles to outgoing so they fade out gracefully
     for (const tile of this.tiles) {
       tile.targetOpacity = 0;
       this.outgoingTiles.push(tile);
@@ -522,28 +546,37 @@ export class MediaMode {
 
     this.spawnGeneration++;
     const gen = this.spawnGeneration;
+    const isStale = () => gen !== this.spawnGeneration;
+
+    // Create all tile meshes immediately (dim placeholders), staggered fade-in
+    const allPaletteNames = paletteNames();
+    const palRng = new SeededRandom(this.layoutSeed + 777);
+    const newTiles: MediaTile[] = [];
     for (let i = 0; i < content.length; i++) {
-      if (gen !== this.spawnGeneration) return;
       const item = shuffled[i % shuffled.length];
       const objectUrl = await getObjectUrl(item.id);
-      if (!objectUrl || gen !== this.spawnGeneration) continue;
-      const tile = this.createTile(content[i], item, objectUrl, w, h);
+      if (!objectUrl || isStale()) return;
+      const tilePal = this.multiPalette
+        ? getPalette(allPaletteNames[palRng.int(0, allPaletteNames.length - 1)])
+        : undefined;
+      const tile = this.createTile(content[i], item, objectUrl, w, h, tilePal);
       tile.targetOpacity = 1;
       tile.opacity = 0;
       this.setTileOpacity(tile, 0);
       this.tiles.push(tile);
-      await this.loadTileMedia(tile);
-      if (gen !== this.spawnGeneration) {
-        // Dispose the tile we just created — it's stale
-        this.tiles.pop();
-        this.disposeTile(tile);
-        return;
-      }
+      newTiles.push(tile);
+    }
+
+    // Load media in background with staggered fade-in — no blocking between tiles
+    for (let i = 0; i < newTiles.length; i++) {
+      if (isStale()) return;
+      this.loadTileMedia(newTiles[i]); // fire-and-forget — loads in background
       await yieldFrames(TILE_STAGGER_FRAMES);
     }
   }
 
-  private createTile(region: Region, item: MediaItem, objectUrl: string, canvasW: number, canvasH: number): MediaTile {
+  private createTile(region: Region, item: MediaItem, objectUrl: string, canvasW: number, canvasH: number, tilePalette?: Palette): MediaTile {
+    const pal = tilePalette ?? this.palette;
     const px = regionToPixels(region, canvasW, canvasH);
     const geo = new THREE.PlaneGeometry(px.w, px.h);
 
@@ -564,10 +597,10 @@ export class MediaMode {
           opacity: { value: 0 },
           uTime: { value: 0 },
           uSeed: { value: Math.random() * 100 },
-          uBg: { value: this.palette.bg.clone() },
-          uDim: { value: this.palette.dim.clone() },
-          uPrimary: { value: this.palette.primary.clone() },
-          uSecondary: { value: this.palette.secondary.clone() },
+          uBg: { value: pal.bg.clone() },
+          uDim: { value: pal.dim.clone() },
+          uPrimary: { value: pal.primary.clone() },
+          uSecondary: { value: pal.secondary.clone() },
           uCoverScale: { value: new THREE.Vector2(1, 1) },
           uCoverOffset: { value: new THREE.Vector2(0, 0) },
         },
@@ -582,7 +615,7 @@ export class MediaMode {
       canvas.height = Math.max(1, Math.round(px.h));
       ctx2d = canvas.getContext('2d')!;
 
-      ctx2d.fillStyle = '#' + this.palette.dim.getHexString();
+      ctx2d.fillStyle = '#' + pal.dim.getHexString();
       ctx2d.fillRect(0, 0, canvas.width, canvas.height);
 
       texture = new THREE.CanvasTexture(canvas);
@@ -598,7 +631,7 @@ export class MediaMode {
 
     return {
       mesh, texture, canvas, ctx2d, region, item, objectUrl,
-      source: null, opacity: 0, targetOpacity: 1, loaded: false,
+      source: null, palette: pal, opacity: 0, targetOpacity: 1, loaded: false,
     };
   }
 
@@ -614,7 +647,7 @@ export class MediaMode {
             tile.source = img;
             tile.loaded = true;
             this.drawMediaToCanvas(tile.ctx2d, img, tile.canvas.width, tile.canvas.height);
-            this.applyPaletteRemap(tile.ctx2d, tile.canvas.width, tile.canvas.height);
+            this.applyPaletteRemap(tile.ctx2d, tile.canvas.width, tile.canvas.height, tile.palette);
             (tile.texture as THREE.CanvasTexture).needsUpdate = true;
           }
           resolve();
@@ -699,20 +732,21 @@ export class MediaMode {
   private paletteLUT: Uint8Array | null = null;
   private paletteLUTKey: string = '';
 
-  private buildPaletteLUT(): Uint8Array {
+  private buildPaletteLUT(pal?: Palette): Uint8Array {
+    const p = pal ?? this.palette;
     const lut = new Uint8Array(256 * 3);
-    const bgR = Math.round(this.palette.bg.r * 255);
-    const bgG = Math.round(this.palette.bg.g * 255);
-    const bgB = Math.round(this.palette.bg.b * 255);
-    const dimR = Math.round(this.palette.dim.r * 255);
-    const dimG = Math.round(this.palette.dim.g * 255);
-    const dimB = Math.round(this.palette.dim.b * 255);
-    const priR = Math.round(this.palette.primary.r * 255);
-    const priG = Math.round(this.palette.primary.g * 255);
-    const priB = Math.round(this.palette.primary.b * 255);
-    const secR = Math.round(this.palette.secondary.r * 255);
-    const secG = Math.round(this.palette.secondary.g * 255);
-    const secB = Math.round(this.palette.secondary.b * 255);
+    const bgR = Math.round(p.bg.r * 255);
+    const bgG = Math.round(p.bg.g * 255);
+    const bgB = Math.round(p.bg.b * 255);
+    const dimR = Math.round(p.dim.r * 255);
+    const dimG = Math.round(p.dim.g * 255);
+    const dimB = Math.round(p.dim.b * 255);
+    const priR = Math.round(p.primary.r * 255);
+    const priG = Math.round(p.primary.g * 255);
+    const priB = Math.round(p.primary.b * 255);
+    const secR = Math.round(p.secondary.r * 255);
+    const secG = Math.round(p.secondary.g * 255);
+    const secB = Math.round(p.secondary.b * 255);
 
     for (let L = 0; L < 256; L++) {
       const lum = L / 255;
@@ -755,11 +789,11 @@ export class MediaMode {
     return this.paletteLUT;
   }
 
-  private applyPaletteRemap(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  private applyPaletteRemap(ctx: CanvasRenderingContext2D, w: number, h: number, pal?: Palette): void {
     if (w === 0 || h === 0) return;
     const imageData = ctx.getImageData(0, 0, w, h);
     const data = imageData.data;
-    const lut = this.getPaletteLUT();
+    const lut = pal ? this.buildPaletteLUT(pal) : this.getPaletteLUT();
 
     for (let i = 0; i < data.length; i += 4) {
       // Integer luminance 0-255 (fixed-point weighted sum, no division by 255)
@@ -1031,6 +1065,13 @@ export class MediaMode {
         // Use config.seed (already updated by engine's R handler) for layout
         this.layoutSeed = this.config.seed;
         this.rollingRearrange(false);
+        break;
+      case 'p':
+      case 'P':
+        e.preventDefault();
+        this.multiPalette = !this.multiPalette;
+        showToast(this.multiPalette ? 'Multi-palette: on' : 'Multi-palette: off');
+        this.rollingRearrange();
         break;
     }
   }

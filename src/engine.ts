@@ -247,7 +247,7 @@ export class Engine {
 
     this.gui = createGUI(
       this.config,
-      () => this.generate(this.config.seed),
+      () => { if (!this.media.isActive) this.generate(this.config.seed); },
       () => takeScreenshot(this.ctx.renderer.domElement),
       () => {
         if (this.recorder.isRecording) this.recorder.stop();
@@ -350,7 +350,7 @@ export class Engine {
         this.applyAspect();
         resizeRenderer(this.ctx, this.config.width, this.config.height);
         this.pipeline.resize(this.config.width, this.config.height);
-        this.generate(this.config.seed);
+        if (!this.media.isActive) this.generate(this.config.seed);
       } else if (!matches && this.mobileToolbar) {
         this.touchManager?.destroy();
         this.touchManager = null;
@@ -364,7 +364,7 @@ export class Engine {
         this.applyAspect();
         resizeRenderer(this.ctx, this.config.width, this.config.height);
         this.pipeline.resize(this.config.width, this.config.height);
-        this.generate(this.config.seed);
+        if (!this.media.isActive) this.generate(this.config.seed);
       }
     };
     handleMobileChange(this.mobileQuery.matches);
@@ -1266,7 +1266,9 @@ export class Engine {
     this.applyAspect();
     resizeRenderer(this.ctx, this.config.width, this.config.height);
     this.pipeline.resize(this.config.width, this.config.height);
-    this.generate(this.config.seed);
+    if (!this.media.isActive) {
+      this.generate(this.config.seed);
+    }
   }
 
   private debugOverlay: HTMLDivElement | null = null;
@@ -1395,7 +1397,7 @@ export class Engine {
       if (this.resizeTimer) clearTimeout(this.resizeTimer);
       this.resizeTimer = setTimeout(() => {
         this.resizeTimer = null;
-        this.generate(this.config.seed);
+        if (!this.media.isActive) this.generate(this.config.seed);
       }, 250);
     };
     window.addEventListener('resize', this.resizeHandler);
@@ -1530,9 +1532,11 @@ export class Engine {
           }
           break;
         case 'x':
-          this.config.hexLayout = !this.config.hexLayout;
-          showToast(this.config.hexLayout ? 'Hex layout: on' : 'Hex layout: off');
-          this.generate(this.config.seed);
+          if (!this.media.isActive) {
+            this.config.hexLayout = !this.config.hexLayout;
+            showToast(this.config.hexLayout ? 'Hex layout: on' : 'Hex layout: off');
+            this.generate(this.config.seed);
+          }
           break;
         case 'e':
           if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.media.isActive) {
