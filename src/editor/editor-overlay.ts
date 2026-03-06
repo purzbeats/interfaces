@@ -405,7 +405,9 @@ export class EditorOverlay {
       pointerEvents: 'auto', cursor: 'move', zIndex: '910',
     });
     outline.addEventListener('pointerdown', (e) => {
-      e.stopPropagation(); e.preventDefault(); this.onPointerDownOutside?.(e);
+      e.stopPropagation();
+      if (e.pointerType !== 'touch') e.preventDefault();
+      this.onPointerDownOutside?.(e);
     });
     outline.addEventListener('contextmenu', (e) => {
       e.preventDefault(); e.stopPropagation();
@@ -433,8 +435,9 @@ export class EditorOverlay {
     });
     this.handlesContainer.appendChild(dim);
 
-    // 8 handles
-    const sz = 10, half = sz / 2;
+    // 8 handles — larger on touch devices for finger targets
+    const isTouch = matchMedia('(pointer: coarse)').matches;
+    const sz = isTouch ? 24 : 10, half = sz / 2;
     const positions = [
       { id: 'nw', cx: left, cy: top, cur: 'nwse-resize' },
       { id: 'n', cx: left + w / 2, cy: top, cur: 'ns-resize' },
@@ -453,10 +456,13 @@ export class EditorOverlay {
         position: 'fixed', left: `${p.cx - half}px`, top: `${p.cy - half}px`,
         width: `${sz}px`, height: `${sz}px`,
         background: ACCENT, border: '1px solid #000', boxSizing: 'border-box',
+        borderRadius: isTouch ? '50%' : '0',
         cursor: p.cur, pointerEvents: 'auto', zIndex: '920',
       });
       handle.addEventListener('pointerdown', (e) => {
-        e.stopPropagation(); e.preventDefault(); this.onPointerDownOutside?.(e);
+        e.stopPropagation();
+        if (e.pointerType !== 'touch') e.preventDefault();
+        this.onPointerDownOutside?.(e);
       });
       this.handlesContainer.appendChild(handle);
     }
@@ -792,7 +798,7 @@ export class EditorOverlay {
         flexShrink: '0', width: `${TILE_W}px`,
         background: 'rgba(0,0,0,0.35)', border: `1px solid rgba(51,255,102,0.12)`,
         borderRadius: '4px', cursor: 'grab', userSelect: 'none',
-        touchAction: 'none', display: 'flex', flexDirection: 'column',
+        touchAction: 'pan-x', display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
         transition: 'border-color 0.15s, transform 0.12s, box-shadow 0.15s',
       });
@@ -866,7 +872,9 @@ export class EditorOverlay {
       // Interaction (click + drag)
       tile.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
-        e.stopPropagation(); e.preventDefault();
+        e.stopPropagation();
+        // Don't preventDefault on touch — allow horizontal scroll in tile area
+        if (e.pointerType !== 'touch') e.preventDefault();
         this.onPointerDownOutside?.(e);
       });
 

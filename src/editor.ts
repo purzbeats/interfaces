@@ -41,6 +41,14 @@ type ActiveDrag =
   | { kind: 'move'; regionId: string; startNX: number; startNY: number; startRegionX: number; startRegionY: number; lastX: number; lastY: number }
   | { kind: 'resize'; regionId: string; handle: string; startRegion: EditorRegion; startClientX: number; startClientY: number; lastRegion: EditorRegion };
 
+/** Deferred drag for touch — waits for movement threshold before committing. */
+interface PendingTouchDrag {
+  intent: ActiveDrag;
+  pointerId: number;
+  startX: number;
+  startY: number;
+}
+
 /* ---------- Undo system ---------- */
 
 interface UndoSnapshot {
@@ -66,6 +74,7 @@ export class EditorMode {
   private wrappers: Map<string, THREE.Group> = new Map();
   private selectedRegionId: string | null = null;
   private activeDrag: ActiveDrag | null = null;
+  private pendingTouch: PendingTouchDrag | null = null;
   private palette!: Palette;
   private elapsed: number = 0;
   private stashedChildren: THREE.Object3D[] = [];
@@ -117,9 +126,11 @@ export class EditorMode {
       zIndex: '9999',
       cursor: 'default',
       display: 'none',
+      touchAction: 'none',
     });
     this.dragCapture.addEventListener('pointermove', (e) => this.onDragMove(e));
     this.dragCapture.addEventListener('pointerup', (e) => this.onDragEnd(e));
+    this.dragCapture.addEventListener('pointercancel', () => this.cancelDrag());
     document.body.appendChild(this.dragCapture);
 
     // Create overlay
@@ -232,13 +243,38 @@ export class EditorMode {
    * ============================================ */
 
   private beginDrag(drag: ActiveDrag, e: PointerEvent): void {
+    // On touch, defer drag until movement threshold is met
+    if (e.pointerType === 'touch') {
+      this.pendingTouch = {
+        intent: drag,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+      };
+      // Show the drag capture to receive move/up events
+      this.dragCapture.style.display = '';
+      this.dragCapture.setPointerCapture(e.pointerId);
+      return;
+    }
+    this.commitDrag(drag, e.pointerId);
+  }
+
+  private commitDrag(drag: ActiveDrag, pointerId?: number): void {
+    this.pendingTouch = null;
     this.activeDrag = drag;
-    this.dragCapture.style.display = '';
-    this.dragCapture.setPointerCapture(e.pointerId);
+    if (pointerId != null && !this.dragCapture.hasPointerCapture(pointerId)) {
+      this.dragCapture.style.display = '';
+      this.dragCapture.setPointerCapture(pointerId);
+    }
     this.overlay.setDragTranslucent(true);
   }
 
   private cancelDrag(): void {
+    if (this.pendingTouch) {
+      this.pendingTouch = null;
+      this.dragCapture.style.display = 'none';
+      return;
+    }
     if (!this.activeDrag) return;
 
     if (this.activeDrag.kind === 'move') {
@@ -252,7 +288,26 @@ export class EditorMode {
     this.overlay.setDragTranslucent(false);
   }
 
+  private static readonly TOUCH_DRAG_THRESHOLD = 12;
+
   private onDragMove(e: PointerEvent): void {
+    // Handle pending touch — check threshold before committing
+    if (this.pendingTouch) {
+      const dx = e.clientX - this.pendingTouch.startX;
+      const dy = e.clientY - this.pendingTouch.startY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < EditorMode.TOUCH_DRAG_THRESHOLD) return; // not enough movement yet
+
+      // For palette drags, if horizontal motion dominates, cancel — let browser scroll
+      if (this.pendingTouch.intent.kind === 'palette' && Math.abs(dx) > Math.abs(dy)) {
+        this.cancelDrag();
+        return;
+      }
+
+      // Commit the drag
+      this.commitDrag(this.pendingTouch.intent, this.pendingTouch.pointerId);
+    }
+
     if (!this.activeDrag) return;
     const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
 
@@ -337,6 +392,19 @@ export class EditorMode {
   }
 
   private onDragEnd(e: PointerEvent): void {
+    // If touch never exceeded threshold, treat as tap
+    if (this.pendingTouch) {
+      const intent = this.pendingTouch.intent;
+      this.pendingTouch = null;
+      this.dragCapture.style.display = 'none';
+      // Palette tap → place at center; handle/outline tap → select
+      if (intent.kind === 'palette') {
+        this.placeElementAtCenter(intent.elementType);
+      } else if (intent.kind === 'move') {
+        // Already selected from handleOverlayPointerDown
+      }
+      return;
+    }
     if (!this.activeDrag) return;
     const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
 
@@ -470,6 +538,8 @@ export class EditorMode {
     this.overlay.onPointerDownOutside = (e) => this.handleOverlayPointerDown(e);
     const canvas = this.ctx.renderer.domElement;
     canvas.addEventListener('pointerdown', this.onCanvasPointerDown);
+    // Prevent browser gestures (scroll/zoom) on canvas while editing
+    canvas.style.touchAction = 'none';
 
     // Spawn all layout elements
     this.spawnAllElements();
@@ -496,6 +566,7 @@ export class EditorMode {
     window.removeEventListener('resize', this.resizeHandler);
     const canvas = this.ctx.renderer.domElement;
     canvas.removeEventListener('pointerdown', this.onCanvasPointerDown);
+    canvas.style.touchAction = '';
 
     // Dispose thumbnail generator
     if (this.thumbGen) {
