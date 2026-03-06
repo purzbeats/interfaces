@@ -82,13 +82,18 @@ export class EditorMode {
   private thumbGen: ThumbnailGenerator | null = null;
 
   /**
-   * Full-screen transparent div that captures ALL pointer events during a drag.
+   * Full-screen transparent div that sets cursor during drag.
+   * Events are captured via document-level listeners for touch reliability.
    */
   private dragCapture: HTMLDivElement;
+  private activePointerId: number = -1;
 
   // Bound event handlers
   private keyHandler: (e: KeyboardEvent) => void;
   private resizeHandler: () => void;
+  private boundDragMove: (e: PointerEvent) => void;
+  private boundDragEnd: (e: PointerEvent) => void;
+  private boundDragCancel: (e: PointerEvent) => void;
 
   constructor(
     ctx: RendererContext,
@@ -108,8 +113,11 @@ export class EditorMode {
     // Bind event handlers
     this.keyHandler = (e) => this.handleKey(e);
     this.resizeHandler = () => this.handleResize();
+    this.boundDragMove = (e) => this.onDragMove(e);
+    this.boundDragEnd = (e) => this.onDragEnd(e);
+    this.boundDragCancel = () => this.cancelDrag();
 
-    // Create drag-capture overlay
+    // Create drag-capture overlay (cursor display only — events via document)
     this.dragCapture = document.createElement('div');
     this.dragCapture.id = 'editor-drag-capture';
     Object.assign(this.dragCapture.style, {
@@ -123,9 +131,6 @@ export class EditorMode {
       display: 'none',
       touchAction: 'none',
     });
-    this.dragCapture.addEventListener('pointermove', (e) => this.onDragMove(e));
-    this.dragCapture.addEventListener('pointerup', (e) => this.onDragEnd(e));
-    this.dragCapture.addEventListener('pointercancel', () => this.cancelDrag());
     document.body.appendChild(this.dragCapture);
 
     // Create overlay
@@ -239,9 +244,22 @@ export class EditorMode {
 
   private beginDrag(drag: ActiveDrag, e: PointerEvent): void {
     this.activeDrag = drag;
+    this.activePointerId = e.pointerId;
     this.dragCapture.style.display = '';
-    this.dragCapture.setPointerCapture(e.pointerId);
+    // Use document-level listeners — more reliable than setPointerCapture on touch
+    document.addEventListener('pointermove', this.boundDragMove);
+    document.addEventListener('pointerup', this.boundDragEnd);
+    document.addEventListener('pointercancel', this.boundDragCancel);
     this.overlay.setDragTranslucent(true);
+  }
+
+  private endDragListeners(): void {
+    document.removeEventListener('pointermove', this.boundDragMove);
+    document.removeEventListener('pointerup', this.boundDragEnd);
+    document.removeEventListener('pointercancel', this.boundDragCancel);
+    this.activePointerId = -1;
+    this.dragCapture.style.display = 'none';
+    this.dragCapture.style.cursor = 'default';
   }
 
   private cancelDrag(): void {
@@ -253,13 +271,14 @@ export class EditorMode {
     }
 
     this.activeDrag = null;
-    this.dragCapture.style.display = 'none';
+    this.endDragListeners();
     this.overlay.hideGhostRect();
     this.overlay.setDragTranslucent(false);
   }
 
   private onDragMove(e: PointerEvent): void {
-    if (!this.activeDrag) return;
+    if (!this.activeDrag || e.pointerId !== this.activePointerId) return;
+    e.preventDefault();
     const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
 
     switch (this.activeDrag.kind) {
@@ -343,7 +362,7 @@ export class EditorMode {
   }
 
   private onDragEnd(e: PointerEvent): void {
-    if (!this.activeDrag) return;
+    if (!this.activeDrag || e.pointerId !== this.activePointerId) return;
     const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
 
     switch (this.activeDrag.kind) {
@@ -397,8 +416,7 @@ export class EditorMode {
     }
 
     this.activeDrag = null;
-    this.dragCapture.style.display = 'none';
-    this.dragCapture.style.cursor = 'default';
+    this.endDragListeners();
     this.overlay.hideGhostRect();
     this.overlay.setDragTranslucent(false);
   }
