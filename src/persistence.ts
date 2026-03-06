@@ -21,7 +21,17 @@ export function loadConfig(): Partial<Config> {
       result.timeline = data.timeline;
     }
     if (data.audioReactive && typeof data.audioReactive === 'object') {
-      result.audioReactive = data.audioReactive;
+      // Merge with defaults to handle missing fields from older saved configs
+      result.audioReactive = {
+        flicker: data.audioReactive.flicker ?? true,
+        jiggle: data.audioReactive.jiggle ?? true,
+        gain: data.audioReactive.gain ?? 1.0,
+        smoothing: data.audioReactive.smoothing ?? 0.3,
+        kickThreshold: data.audioReactive.kickThreshold ?? 1.0,
+        bassWeight: data.audioReactive.bassWeight ?? 1.0,
+        midWeight: data.audioReactive.midWeight ?? 1.0,
+        highWeight: data.audioReactive.highWeight ?? 1.0,
+      };
     }
     if (typeof data.rollingSwap === 'boolean') result.rollingSwap = data.rollingSwap;
     if (typeof data.rollingInterval === 'number') result.rollingInterval = data.rollingInterval;
