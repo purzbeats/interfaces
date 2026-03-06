@@ -47,9 +47,11 @@ export class AudioReactive {
 
   private ctx: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
+  private gainNode: GainNode | null = null;
   private source: MediaStreamAudioSourceNode | MediaElementAudioSourceNode | null = null;
   private stream: MediaStream | null = null;
   private audioEl: HTMLAudioElement | null = null;
+  private _volume: number = 0.8;
   private freqData: Uint8Array<ArrayBuffer> = new Uint8Array(0) as Uint8Array<ArrayBuffer>;
   private timeData: Uint8Array<ArrayBuffer> = new Uint8Array(0) as Uint8Array<ArrayBuffer>;
   private prevBassEnergy: number = 0;
@@ -128,8 +130,11 @@ export class AudioReactive {
     this.audioEl = audioEl;
 
     this.source = ctx.createMediaElementSource(audioEl);
+    this.gainNode = ctx.createGain();
+    this.gainNode.gain.value = this._volume;
     this.source.connect(analyser);
-    analyser.connect(ctx.destination);
+    analyser.connect(this.gainNode);
+    this.gainNode.connect(ctx.destination);
 
     await audioEl.play();
     this.active = true;
@@ -145,6 +150,10 @@ export class AudioReactive {
     if (this.analyser) {
       this.analyser.disconnect();
       this.analyser = null;
+    }
+    if (this.gainNode) {
+      this.gainNode.disconnect();
+      this.gainNode = null;
     }
     if (this.stream) {
       for (const track of this.stream.getTracks()) {
@@ -269,6 +278,22 @@ export class AudioReactive {
 
   get isActive(): boolean {
     return this.active;
+  }
+
+  get volume(): number { return this._volume; }
+  set volume(v: number) {
+    this._volume = v;
+    if (this.gainNode) this.gainNode.gain.value = v;
+  }
+
+  get isPlaying(): boolean {
+    return this.audioEl ? !this.audioEl.paused : false;
+  }
+
+  togglePlayback(): void {
+    if (!this.audioEl) return;
+    if (this.audioEl.paused) this.audioEl.play();
+    else this.audioEl.pause();
   }
 
   dispose(): void {

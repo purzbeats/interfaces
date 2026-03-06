@@ -147,6 +147,9 @@ export function createGUI(
       }
     });
 
+    const volState = { volume: audioReactive.volume };
+    arFolder.add(volState, 'volume', 0, 1, 0.01).name('Volume').onChange((v: number) => { audioReactive.volume = v; });
+    arFolder.add({ toggle: () => audioReactive.togglePlayback() }, 'toggle').name('Play / Pause');
     arFolder.add(audioReactive, 'sensitivity', 0.5, 3.0, 0.1).name('Sensitivity');
     arFolder.add(config.audioReactive, 'gain', 0.1, 5.0, 0.1).name('Gain');
     arFolder.add(config.audioReactive, 'smoothing', 0.0, 0.95, 0.05).name('Smoothing');
