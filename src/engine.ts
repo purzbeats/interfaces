@@ -89,6 +89,15 @@ export class Engine {
   /** Cached per-element intensity level — avoids redundant onIntensity calls. */
   private elementIntensityCache: Map<string, number> = new Map();
 
+  // Audio-reactive FX envelopes (decay over time, spike on events)
+  private audioBloomEnvelope: number = 0;
+  private audioChromaticEnvelope: number = 0;
+  private audioCameraZoom: number = 0;
+  private audioCameraShakeX: number = 0;
+  private audioCameraShakeY: number = 0;
+  private audioBgFlash: number = 0;
+  private bassPalette: THREE.Color | null = null;
+
   /** Hex border overlay — present only when current layout is hex-based. */
   private hexBorder: HexBorderOverlay | null = null;
 
@@ -1023,6 +1032,33 @@ export class Engine {
       }
 
       this.intensityConfig.intensityFromAudio = false;
+
+      // --- Audio-reactive FX modulation ---
+      const ar = this.config.audioReactive;
+      if (frame) {
+        // Bass energy drives bloom pump
+        const bassEnergy = (frame.bands[0] + frame.bands[1]) / 2;
+        if (ar.bloomPump) {
+          this.audioBloomEnvelope = Math.max(this.audioBloomEnvelope, bassEnergy * ar.bloomPumpStrength * 2.0);
+        }
+
+        // Kicks spike chromatic aberration, camera, and bg flash
+        if (frame.kick) {
+          const kickPower = frame.kickLevel / 5;
+          if (ar.chromaticKick) {
+            this.audioChromaticEnvelope = Math.max(this.audioChromaticEnvelope, kickPower * 1.5);
+          }
+          if (ar.cameraKick) {
+            const str = ar.cameraKickStrength;
+            this.audioCameraZoom = Math.max(this.audioCameraZoom, kickPower * 0.03 * str);
+            this.audioCameraShakeX = (Math.random() - 0.5) * kickPower * 8 * str;
+            this.audioCameraShakeY = (Math.random() - 0.5) * kickPower * 8 * str;
+          }
+          if (ar.bgFlash) {
+            this.audioBgFlash = Math.max(this.audioBgFlash, kickPower * 0.12);
+          }
+        }
+      }
     }
 
     // Phase A: Staggered build — pop a batch each frame
@@ -1181,6 +1217,67 @@ export class Engine {
       if (this.debugRefreshTimer >= 0.5) {
         this.debugRefreshTimer = 0;
         this.renderDebugOverlay();
+      }
+    }
+
+    // Decay and apply audio-reactive FX envelopes
+    if (this.audioReactive.isActive) {
+      const decayFast = Math.exp(-12 * dt);  // ~60ms half-life (snappy)
+      const decayMed = Math.exp(-6 * dt);    // ~120ms half-life
+      const decaySlow = Math.exp(-3 * dt);   // ~230ms half-life
+
+      this.audioBloomEnvelope *= decaySlow;
+      this.audioChromaticEnvelope *= decayFast;
+      this.audioCameraZoom *= decayMed;
+      this.audioCameraShakeX *= decayFast;
+      this.audioCameraShakeY *= decayFast;
+      this.audioBgFlash *= decayFast;
+
+      // Bloom: add envelope on top of user setting
+      if (this.config.audioReactive.bloomPump) {
+        this.pipeline.bloomPass.strength = this.config.postfx.bloomStrength + this.audioBloomEnvelope;
+      }
+
+      // Chromatic aberration: spike on kicks
+      if (this.config.audioReactive.chromaticKick && this.pipeline.chromaticPass.uniforms['intensity']) {
+        this.pipeline.chromaticPass.enabled = true;
+        this.pipeline.chromaticPass.uniforms['intensity'].value =
+          this.config.postfx.chromaticIntensity + this.audioChromaticEnvelope;
+      }
+
+      // Camera zoom pulse + shake
+      if (this.config.audioReactive.cameraKick) {
+        const cam = this.ctx.camera;
+        const w = this.config.width;
+        const h = this.config.height;
+        const z = this.audioCameraZoom;
+        cam.left = -z * w + this.audioCameraShakeX;
+        cam.right = w + z * w + this.audioCameraShakeX;
+        cam.top = h + z * h + this.audioCameraShakeY;
+        cam.bottom = -z * h + this.audioCameraShakeY;
+        cam.updateProjectionMatrix();
+      }
+
+      // Background flash
+      if (this.config.audioReactive.bgFlash && this.audioBgFlash > 0.001) {
+        if (!this.bassPalette) this.bassPalette = this.palette.bg.clone();
+        const bg = this.ctx.scene.background;
+        if (bg instanceof THREE.Color) {
+          bg.copy(this.palette.bg).lerp(new THREE.Color(1, 1, 1), this.audioBgFlash);
+        }
+      }
+    } else {
+      // Reset camera if audio stops
+      if (this.audioCameraZoom > 0.0001 || Math.abs(this.audioCameraShakeX) > 0.01) {
+        const cam = this.ctx.camera;
+        cam.left = 0;
+        cam.right = this.config.width;
+        cam.top = this.config.height;
+        cam.bottom = 0;
+        cam.updateProjectionMatrix();
+        this.audioCameraZoom = 0;
+        this.audioCameraShakeX = 0;
+        this.audioCameraShakeY = 0;
       }
     }
 

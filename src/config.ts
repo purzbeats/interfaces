@@ -86,6 +86,12 @@ export interface Config {
     bassWeight: number;
     midWeight: number;
     highWeight: number;
+    bloomPump: boolean;
+    bloomPumpStrength: number;
+    chromaticKick: boolean;
+    cameraKick: boolean;
+    cameraKickStrength: number;
+    bgFlash: boolean;
   };
   hexLayout: boolean;
   rollingSwap: boolean;
@@ -139,6 +145,12 @@ export const DEFAULT_CONFIG: Config = {
     bassWeight: 1.0,
     midWeight: 1.0,
     highWeight: 1.0,
+    bloomPump: true,
+    bloomPumpStrength: 1.0,
+    chromaticKick: true,
+    cameraKick: true,
+    cameraKickStrength: 1.0,
+    bgFlash: true,
   },
   hexLayout: false,
   rollingSwap: true,

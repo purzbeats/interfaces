@@ -31,6 +31,12 @@ export function loadConfig(): Partial<Config> {
         bassWeight: data.audioReactive.bassWeight ?? 1.0,
         midWeight: data.audioReactive.midWeight ?? 1.0,
         highWeight: data.audioReactive.highWeight ?? 1.0,
+        bloomPump: data.audioReactive.bloomPump ?? true,
+        bloomPumpStrength: data.audioReactive.bloomPumpStrength ?? 1.0,
+        chromaticKick: data.audioReactive.chromaticKick ?? true,
+        cameraKick: data.audioReactive.cameraKick ?? true,
+        cameraKickStrength: data.audioReactive.cameraKickStrength ?? 1.0,
+        bgFlash: data.audioReactive.bgFlash ?? true,
       };
     }
     if (typeof data.rollingSwap === 'boolean') result.rollingSwap = data.rollingSwap;

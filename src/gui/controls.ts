@@ -159,6 +159,15 @@ export function createGUI(
     arFolder.add(config.audioReactive, 'highWeight', 0, 3.0, 0.1).name('High Weight');
     arFolder.add(config.audioReactive, 'flicker').name('Flicker');
     arFolder.add(config.audioReactive, 'jiggle').name('Jiggle');
+
+    // FX Modulation
+    const fxModFolder = arFolder.addFolder('FX Modulation');
+    fxModFolder.add(config.audioReactive, 'bloomPump').name('Bloom Pump');
+    fxModFolder.add(config.audioReactive, 'bloomPumpStrength', 0.1, 3.0, 0.1).name('Bloom Strength');
+    fxModFolder.add(config.audioReactive, 'chromaticKick').name('Chromatic Kick');
+    fxModFolder.add(config.audioReactive, 'cameraKick').name('Camera Kick');
+    fxModFolder.add(config.audioReactive, 'cameraKickStrength', 0.1, 3.0, 0.1).name('Kick Strength');
+    fxModFolder.add(config.audioReactive, 'bgFlash').name('BG Flash');
   }
 
   // Post-FX
