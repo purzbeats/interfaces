@@ -36,6 +36,10 @@ function hzToBin(hz: number, sampleRate: number): number {
 
 export class AudioReactive {
   sensitivity: number = 1.0;
+  gain: number = 1.0;
+  smoothing: number = 0.3;
+  kickThreshold: number = 1.0;
+  bandWeights: Float32Array = new Float32Array([1, 1, 1, 1]); // sub, bass, mid, high
   onKick: ((level: number) => void) | null = null;
 
   /** Latest audio analysis frame. Null when no audio source is active. */
@@ -165,6 +169,9 @@ export class AudioReactive {
   update(dt: number): void {
     if (!this.active || !this.analyser || !this.frame) return;
 
+    // Sync smoothing to analyser
+    this.analyser.smoothingTimeConstant = this.smoothing;
+
     // --- Frequency data ---
     this.analyser.getByteFrequencyData(this.freqData);
 
@@ -183,8 +190,8 @@ export class AudioReactive {
       const abs = Math.abs(v);
       if (abs > peakVal) peakVal = abs;
     }
-    this.frame.rms = Math.sqrt(rmsSum / WAVEFORM_SIZE);
-    this.frame.peak = peakVal;
+    this.frame.rms = Math.min(1, Math.sqrt(rmsSum / WAVEFORM_SIZE) * this.gain);
+    this.frame.peak = Math.min(1, peakVal * this.gain);
 
     // --- 4 frequency bands ---
     const bands = this.frame.bands;
@@ -196,7 +203,7 @@ export class AudioReactive {
         const v = this.freqData[i] / 255;
         sum += v;
       }
-      bands[b] = sum / count;
+      bands[b] = Math.min(1, (sum / count) * this.gain * this.bandWeights[b]);
     }
 
     // --- 32-bin spectrum (log-spaced for perceptual accuracy) ---
@@ -235,7 +242,7 @@ export class AudioReactive {
       this.fluxAvg = this.fluxAvg === 0 ? flux : this.fluxAvg * (1 - alpha) + flux * alpha;
 
       const minFlux = 0.02;
-      const threshold = Math.max(minFlux, this.fluxAvg * (3.0 / this.sensitivity));
+      const threshold = Math.max(minFlux, this.fluxAvg * (3.0 / this.sensitivity) * this.kickThreshold);
 
       if (flux > threshold) {
         const ratio = flux / Math.max(this.fluxAvg, 0.001);

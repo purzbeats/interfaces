@@ -148,6 +148,12 @@ export function createGUI(
     });
 
     arFolder.add(audioReactive, 'sensitivity', 0.5, 3.0, 0.1).name('Sensitivity');
+    arFolder.add(config.audioReactive, 'gain', 0.1, 5.0, 0.1).name('Gain');
+    arFolder.add(config.audioReactive, 'smoothing', 0.0, 0.95, 0.05).name('Smoothing');
+    arFolder.add(config.audioReactive, 'kickThreshold', 0.2, 3.0, 0.1).name('Kick Threshold');
+    arFolder.add(config.audioReactive, 'bassWeight', 0, 3.0, 0.1).name('Bass Weight');
+    arFolder.add(config.audioReactive, 'midWeight', 0, 3.0, 0.1).name('Mid Weight');
+    arFolder.add(config.audioReactive, 'highWeight', 0, 3.0, 0.1).name('High Weight');
     arFolder.add(config.audioReactive, 'flicker').name('Flicker');
     arFolder.add(config.audioReactive, 'jiggle').name('Jiggle');
   }

@@ -957,6 +957,15 @@ export class Engine {
 
     this.elapsed += dt;
 
+    // Sync audio-reactive config
+    this.audioReactive.gain = this.config.audioReactive.gain;
+    this.audioReactive.smoothing = this.config.audioReactive.smoothing;
+    this.audioReactive.kickThreshold = this.config.audioReactive.kickThreshold;
+    this.audioReactive.bandWeights[0] = this.config.audioReactive.bassWeight; // sub
+    this.audioReactive.bandWeights[1] = this.config.audioReactive.bassWeight; // bass
+    this.audioReactive.bandWeights[2] = this.config.audioReactive.midWeight;  // mid
+    this.audioReactive.bandWeights[3] = this.config.audioReactive.highWeight; // high
+
     // Audio-reactive runs regardless of build phase
     this.audioReactive.update(dt);
 

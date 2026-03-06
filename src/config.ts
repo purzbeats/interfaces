@@ -80,6 +80,12 @@ export interface Config {
   audioReactive: {
     flicker: boolean;
     jiggle: boolean;
+    gain: number;
+    smoothing: number;
+    kickThreshold: number;
+    bassWeight: number;
+    midWeight: number;
+    highWeight: number;
   };
   hexLayout: boolean;
   rollingSwap: boolean;
@@ -127,6 +133,12 @@ export const DEFAULT_CONFIG: Config = {
   audioReactive: {
     flicker: true,
     jiggle: true,
+    gain: 1.0,
+    smoothing: 0.3,
+    kickThreshold: 1.0,
+    bassWeight: 1.0,
+    midWeight: 1.0,
+    highWeight: 1.0,
   },
   hexLayout: false,
   rollingSwap: true,
