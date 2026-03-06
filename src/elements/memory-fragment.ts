@@ -51,10 +51,10 @@ export class MemoryFragmentElement extends BaseElement {
     const sR = Math.floor(this.palette.secondary.r * 255), sG = Math.floor(this.palette.secondary.g * 255), sB = Math.floor(this.palette.secondary.b * 255);
     const rgbs = [[pR, pG, pB], [sR, sG, sB], [(pR + sR) >> 1, (pG + sG) >> 1, (pB + sB) >> 1], [pR, pG, Math.min(255, pB + 50)]];
     ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
-    const m = 4; const hH = Math.min(16, ch * 0.1); const barH = Math.max(20, (ch - hH - m * 4) * 0.4);
+    const m = Math.max(2, cw * 0.02); const hH = ch * 0.1; const barH = Math.max(8, (ch - hH - m * 4) * 0.4);
     const barY = hH + m * 2; const barW = cw - m * 2;
     // Header
-    ctx.fillStyle = pri; ctx.font = `${Math.min(11, hH - 2)}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(hH - 2))}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('MEMORY MAP', m, m + hH / 2);
     const usedPct = this.blocks.reduce((s, b) => s + b.size, 0);
     let gaps = 0; { let pos = 0; for (const b of sorted) { if (b.start - pos > 0.005) gaps++; pos = b.start + b.size; } if (1 - pos > 0.005) gaps++; }
@@ -72,18 +72,20 @@ export class MemoryFragmentElement extends BaseElement {
     // GC flash
     if (this.gcFlash > 0) { ctx.fillStyle = `rgba(${sR},${sG},${sB},${(this.gcFlash * 0.5).toFixed(2)})`; ctx.fillRect(m, barY, barW, barH); }
     // Address markers
-    ctx.fillStyle = dim; ctx.font = `${Math.min(8, 9)}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    const addrFont = Math.max(6, Math.floor(hH * 0.7));
+    ctx.fillStyle = dim; ctx.font = `${addrFont}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     for (let i = 0; i <= 4; i++) ctx.fillText(`0x${(i * 0x4000).toString(16).toUpperCase()}`, m + (barW * i) / 4, barY + barH + 2);
     // Detail rows
-    const detY = barY + barH + m * 2 + 12; const rowC = Math.min(6, Math.floor((ch - detY - m) / 8)); const rowSlice = 1 / Math.max(1, rowC);
+    const detRowH = Math.max(4, ch * 0.04);
+    const detY = barY + barH + m * 2 + addrFont + 2; const rowC = Math.min(6, Math.floor((ch - detY - m) / detRowH)); const rowSlice = 1 / Math.max(1, rowC);
     for (let r = 0; r < rowC; r++) {
-      const ry = detY + r * 8; const rS = r * rowSlice; const rE = rS + rowSlice;
-      ctx.fillStyle = bg; ctx.fillRect(m, ry, barW, 6);
+      const ry = detY + r * detRowH; const rS = r * rowSlice; const rE = rS + rowSlice;
+      ctx.fillStyle = bg; ctx.fillRect(m, ry, barW, detRowH - 1);
       for (const b of sorted) {
         if (b.start + b.size < rS || b.start > rE) continue;
         const cs = Math.max(b.start, rS) - rS; const ce = Math.min(b.start + b.size, rE) - rS;
         const rgb = rgbs[b.color % 4]; ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.4)`;
-        ctx.fillRect(m + (cs / rowSlice) * barW, ry, Math.max(1, ((ce - cs) / rowSlice) * barW), 6);
+        ctx.fillRect(m + (cs / rowSlice) * barW, ry, Math.max(1, ((ce - cs) / rowSlice) * barW), detRowH - 1);
       }
     }
     this.texture.needsUpdate = true;

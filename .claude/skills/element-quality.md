@@ -1,6 +1,28 @@
 # Element Quality Checklist
 
-Best practices for creating and reviewing visual elements in this project. Every element extends `BaseElement` and must render correctly at any tile size.
+Best practices for creating and reviewing visual elements in this project. Every element extends `BaseElement` and must render correctly at any tile size and aspect ratio.
+
+## The Scaling Ethos
+
+**Every visual measurement must derive from `this.px` (tile bounds).** The tile's width and height are the single source of truth for all sizes. Nothing is hardcoded. If you can't trace a number back to `this.px.w` or `this.px.h`, it's wrong.
+
+- **No magic pixel numbers.** Never write `6`, `14`, `20`, `40` as a size, offset, or margin. Always compute from tile dimensions.
+- **Margins/padding:** `cw * 0.02` or `Math.max(2, cw * 0.02)`, never `4` or `10`.
+- **Font sizes:** `Math.max(6, Math.floor(ch * 0.08))`, never `Math.min(10, ...)` with a hardcoded cap.
+- **Mesh geometry:** `PlaneGeometry(Math.min(w,h) * 0.04, ...)`, never `PlaneGeometry(6, 6)`.
+- **lineWidth:** `Math.max(0.5, cw * 0.008)`, never bare `2`.
+- **Arc radius (dots/particles):** `Math.max(1, Math.min(cw, ch) * 0.008)`, never bare `2`.
+- **Layout offsets (tree nodes, rows):** `ch * 0.15`, never `30` or `40`.
+- **Physics boundaries/OOB margins:** `Math.min(w, h) * 0.06`, never `20`.
+- **Progress bar heights:** `Math.max(2, ch * 0.04)`, never `4`.
+- **Minimum floors:** Use `Math.max(6, computed)` — the `6` is a readability floor, not a design target.
+
+### Acceptable Constants
+
+The **only** acceptable hardcoded pixel values are:
+- `0`, `1` as minimum floors for `Math.max()` (e.g. `Math.max(1, ...)` for minimum visible size)
+- `6` as a minimum font size floor (`Math.max(6, ...)`) — below 6px text is unreadable
+- Proportional fractions like `0.008`, `0.04`, `0.06` (these are ratios, not pixels)
 
 ## Tile Bounds
 
@@ -34,10 +56,73 @@ Best practices for creating and reviewing visual elements in this project. Every
 
 ## Scaling and Proportions
 
-- Font sizes must scale with tile/canvas dimensions: `${Math.floor(canvasHeight * 0.06)}px monospace`, not fixed `14px`.
-- Point sizes should be proportional: `Math.min(w, h) * 0.01`, not fixed `size: 2`.
-- Line widths: use 1-2px for canvas, or scale with tile size for very large tiles.
-- Never use hardcoded pixel positions — always derive from `this.px`.
+All visual sizes must be derived from tile/canvas dimensions. The patterns below are the **only** acceptable approaches:
+
+### Font Sizes
+```ts
+// GOOD — scales with canvas, has a readability floor
+const fontSize = Math.max(6, Math.floor(ch * 0.08));
+ctx.font = `${fontSize}px monospace`;
+
+// BAD — hardcoded cap prevents scaling on large tiles
+ctx.font = `${Math.min(10, someExpr)}px monospace`;
+
+// BAD — hardcoded literal
+ctx.font = '14px monospace';
+```
+
+### Mesh Geometry
+```ts
+// GOOD — derived from tile
+const dotSize = Math.max(2, Math.min(w, h) * 0.04);
+new THREE.PlaneGeometry(dotSize, dotSize);
+
+// BAD — hardcoded
+new THREE.PlaneGeometry(6, 6);
+```
+
+### Line Width / Dot Radius
+```ts
+// GOOD — proportional
+ctx.lineWidth = Math.max(0.5, cw * 0.008);
+ctx.arc(cx, cy, Math.max(1, Math.min(cw, ch) * 0.008), 0, Math.PI * 2);
+
+// BAD — hardcoded
+ctx.lineWidth = 2;
+ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+```
+
+### Margins and Layout Offsets
+```ts
+// GOOD — proportional
+const m = Math.max(2, cw * 0.02);
+const headerH = ch * 0.08;
+const rowH = (ch - headerH - m * 2) / rowCount;
+
+// BAD — hardcoded pixels
+const m = 4;
+const topY = hH + 14;
+const nodeOffset = 40;
+```
+
+### Physics Boundaries / OOB Margins
+```ts
+// GOOD — proportional
+const pad = Math.min(w, h) * 0.06;
+if (px < x - pad || px > x + w + pad) respawn();
+
+// BAD — hardcoded
+if (px < x - 20 || px > x + w + 20) respawn();
+```
+
+### Point Sizes
+```ts
+// GOOD
+Math.min(w, h) * 0.01
+
+// BAD
+size: 2
+```
 
 ## Initialization Order
 
@@ -76,3 +161,7 @@ Best practices for creating and reviewing visual elements in this project. Every
 | Invisible at small sizes | Fixed pixel sizes for points/lines | Scale with `Math.min(w, h)` |
 | Content outside tile | No bounds checking on parametric curves | Clamp or scale-to-fit after generation |
 | Build-time crash | Accessing geometry before it's created | Order: allocate buffers, create mesh, THEN seed/populate |
+| Text unreadable at small sizes | `Math.min(10, ...)` caps font | Use `Math.max(6, ...)` floor instead |
+| Tiny dots on large tiles | `arc(x, y, 2, ...)` hardcoded radius | Use `Math.min(cw, ch) * 0.008` |
+| Hairline borders on large tiles | `lineWidth = 1` hardcoded | Use `Math.max(0.5, cw * 0.008)` |
+| Layout breaks at extreme sizes | Hardcoded `+40`, `+30` offsets | Derive from `ch * fraction` |

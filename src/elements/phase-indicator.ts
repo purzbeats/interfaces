@@ -81,7 +81,8 @@ export class PhaseIndicatorElement extends BaseElement {
     this.group.add(this.needle);
 
     // Center dot
-    const dotGeo = new THREE.PlaneGeometry(6, 6);
+    const dotSize = Math.max(2, Math.min(w, h) * 0.04);
+    const dotGeo = new THREE.PlaneGeometry(dotSize, dotSize);
     this.centerDot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({
       color: this.palette.primary,
       transparent: true,

@@ -113,7 +113,7 @@ export class StatusReadoutElement extends BaseElement {
     ctx.shadowBlur = blink ? dotR * 1.5 : 0;
     ctx.fillStyle = blink ? dotColor : dimHex;
     ctx.beginPath();
-    ctx.arc(dotX, fontSize / 2 + 6, dotR, 0, Math.PI * 2);
+    ctx.arc(dotX, fontSize / 2 + fontSize * 0.4, dotR, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
 
@@ -122,13 +122,14 @@ export class StatusReadoutElement extends BaseElement {
     const msg = this.messages[this.currentMsg];
     const msgIsAlert = msg.includes('WARNING') || msg.includes('ALERT') || this.isAlert;
     const msgColor = msgIsAlert ? alertHex : primaryHex;
-    drawGlowText(ctx, msg, textX, 6, msgColor, (msgIsAlert ? 8 : 5) * this.glowScale);
+    const textY = Math.max(2, fontSize * 0.4);
+    drawGlowText(ctx, msg, textX, textY, msgColor, (msgIsAlert ? 8 : 5) * this.glowScale);
 
     // Timestamp with dim glow
     const minutes = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
     const ts = `T+${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    drawGlowText(ctx, ts, 6, fontSize + 12, dimHex, 2);
+    drawGlowText(ctx, ts, textY, fontSize + fontSize * 0.8, dimHex, 2);
 
     // Glitch: draw corrupted overlay
     if (this.glitchTimer > 0) {
@@ -137,7 +138,7 @@ export class StatusReadoutElement extends BaseElement {
       const corruptText = msg.split('').map((ch, i) =>
         Math.sin(i * 11 + this.glitchTimer * 30) > 0.3 ? '█' : ch
       ).join('');
-      ctx.fillText(corruptText, 22 + 2, 6 + 1);
+      ctx.fillText(corruptText, textX + 2, textY + 1);
       ctx.globalAlpha = 1;
     }
 

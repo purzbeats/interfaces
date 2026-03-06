@@ -157,11 +157,12 @@ export class StalactiteDripElement extends BaseElement {
     const dimHex = '#' + this.palette.dim.getHexString();
 
     // Draw ceiling
+    const edgeH = Math.max(1, ch * 0.02);
     this.ctx.fillStyle = dimHex;
-    this.ctx.fillRect(0, 0, cw, 3);
+    this.ctx.fillRect(0, 0, cw, edgeH);
 
     // Draw floor
-    this.ctx.fillRect(0, ch - 3, cw, 3);
+    this.ctx.fillRect(0, ch - edgeH, cw, edgeH);
 
     const colW = cw / (this.columns + 1);
 

@@ -54,11 +54,11 @@ export class BtreeInsertElement extends BaseElement {
     const pR = Math.floor(this.palette.primary.r * 255), pG = Math.floor(this.palette.primary.g * 255), pB = Math.floor(this.palette.primary.b * 255);
     const sR = Math.floor(this.palette.secondary.r * 255), sG = Math.floor(this.palette.secondary.g * 255), sB = Math.floor(this.palette.secondary.b * 255);
     ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
-    const m = 4; const hH = Math.min(14, ch * 0.08);
-    ctx.fillStyle = pri; ctx.font = `${Math.min(10, hH - 2)}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const m = Math.max(2, cw * 0.02); const hH = ch * 0.08;
+    ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(hH - 2))}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText(`B-TREE (ORD ${this.order})`, m, m + hH / 2);
     if (this.lastK >= 0) { ctx.textAlign = 'right'; ctx.fillStyle = sec; ctx.fillText(`INS:${this.lastK}`, cw - m, m + hH / 2); }
-    const kW = Math.min(20, (cw - 20) / (this.order + 1)); const nH = Math.min(20, ch * 0.12);
+    const kW = (cw - m * 4) / (this.order + 1); const nH = ch * 0.12;
     // edges
     for (const nd of this.ns) {
       if (!nd.children.length) continue;
@@ -78,7 +78,7 @@ export class BtreeInsertElement extends BaseElement {
       for (let k = 0; k < nd.keys.length; k++) {
         const kx = nd.x + k * kW;
         if (k > 0) { ctx.strokeStyle = `rgba(${pR},${pG},${pB},0.3)`; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(kx, nd.y); ctx.lineTo(kx, nd.y + nH); ctx.stroke(); }
-        ctx.fillStyle = pri; ctx.font = `${Math.min(10, nH - 6)}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(nH - 6))}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(`${nd.keys[k]}`, kx + kW / 2, nd.y + nH / 2);
       }
     }
@@ -103,8 +103,11 @@ export class BtreeInsertElement extends BaseElement {
   private splitChild(pi: number, cp: number): void {
     const par = this.ns[pi]; const ch = this.ns[par.children[cp]];
     const mi = Math.floor(ch.keys.length / 2); const mk = ch.keys[mi];
+    const cw = this.canvas ? this.canvas.width : this.px.w;
+    const m = Math.max(2, cw * 0.02);
+    const splitOff = (cw - m * 4) / (this.order + 1) * 2;
     const rn: BNode = { keys: ch.keys.splice(mi + 1), children: ch.children.length ? ch.children.splice(mi + 1) : [],
-      x: ch.x + 40, y: ch.y, tx: ch.x + 40, ty: ch.y, hl: 0.8 };
+      x: ch.x + splitOff, y: ch.y, tx: ch.x + splitOff, ty: ch.y, hl: 0.8 };
     ch.keys.splice(mi, 1);
     const ni = this.ns.length; this.ns.push(rn);
     par.keys.splice(cp, 0, mk); par.children.splice(cp + 1, 0, ni); par.hl = 0.8;
@@ -112,18 +115,20 @@ export class BtreeInsertElement extends BaseElement {
 
   private splitRoot(): void {
     const nd = this.ns[this.root]; const mi = Math.floor(nd.keys.length / 2); const mk = nd.keys[mi];
+    const lH = this.canvas ? this.canvas.height * 0.15 : 30;
+    const sW = this.canvas ? (this.canvas.width - 20) / (this.order + 1) * 2 : 40;
     const ln: BNode = { keys: nd.keys.slice(0, mi), children: nd.children.length ? nd.children.slice(0, mi + 1) : [],
-      x: nd.x, y: nd.y + 30, tx: nd.x, ty: nd.y + 30, hl: 0.8 };
+      x: nd.x, y: nd.y + lH, tx: nd.x, ty: nd.y + lH, hl: 0.8 };
     const rn: BNode = { keys: nd.keys.slice(mi + 1), children: nd.children.length ? nd.children.slice(mi + 1) : [],
-      x: nd.x + 40, y: nd.y + 30, tx: nd.x + 40, ty: nd.y + 30, hl: 0.8 };
+      x: nd.x + sW, y: nd.y + lH, tx: nd.x + sW, ty: nd.y + lH, hl: 0.8 };
     const li = this.ns.length; this.ns.push(ln); const ri = this.ns.length; this.ns.push(rn);
     nd.keys = [mk]; nd.children = [li, ri]; nd.hl = 0.8;
   }
 
   private lay(cw: number, ch: number): void {
     if (this.root < 0) return;
-    const m = 10; const hH = 20; const lH = Math.min(40, (ch - hH - m * 2) / 4);
-    const kW = Math.min(20, (cw - 20) / (this.order + 1));
+    const m = Math.max(2, cw * 0.02); const hH = ch * 0.08; const lH = (ch - hH - m * 2) / 4;
+    const kW = (cw - m * 4) / (this.order + 1);
     const go = (i: number, lv: number, l: number, r: number): void => {
       if (i < 0 || i >= this.ns.length) return;
       const n = this.ns[i]; const cx = (l + r) / 2;

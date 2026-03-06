@@ -132,7 +132,8 @@ export class CountdownTimerElement extends BaseElement {
     const progress = this.remaining / this.startValue;
     ctx.fillStyle = primaryHex;
     ctx.globalAlpha = 0.3;
-    ctx.fillRect(0, canvas.height - 4, canvas.width * progress, 4);
+    const progH = Math.max(2, canvas.height * 0.04);
+    ctx.fillRect(0, canvas.height - progH, canvas.width * progress, progH);
     ctx.globalAlpha = 1;
 
     applyScanlines(ctx, canvas, 0.08, this.remaining);

@@ -272,7 +272,8 @@ export class SeedDisperseElement extends BaseElement {
       if (seed.trailCount < this.trailLength) seed.trailCount++;
 
       // Deactivate if expired or off-screen
-      if (seed.life <= 0 || seed.x > x + w + 20 || seed.x < x - 20 || seed.y > y + h + 20) {
+      const oobPad = Math.min(w, h) * 0.06;
+      if (seed.life <= 0 || seed.x > x + w + oobPad || seed.x < x - oobPad || seed.y > y + h + oobPad) {
         seed.active = false;
         continue;
       }

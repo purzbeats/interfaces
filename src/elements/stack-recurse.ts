@@ -64,16 +64,16 @@ export class StackRecurseElement extends BaseElement {
     const pR = Math.floor(this.palette.primary.r * 255), pG = Math.floor(this.palette.primary.g * 255), pB = Math.floor(this.palette.primary.b * 255);
     const sR = Math.floor(this.palette.secondary.r * 255), sG = Math.floor(this.palette.secondary.g * 255), sB = Math.floor(this.palette.secondary.b * 255);
     ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
-    const m = 6; const hH = Math.min(14, ch * 0.1); const fH = Math.max(16, Math.min(28, (ch - hH - m * 3) / this.maxD));
+    const m = Math.max(2, cw * 0.02); const hH = ch * 0.1; const fH = Math.max(8, (ch - hH - m * 3) / this.maxD);
     const fW = cw - m * 4;
     // Header
-    ctx.fillStyle = pri; ctx.font = `${Math.min(10, hH - 2)}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(hH - 2))}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('CALL STACK', m, m + hH / 2);
     ctx.textAlign = 'right'; ctx.fillText(`DEPTH:${this.frames.length}/${this.maxD}`, cw - m, m + hH / 2);
     // Stack base
     const sBase = ch - m;
     ctx.strokeStyle = dim; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(m, sBase); ctx.lineTo(cw - m, sBase); ctx.stroke();
-    ctx.fillStyle = dim; ctx.font = `${Math.min(8, 9)}px monospace`; ctx.textAlign = 'left'; ctx.fillText('SP', m, sBase - 3);
+    ctx.fillStyle = dim; ctx.font = `${Math.max(6, Math.floor(hH * 0.7))}px monospace`; ctx.textAlign = 'left'; ctx.fillText('SP', m, sBase - hH * 0.25);
     // Frames
     for (let i = 0; i < this.frames.length; i++) {
       const f = this.frames[i]; const baseY = sBase - (i + 1) * fH; const animY = baseY + (f.cy - f.ty);
@@ -81,10 +81,10 @@ export class StackRecurseElement extends BaseElement {
       ctx.fillStyle = (isTop && !f.popping) ? `rgba(${sR},${sG},${sB},${(a * 0.3).toFixed(2)})` : `rgba(${pR},${pG},${pB},${(a * 0.2).toFixed(2)})`;
       ctx.fillRect(m * 2, animY, fW, fH - 2);
       ctx.strokeStyle = `rgba(${pR},${pG},${pB},${(a * 0.6).toFixed(2)})`; ctx.lineWidth = 1; ctx.strokeRect(m * 2, animY, fW, fH - 2);
-      ctx.fillStyle = `rgba(${pR},${pG},${pB},${a.toFixed(2)})`; ctx.font = `${Math.min(11, fH - 6)}px monospace`;
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(f.label, m * 2 + 6, animY + (fH - 2) / 2);
+      ctx.fillStyle = `rgba(${pR},${pG},${pB},${a.toFixed(2)})`; ctx.font = `${Math.max(6, Math.floor(fH - 6))}px monospace`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(f.label, m * 2 + fH * 0.2, animY + (fH - 2) / 2);
       ctx.textAlign = 'right'; ctx.fillStyle = `rgba(${pR},${pG},${pB},${(a * 0.4).toFixed(2)})`;
-      ctx.font = `${Math.min(8, fH - 8)}px monospace`; ctx.fillText(`ret:0x${((i + 1) * 0x10).toString(16)}`, m * 2 + fW - 4, animY + (fH - 2) / 2);
+      ctx.font = `${Math.max(6, Math.floor(fH * 0.5))}px monospace`; ctx.fillText(`ret:0x${((i + 1) * 0x10).toString(16)}`, m * 2 + fW - m, animY + (fH - 2) / 2);
     }
     this.texture.needsUpdate = true;
     (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;

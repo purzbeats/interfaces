@@ -192,7 +192,7 @@ export class VoronoiRelaxElement extends BaseElement {
       ctx.fillStyle = `rgb(${Math.floor(pri.r * 255)},${Math.floor(pri.g * 255)},${Math.floor(pri.b * 255)})`;
       for (let i = 0; i < this.pointCount; i++) {
         ctx.beginPath();
-        ctx.arc(this.seedX[i], this.seedY[i], 2, 0, Math.PI * 2);
+        ctx.arc(this.seedX[i], this.seedY[i], Math.max(1, Math.min(this.cw, this.ch) * 0.008), 0, Math.PI * 2);
         ctx.fill();
       }
     }

@@ -153,7 +153,7 @@ export class TowersHanoiElement extends BaseElement {
     const maxDiskW = this.cw * 0.22;
     const minDiskW = this.cw * 0.06;
     const pegHeight = (this.numDisks + 1) * diskHeight;
-    this.ctx.strokeStyle = dimHex; this.ctx.lineWidth = 2;
+    this.ctx.strokeStyle = dimHex; this.ctx.lineWidth = Math.max(1, this.cw * 0.008);
     for (let p = 0; p < 3; p++) {
       const px = this.pegX(p);
       this.ctx.beginPath(); this.ctx.moveTo(px, baseY); this.ctx.lineTo(px, baseY - pegHeight); this.ctx.stroke();

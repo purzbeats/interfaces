@@ -181,7 +181,7 @@ export class LichenFrontElement extends BaseElement {
       // Draw center dot
       this.ctx.fillStyle = dimHex;
       this.ctx.beginPath();
-      this.ctx.arc(col.cx, col.cy, 2, 0, Math.PI * 2);
+      this.ctx.arc(col.cx, col.cy, Math.max(1, Math.min(this.canvas.width, this.canvas.height) * 0.008), 0, Math.PI * 2);
       this.ctx.fill();
 
       // Draw internal texture lines (radial speckle)

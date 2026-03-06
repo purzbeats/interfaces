@@ -104,8 +104,9 @@ export class TensorFieldElement extends BaseElement {
     for (let s = 0; s < this.singX.length; s++) {
       this.singX[s] += this.singDriftVx[s] * dt;
       this.singY[s] += this.singDriftVy[s] * dt;
-      if (this.singX[s] < x + 20 || this.singX[s] > x + w - 20) this.singDriftVx[s] *= -1;
-      if (this.singY[s] < y + 20 || this.singY[s] > y + h - 20) this.singDriftVy[s] *= -1;
+      const bndPad = Math.min(w, h) * 0.06;
+      if (this.singX[s] < x + bndPad || this.singX[s] > x + w - bndPad) this.singDriftVx[s] *= -1;
+      if (this.singY[s] < y + bndPad || this.singY[s] > y + h - bndPad) this.singDriftVy[s] *= -1;
     }
 
     const pr = this.palette.primary.r, pg2 = this.palette.primary.g, pb = this.palette.primary.b;

@@ -55,19 +55,19 @@ export class HashCollisionElement extends BaseElement {
     const pR = Math.floor(this.palette.primary.r * 255), pG = Math.floor(this.palette.primary.g * 255), pB = Math.floor(this.palette.primary.b * 255);
     const sR = Math.floor(this.palette.secondary.r * 255), sG = Math.floor(this.palette.secondary.g * 255), sB = Math.floor(this.palette.secondary.b * 255);
     ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
-    const m = 4; const hH = Math.min(14, ch * 0.08);
-    ctx.fillStyle = pri; ctx.font = `${Math.min(10, hH - 2)}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const m = Math.max(2, cw * 0.02); const hH = ch * 0.08;
+    ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(hH - 2))}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('HASH TABLE', m, m + hH / 2);
     ctx.textAlign = 'right'; ctx.fillText(`LF:${(this.total / this.bucketCount).toFixed(2)} N:${this.total}`, cw - m, m + hH / 2);
-    if (this.lastK >= 0) { ctx.fillStyle = sec; ctx.textAlign = 'center'; ctx.font = `${Math.min(9, hH - 3)}px monospace`;
-      ctx.fillText(`h(${this.lastK})=${this.lastK}%${this.bucketCount}=${this.lastB}`, cw / 2, m + hH + 8); }
-    const topY = hH + m * 2 + 14; const bW = Math.min(40, (cw - m * 2) / this.bucketCount - 4);
-    const sp = (cw - m * 2) / this.bucketCount; const itH = Math.min(16, (ch - topY) / 8);
+    if (this.lastK >= 0) { ctx.fillStyle = sec; ctx.textAlign = 'center'; ctx.font = `${Math.max(6, Math.floor(hH - 3))}px monospace`;
+      ctx.fillText(`h(${this.lastK})=${this.lastK}%${this.bucketCount}=${this.lastB}`, cw / 2, m + hH + hH * 0.6); }
+    const topY = hH + m * 2 + hH * 0.8; const sp = (cw - m * 2) / this.bucketCount; const bW = sp * 0.85;
+    const itH = (ch - topY) / 8;
     for (let b = 0; b < this.bucketCount; b++) {
       const bx = m + b * sp; const by = topY; const isAct = b === this.lastB;
       ctx.fillStyle = isAct ? `rgba(${sR},${sG},${sB},0.3)` : `rgba(${pR},${pG},${pB},0.1)`;
       ctx.fillRect(bx, by, bW, itH); ctx.strokeStyle = `rgba(${pR},${pG},${pB},0.5)`; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bW, itH);
-      ctx.fillStyle = pri; ctx.font = `${Math.min(9, itH - 4)}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(itH - 4))}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`[${b}]`, bx + bW / 2, by + itH / 2);
       const chain = this.buckets[b];
       for (let i = 0; i < chain.length; i++) {
@@ -81,14 +81,14 @@ export class HashCollisionElement extends BaseElement {
         ctx.fillStyle = hl ? `rgba(${sR},${sG},${sB},${(a * 0.35).toFixed(2)})` : `rgba(${pR},${pG},${pB},${(a * 0.2).toFixed(2)})`;
         ctx.fillRect(bx, iy, bW, itH);
         ctx.strokeStyle = `rgba(${pR},${pG},${pB},${(a * 0.6).toFixed(2)})`; ctx.lineWidth = hl ? 1.5 : 0.5; ctx.strokeRect(bx, iy, bW, itH);
-        ctx.fillStyle = `rgba(${pR},${pG},${pB},${a.toFixed(2)})`; ctx.font = `${Math.min(8, itH - 4)}px monospace`;
+        ctx.fillStyle = `rgba(${pR},${pG},${pB},${a.toFixed(2)})`; ctx.font = `${Math.max(6, Math.floor(itH - 4))}px monospace`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`${it.key}`, bx + bW / 2, iy + itH / 2);
       }
       if (chain.length > 0) { const ny = by + (chain.length + 1) * (itH + 2);
-        if (ny < ch - m) { ctx.fillStyle = dim; ctx.font = `${Math.min(7, 8)}px monospace`; ctx.textAlign = 'center'; ctx.fillText('nil', bx + bW / 2, ny); } }
+        if (ny < ch - m) { ctx.fillStyle = dim; ctx.font = `${Math.max(6, Math.floor(itH * 0.5))}px monospace`; ctx.textAlign = 'center'; ctx.fillText('nil', bx + bW / 2, ny); } }
     }
     let coll = 0; for (const b of this.buckets) if (b.length > 1) coll += b.length - 1;
-    ctx.fillStyle = dim; ctx.font = `${Math.min(8, 9)}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillStyle = dim; ctx.font = `${Math.max(6, Math.floor(hH * 0.8))}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
     ctx.fillText(`COLLISIONS:${coll}`, m, ch - m);
     this.texture.needsUpdate = true;
     (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;

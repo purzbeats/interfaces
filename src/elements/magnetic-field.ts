@@ -134,7 +134,8 @@ export class MagneticFieldElement extends BaseElement {
         lx += (bx / mag) * stepSize;
         ly += (by / mag) * stepSize;
 
-        if (lx < x - 10 || lx > x + w + 10 || ly < y - 10 || ly > y + h + 10) stopped = true;
+        const oobPad = Math.min(w, h) * 0.04;
+        if (lx < x - oobPad || lx > x + w + oobPad || ly < y - oobPad || ly > y + h + oobPad) stopped = true;
       }
     }
 

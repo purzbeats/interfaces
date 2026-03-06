@@ -144,12 +144,14 @@ export class MaxwellBoltzmannElement extends BaseElement {
         if (this.histogram[b] > maxCount) maxCount = this.histogram[b];
       }
 
-      const barW = (cw - halfW - 10) / this.histBins;
-      const histX = halfW + 5;
+      const histPad = Math.max(2, cw * 0.02);
+      const barW = (cw - halfW - histPad * 2) / this.histBins;
+      const histX = halfW + histPad;
       this.ctx.fillStyle = `rgb(${sr},${sg},${sb})`;
       for (let b = 0; b < this.histBins; b++) {
-        const barH = (this.histogram[b] / maxCount) * (ch - 20);
-        this.ctx.fillRect(histX + b * barW, ch - 10 - barH, barW - 1, barH);
+        const histMargin = Math.max(2, ch * 0.04);
+        const barH = (this.histogram[b] / maxCount) * (ch - histMargin * 2);
+        this.ctx.fillRect(histX + b * barW, ch - histMargin - barH, barW - 1, barH);
       }
 
       // Theoretical MB curve overlay

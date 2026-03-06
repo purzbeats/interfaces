@@ -58,8 +58,8 @@ export class RedBlackTreeElement extends BaseElement {
     const sec = '#' + this.palette.secondary.getHexString(); const dim = '#' + this.palette.dim.getHexString();
     const pR = Math.floor(this.palette.primary.r * 255), pG = Math.floor(this.palette.primary.g * 255), pB = Math.floor(this.palette.primary.b * 255);
     ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
-    const m = 4; const hH = Math.min(14, ch * 0.08);
-    ctx.fillStyle = pri; ctx.font = `${Math.min(10, hH - 2)}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const m = Math.max(2, cw * 0.02); const hH = ch * 0.08;
+    ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(hH - 2))}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('RED-BLACK TREE', m, m + hH / 2);
     ctx.textAlign = 'right'; ctx.fillText(`N:${this.ns.length}`, cw - m, m + hH / 2);
     if (this.lastK >= 0) { ctx.fillStyle = sec; ctx.textAlign = 'center'; ctx.fillText(`INS:${this.lastK}`, cw / 2, m + hH / 2); }
@@ -85,7 +85,7 @@ export class RedBlackTreeElement extends BaseElement {
         ctx.strokeStyle = `rgba(${pR},${pG},${pB},0.6)`;
       }
       ctx.fill(); ctx.lineWidth = nd.hl > 0 ? 2 : 1; ctx.stroke();
-      ctx.fillStyle = nd.red ? '#fff' : pri; ctx.font = `${Math.min(9, r * 1.2)}px monospace`;
+      ctx.fillStyle = nd.red ? '#fff' : pri; ctx.font = `${Math.max(6, Math.floor(r * 1.2))}px monospace`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`${nd.key}`, nd.x, nd.y);
     }
     this.texture.needsUpdate = true;
@@ -137,7 +137,7 @@ export class RedBlackTreeElement extends BaseElement {
 
   private lay(cw: number, ch: number): void {
     if (this.root < 0) return;
-    const m = 10; const hH = 20; const lH = Math.min(35, (ch - hH - m * 2) / 5);
+    const m = Math.max(2, cw * 0.02); const hH = ch * 0.08; const lH = (ch - hH - m * 2) / 5;
     const go = (i: number, lv: number, l: number, r: number): void => {
       if (i < 0 || i >= this.ns.length) return;
       const n = this.ns[i]; const cx = (l + r) / 2;

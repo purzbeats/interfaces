@@ -25,12 +25,12 @@ export class LissajousTableElement extends BaseElement {
   private mesh!: THREE.Mesh;
   private cw = 0;
   private ch = 0;
+  private scale = 1;
 
   private gridSize = 0;
   private trailLength = 0;
   private phaseSpeed = 0;
-  private lineWidth = 0;
-
+  private lineWidthBase = 0;
   build(): void {
     this.glitchAmount = 4;
     const variant = this.rng.int(0, 3);
@@ -47,12 +47,13 @@ export class LissajousTableElement extends BaseElement {
     this.gridSize = p.grid;
     this.trailLength = p.trail;
     this.phaseSpeed = p.speed;
-    this.lineWidth = p.lw;
+    this.lineWidthBase = p.lw;
 
-    const maxRes = 300;
+    const maxRes = 800;
     const aspect = w / h;
     this.cw = Math.min(maxRes, Math.ceil(w));
     this.ch = Math.max(1, Math.ceil(this.cw / aspect));
+    this.scale = this.cw / 300;
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.cw;
     this.canvas.height = this.ch;
@@ -70,11 +71,12 @@ export class LissajousTableElement extends BaseElement {
 
   update(dt: number, time: number): void {
     const opacity = this.applyEffects(dt);
+
     const phase = time * this.phaseSpeed;
     const g = this.gridSize;
     const cellW = this.cw / g;
     const cellH = this.ch / g;
-    const margin = 3;
+    const margin = 3 * this.scale;
     const ampX = (cellW - margin * 2) * 0.42;
     const ampY = (cellH - margin * 2) * 0.42;
 
@@ -90,7 +92,7 @@ export class LissajousTableElement extends BaseElement {
     const dg = (this.palette.dim.g * 255) | 0;
     const db = (this.palette.dim.b * 255) | 0;
     this.ctx.strokeStyle = `rgba(${dr},${dg},${db},0.3)`;
-    this.ctx.lineWidth = 0.5;
+    this.ctx.lineWidth = 0.5 * this.scale;
     for (let i = 1; i < g; i++) {
       this.ctx.beginPath();
       this.ctx.moveTo(i * cellW, 0);
@@ -118,7 +120,7 @@ export class LissajousTableElement extends BaseElement {
         const cy = row * cellH + cellH / 2;
 
         // Draw trail
-        this.ctx.lineWidth = this.lineWidth;
+        this.ctx.lineWidth = this.lineWidthBase * this.scale;
         this.ctx.beginPath();
 
         for (let i = 0; i <= this.trailLength; i++) {
@@ -147,14 +149,14 @@ export class LissajousTableElement extends BaseElement {
         const dotY = cy + Math.sin(freqY * dotT + phase * 0.5) * ampY;
         this.ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
         this.ctx.beginPath();
-        this.ctx.arc(dotX, dotY, 2, 0, Math.PI * 2);
+        this.ctx.arc(dotX, dotY, 2 * this.scale, 0, Math.PI * 2);
         this.ctx.fill();
       }
     }
 
     // Border
     this.ctx.strokeStyle = `rgb(${dr},${dg},${db})`;
-    this.ctx.lineWidth = 1;
+    this.ctx.lineWidth = Math.max(0.5, this.scale);
     this.ctx.strokeRect(0, 0, this.cw, this.ch);
 
     this.texture.needsUpdate = true;

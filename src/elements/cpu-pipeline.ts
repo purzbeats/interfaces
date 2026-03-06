@@ -54,7 +54,7 @@ export class CpuPipelineElement extends BaseElement {
     const m = 4; const hH = Math.min(18, ch * 0.12); const sW = (cw - m * 2) / this.stageCount;
     const rowH = Math.max(12, (ch - hH - m * 3) / this.maxInst);
     // Headers
-    ctx.font = `${Math.min(11, hH - 2)}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${Math.max(6, Math.floor(hH - 2))}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (let s = 0; s < this.stageCount; s++) {
       const sx = m + s * sW; ctx.fillStyle = dim; ctx.fillRect(sx + 1, m, sW - 2, hH);
       ctx.fillStyle = pri; ctx.fillText(this.stageNames[s], sx + sW / 2, m + hH / 2);
@@ -78,14 +78,14 @@ export class CpuPipelineElement extends BaseElement {
           ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.5)`; ctx.fillRect(sx + 3, iy, sW - 6, rowH - 2);
           ctx.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.8)`; ctx.lineWidth = 1; ctx.strokeRect(sx + 3, iy, sW - 6, rowH - 2);
         }
-        ctx.fillStyle = pri; ctx.font = `${Math.min(9, rowH - 4)}px monospace`; ctx.textAlign = 'center';
+        ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(rowH - 4))}px monospace`; ctx.textAlign = 'center';
         ctx.fillText(`I${inst.id}`, sx + sW / 2, iy + rowH / 2);
       }
     }
     // Utilization bar
-    const barY = ch - m - 6; const active = this.insts.filter(i => !i.stall).length;
-    ctx.fillStyle = dim; ctx.fillRect(m, barY, cw - m * 2, 4);
-    ctx.fillStyle = pri; ctx.fillRect(m, barY, (cw - m * 2) * Math.min(1, active / this.stageCount), 4);
+    const barH = Math.max(2, ch * 0.04); const barY = ch - m - barH * 1.5; const active = this.insts.filter(i => !i.stall).length;
+    ctx.fillStyle = dim; ctx.fillRect(m, barY, cw - m * 2, barH);
+    ctx.fillStyle = pri; ctx.fillRect(m, barY, (cw - m * 2) * Math.min(1, active / this.stageCount), barH);
     this.texture.needsUpdate = true;
     (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;
   }

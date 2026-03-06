@@ -188,7 +188,7 @@ export class GravityLensElement extends BaseElement {
     // Lens center dot
     ctx.fillStyle = `rgba(${Math.floor(sr.r * 255)},${Math.floor(sr.g * 255)},${Math.floor(sr.b * 255)},0.4)`;
     ctx.beginPath();
-    ctx.arc(lx, ly, 2, 0, Math.PI * 2);
+    ctx.arc(lx, ly, Math.max(1, Math.min(cw, ch) * 0.008), 0, Math.PI * 2);
     ctx.fill();
 
     this.texture.needsUpdate = true;

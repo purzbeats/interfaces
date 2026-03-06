@@ -64,9 +64,9 @@ export class TickerTapeElement extends BaseElement {
 
     const rowHeight = h / p.rowCount;
     // Cap block height so ticker blocks stay small even in large regions
-    const blockH = Math.min(rowHeight * p.blockHFrac, 12);
-    const gap = Math.max(2, Math.min(rowHeight * 0.08, 4));
-    const blockBaseW = Math.max(3, Math.min(blockH * this.rng.float(0.5, 1.2), 14));
+    const blockH = rowHeight * p.blockHFrac;
+    const gap = Math.max(1, rowHeight * 0.08);
+    const blockBaseW = Math.max(2, blockH * this.rng.float(0.5, 1.2));
 
     for (let ri = 0; ri < p.rowCount; ri++) {
       const rowY = y + rowHeight * ri + rowHeight / 2;
@@ -150,7 +150,8 @@ export class TickerTapeElement extends BaseElement {
       const dotCount = Math.floor(w / 16);
       const dotY = y + h / 2;
       for (let di = 0; di < dotCount; di++) {
-        const geo = new THREE.PlaneGeometry(3, 3);
+        const dotSize = Math.max(1, Math.min(w, h) * 0.02);
+        const geo = new THREE.PlaneGeometry(dotSize, dotSize);
         const mat = new THREE.MeshBasicMaterial({
           color: this.palette.dim,
           transparent: true,

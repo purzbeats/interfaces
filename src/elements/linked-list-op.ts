@@ -51,15 +51,15 @@ export class LinkedListOpElement extends BaseElement {
     const pR = Math.floor(this.palette.primary.r * 255), pG = Math.floor(this.palette.primary.g * 255), pB = Math.floor(this.palette.primary.b * 255);
     const sR = Math.floor(this.palette.secondary.r * 255), sG = Math.floor(this.palette.secondary.g * 255), sB = Math.floor(this.palette.secondary.b * 255);
     ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
-    const m = 4; const hH = Math.min(14, ch * 0.1);
-    ctx.fillStyle = pri; ctx.font = `${Math.min(10, hH - 2)}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const m = Math.max(2, cw * 0.02); const hH = ch * 0.1;
+    ctx.fillStyle = pri; ctx.font = `${Math.max(6, Math.floor(hH - 2))}px monospace`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('LINKED LIST', m, m + hH / 2);
     ctx.textAlign = 'right'; ctx.fillText(`LEN:${this.nodes.length}`, cw - m, m + hH / 2);
     if (this.lblTimer > 0 && this.opLabel) { ctx.fillStyle = sec; ctx.textAlign = 'center'; ctx.fillText(this.opLabel, cw / 2, m + hH / 2); }
     // HEAD label
     if (this.nodes.length > 0) {
-      const f = this.nodes[0]; ctx.fillStyle = dim; ctx.font = `${Math.min(8, 9)}px monospace`; ctx.textAlign = 'center';
-      ctx.fillText('HEAD', f.x + this.nW / 2, f.y - 8);
+      const f = this.nodes[0]; ctx.fillStyle = dim; ctx.font = `${Math.max(6, Math.floor(this.nH * 0.35))}px monospace`; ctx.textAlign = 'center';
+      ctx.fillText('HEAD', f.x + this.nW / 2, f.y - this.nH * 0.3);
     }
     // Arrows
     for (let i = 0; i < this.nodes.length - 1; i++) {
@@ -72,7 +72,7 @@ export class LinkedListOpElement extends BaseElement {
     }
     // NULL
     if (this.nodes.length > 0) {
-      const l = this.nodes[this.nodes.length - 1]; ctx.fillStyle = dim; ctx.font = `${Math.min(8, 9)}px monospace`;
+      const l = this.nodes[this.nodes.length - 1]; ctx.fillStyle = dim; ctx.font = `${Math.max(6, Math.floor(this.nH * 0.35))}px monospace`;
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('NULL', l.x + this.nW + 6, l.y + this.nH / 2);
     }
     // Node boxes
@@ -83,9 +83,9 @@ export class LinkedListOpElement extends BaseElement {
       ctx.strokeStyle = `rgba(${pR},${pG},${pB},${(a * 0.7).toFixed(2)})`; ctx.lineWidth = hl ? 2 : 1;
       ctx.strokeRect(n.x, n.y, this.nW, this.nH);
       const dv = n.x + this.nW * 0.65; ctx.beginPath(); ctx.moveTo(dv, n.y); ctx.lineTo(dv, n.y + this.nH); ctx.stroke();
-      ctx.fillStyle = `rgba(${pR},${pG},${pB},${a.toFixed(2)})`; ctx.font = `${Math.min(10, this.nH - 6)}px monospace`;
+      ctx.fillStyle = `rgba(${pR},${pG},${pB},${a.toFixed(2)})`; ctx.font = `${Math.max(6, Math.floor(this.nH - 6))}px monospace`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`${n.value}`, n.x + this.nW * 0.325, n.y + this.nH / 2);
-      ctx.beginPath(); ctx.arc(dv + (this.nW * 0.35) / 2, n.y + this.nH / 2, 2, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(dv + (this.nW * 0.35) / 2, n.y + this.nH / 2, Math.max(1, this.nH * 0.08), 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${pR},${pG},${pB},${(a * 0.5).toFixed(2)})`; ctx.fill();
     }
     this.texture.needsUpdate = true;
@@ -94,9 +94,11 @@ export class LinkedListOpElement extends BaseElement {
 
   private layout(): void {
     const cw = this.canvas ? this.canvas.width : this.px.w; const ch = this.canvas ? this.canvas.height : this.px.h;
-    const sp = Math.min(this.nW + 16, (cw - 16) / Math.max(1, this.nodes.length));
-    const by = 20 + (ch - 20) / 2 - this.nH / 2;
-    for (let i = 0; i < this.nodes.length; i++) { this.nodes[i].tx = 8 + i * sp; this.nodes[i].ty = by; }
+    const pad = cw * 0.03;
+    const sp = Math.min(this.nW + pad * 2, (cw - pad * 2) / Math.max(1, this.nodes.length));
+    const hdrH = ch * 0.1;
+    const by = hdrH + (ch - hdrH) / 2 - this.nH / 2;
+    for (let i = 0; i < this.nodes.length; i++) { this.nodes[i].tx = pad + i * sp; this.nodes[i].ty = by; }
   }
 
   private doOp(): void {

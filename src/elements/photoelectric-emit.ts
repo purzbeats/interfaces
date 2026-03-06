@@ -181,7 +181,7 @@ export class PhotoelectricEmitElement extends BaseElement {
 
         phPos.setXYZ(i, this.phX[i], this.phY[i], 0.5);
       } else {
-        phPos.setXYZ(i, x - 10, y - 10, 0); // hide offscreen
+        phPos.setXYZ(i, x - w * 0.05, y - h * 0.05, 0); // hide offscreen
       }
     }
     phPos.needsUpdate = true;
@@ -193,12 +193,13 @@ export class PhotoelectricEmitElement extends BaseElement {
         this.elX[e] += this.elVx[e] * cdt;
         this.elY[e] += this.elVy[e] * cdt;
 
-        if (this.elX[e] > x + w + 10 || this.elY[e] < y - 10 || this.elY[e] > y + h + 10) {
+        const oobPad = Math.min(w, h) * 0.04;
+        if (this.elX[e] > x + w + oobPad || this.elY[e] < y - oobPad || this.elY[e] > y + h + oobPad) {
           this.elActive[e] = 0;
         }
         elPos.setXYZ(e, this.elX[e], this.elY[e], 0.5);
       } else {
-        elPos.setXYZ(e, x - 10, y - 10, 0);
+        elPos.setXYZ(e, x - w * 0.05, y - h * 0.05, 0);
       }
     }
     elPos.needsUpdate = true;

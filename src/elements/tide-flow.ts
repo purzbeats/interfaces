@@ -159,7 +159,7 @@ export class TideFlowElement extends BaseElement {
 
     // Draw water surface wave
     ctx.strokeStyle = priHex;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(1, cw * 0.008);
     ctx.beginPath();
     for (let px = 0; px <= cw; px += 2) {
       const wave = Math.sin(px * 0.05 + effTime * 3) * 3
@@ -183,11 +183,11 @@ export class TideFlowElement extends BaseElement {
 
       ctx.fillStyle = `rgba(${priR},${priG},${priB},${alpha.toFixed(2)})`;
       ctx.beginPath();
-      ctx.arc(tx, ty, 2, 0, Math.PI * 2);
+      ctx.arc(tx, ty, Math.max(1, Math.min(cw, ch) * 0.008), 0, Math.PI * 2);
       ctx.fill();
 
       // Flow direction indicator (short line)
-      const lineLen = flowDir * 4;
+      const lineLen = flowDir * Math.max(2, cw * 0.02);
       ctx.strokeStyle = `rgba(${priR},${priG},${priB},${(alpha * 0.5).toFixed(2)})`;
       ctx.lineWidth = 0.8;
       ctx.beginPath();
@@ -201,22 +201,26 @@ export class TideFlowElement extends BaseElement {
     ctx.lineWidth = 1;
     // High tide mark
     const highY = (this.shoreLine - this.tideRange) * ch;
-    ctx.setLineDash([3, 3]);
+    const dashLen = Math.max(1, cw * 0.015);
+    const markLen = Math.max(4, cw * 0.06);
+    ctx.setLineDash([dashLen, dashLen]);
     ctx.beginPath();
     ctx.moveTo(0, highY);
-    ctx.lineTo(15, highY);
+    ctx.lineTo(markLen, highY);
     ctx.stroke();
     // Low tide mark
     const lowY = (this.shoreLine + this.tideRange) * ch;
     ctx.beginPath();
     ctx.moveTo(0, lowY);
-    ctx.lineTo(15, lowY);
+    ctx.lineTo(markLen, lowY);
     ctx.stroke();
     ctx.setLineDash([]);
 
     // Current level indicator
+    const indW = Math.max(3, cw * 0.04);
+    const indH = Math.max(1, ch * 0.008);
     ctx.fillStyle = priHex;
-    ctx.fillRect(0, waterY - 1, 8, 2);
+    ctx.fillRect(0, waterY - indH / 2, indW, indH);
 
     this.texture.needsUpdate = true;
     (this.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;

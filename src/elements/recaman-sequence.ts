@@ -75,7 +75,8 @@ export class RecamanSequenceElement extends BaseElement {
 
     // Scale to fit largest value
     const maxVal = Math.max(...this.sequence);
-    this.scale = (this.cw - 20) / maxVal;
+    const margin = this.cw * 0.05;
+    this.scale = (this.cw - margin * 2) / maxVal;
 
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.cw;
@@ -120,8 +121,9 @@ export class RecamanSequenceElement extends BaseElement {
       this.ctx.strokeStyle = `rgba(${Math.floor(this.palette.dim.r * 255)},${Math.floor(this.palette.dim.g * 255)},${Math.floor(this.palette.dim.b * 255)},0.3)`;
       this.ctx.lineWidth = 0.5;
       this.ctx.beginPath();
-      this.ctx.moveTo(10, this.ch / 2);
-      this.ctx.lineTo(this.cw - 10, this.ch / 2);
+      const axMargin = this.cw * 0.05;
+      this.ctx.moveTo(axMargin, this.ch / 2);
+      this.ctx.lineTo(this.cw - axMargin, this.ch / 2);
       this.ctx.stroke();
     }
 
@@ -139,7 +141,7 @@ export class RecamanSequenceElement extends BaseElement {
 
     const ctx = this.ctx;
     const midY = this.ch / 2;
-    const offset = 10;
+    const offset = this.cw * 0.05;
 
     const x1 = offset + from * this.scale;
     const x2 = offset + to * this.scale;

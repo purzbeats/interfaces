@@ -213,8 +213,8 @@ export class PollenScatterElement extends BaseElement {
 
       // Out of bounds or dead
       if (this.grainLife[i] <= 0 ||
-          this.grainX[i] < x - 20 || this.grainX[i] > x + w + 20 ||
-          this.grainY[i] < y - 20 || this.grainY[i] > y + h + 20) {
+          this.grainX[i] < x - w * 0.06 || this.grainX[i] > x + w + w * 0.06 ||
+          this.grainY[i] < y - h * 0.06 || this.grainY[i] > y + h + h * 0.06) {
         this.grainActive[i] = 0;
         continue;
       }

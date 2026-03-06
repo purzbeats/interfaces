@@ -72,7 +72,8 @@ export class StrangeBilliardsElement extends BaseElement {
     this.group.add(this.trailLine);
 
     // Ball dot
-    const ballGeo = new THREE.PlaneGeometry(4, 4);
+    const ballSize = Math.max(2, Math.min(w, h) * 0.025);
+    const ballGeo = new THREE.PlaneGeometry(ballSize, ballSize);
     const ballMat = new THREE.MeshBasicMaterial({
       color: this.palette.secondary,
       transparent: true,

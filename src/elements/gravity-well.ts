@@ -176,10 +176,11 @@ export class GravityWellElement extends BaseElement {
       this.massX[i] += this.massVx[i] * cdt;
       this.massY[i] += this.massVy[i] * cdt;
       // Soft boundary
-      if (this.massX[i] < x + 10) this.massVx[i] += 50 * cdt;
-      if (this.massX[i] > x + w - 10) this.massVx[i] -= 50 * cdt;
-      if (this.massY[i] < y + 10) this.massVy[i] += 50 * cdt;
-      if (this.massY[i] > y + h - 10) this.massVy[i] -= 50 * cdt;
+      const bPad = Math.min(w, h) * 0.04;
+      if (this.massX[i] < x + bPad) this.massVx[i] += 50 * cdt;
+      if (this.massX[i] > x + w - bPad) this.massVx[i] -= 50 * cdt;
+      if (this.massY[i] < y + bPad) this.massVy[i] += 50 * cdt;
+      if (this.massY[i] > y + h - bPad) this.massVy[i] -= 50 * cdt;
     }
 
     // Update particles (attracted to masses)
@@ -202,7 +203,8 @@ export class GravityWellElement extends BaseElement {
       this.pX[i] += this.pVx[i] * cdt;
       this.pY[i] += this.pVy[i] * cdt;
       // Respawn OOB
-      if (this.pX[i] < x - 20 || this.pX[i] > x + w + 20 || this.pY[i] < y - 20 || this.pY[i] > y + h + 20) {
+      const oobPad = Math.min(w, h) * 0.08;
+      if (this.pX[i] < x - oobPad || this.pX[i] > x + w + oobPad || this.pY[i] < y - oobPad || this.pY[i] > y + h + oobPad) {
         this.pX[i] = x + this.rng.next() * w;
         this.pY[i] = y + this.rng.next() * h;
         this.pVx[i] = (this.rng.next() - 0.5) * 20;
