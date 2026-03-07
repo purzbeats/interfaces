@@ -152,7 +152,7 @@ export const DEFAULT_CONFIG: Config = {
   },
   hexLayout: false,
   rollingSwap: true,
-  rollingInterval: 5,
+  rollingInterval: 30,
   export: {
     fps: 60,
     duration: 30,

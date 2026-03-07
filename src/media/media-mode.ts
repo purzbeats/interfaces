@@ -34,7 +34,7 @@ const TILE_STAGGER_FRAMES = 8;
 /** Opacity fade speed per second */
 const FADE_SPEED = 1.8;
 /** Seconds between rolling rearrangements */
-const ROLLING_INTERVAL = 15;
+const ROLLING_INTERVAL = 30;
 
 interface MediaTile {
   mesh: THREE.Mesh;

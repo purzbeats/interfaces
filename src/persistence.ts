@@ -39,7 +39,7 @@ export function loadConfig(): Partial<Config> {
       };
     }
     if (typeof data.rollingSwap === 'boolean') result.rollingSwap = data.rollingSwap;
-    if (typeof data.rollingInterval === 'number') result.rollingInterval = data.rollingInterval;
+    if (typeof data.rollingInterval === 'number') result.rollingInterval = Math.max(15, data.rollingInterval);
     return result;
   } catch {
     return {};
