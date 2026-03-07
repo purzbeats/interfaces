@@ -704,14 +704,19 @@ export class Engine {
 
   private static readonly BORDER_TYPES = [
     'border-chase', 'bracket-frame', 'corner-pip',
-    'drop-shadow', 'face-brackets', 'zigzag-divider',
+    'face-brackets', 'zigzag-divider',
+    'scan-border', 'hash-border', 'cross-reticle',
+    'notch-frame', 'pulse-border', 'data-border',
+    'stitch-border', 'radar-border', 'grid-border',
+    'signal-border', 'bolt-border', 'scope-border',
+    'glow-border',
   ];
 
   /** Optionally spawn a border overlay for a newly-created content region. */
   private maybeSpawnBorder(region: Region, rng: SeededRandom): void {
     if (!this.current) return;
-    // ~30% chance to get a border overlay
-    if (rng.float(0, 1) > 0.3) return;
+    // ~55% chance to get a border overlay
+    if (rng.float(0, 1) > 0.55) return;
 
     const borderType = rng.pick(Engine.BORDER_TYPES);
     const emitAudio = this.makeEmitAudio();

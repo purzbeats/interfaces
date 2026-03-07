@@ -135,7 +135,7 @@ src/
 
 Ten built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `tactical`, `nerv`, `datastream`, `geometry`, `biolab`, `biblically-accurate`, `ops-hud`. Use `auto` for random selection. Supports both rectangular BSP and hexagonal tile layouts.
 
-## Elements (384)
+## Elements (397)
 
 ### Fractals & Chaos
 `mandelbrot-zoom`, `julia-set`, `barnsley-fern`, `dragon-curve`, `koch-snowflake`, `apollonian-gasket`, `collatz-tree`, `chaos-game`, `fractal-tree`, `fibonacci-spiral`, `diffusion-limited`, `strange-attractor`, `strange-repeller`, `lorenz-attractor`, `lorenz-section`, `logistic-map`, `chaos-pendulum`, `strange-billiards`, `quasi-crystal`, `newton-fractal`, `burning-ship`, `lyapunov-fractal`, `buddhabrot`, `sierpinski-carpet`, `cantor-dust`, `reaction-diffuse`
@@ -186,7 +186,7 @@ Ten built-in layout templates: `command-center`, `surveillance`, `diagnostic`, `
 `flame-column`, `spark-emitter`, `spark-gap`, `static-channel`, `infinite-hallway`, `clock-melt`, `light-slit`, `iso-blocks`, `smoke-rise`, `star-field`, `warp-tunnel`, `wave-interference`, `cipher-wheel`, `plasma-field`, `prism-split`, `sine-weave`, `vinyl-spin`, `card-fan`, `spiral-arm`, `spiral-vortex`, `dot-orbit`, `wave-mesh`, `waveform-3d`, `pixel-sort`, `galaxy-spiral`, `orbital-display`, `particle-field`, `memory-map`, `matrix-rain`, `gear-train`, `spring-coil`, `domino-fall`, `tape-reel`, `tuning-fork`
 
 ### Structural & Borders
-`panel`, `separator`, `power-grid`, `border-chase`, `bracket-frame`, `chevron-scroll`, `circuit-trace`, `corner-pip`, `drop-shadow`, `face-brackets`, `pipe-network`, `pin-array`, `tread-track`, `zigzag-divider`, `chain-link`, `arrow-flow`, `breathing-grid`, `grid-distortion`
+`panel`, `separator`, `power-grid`, `border-chase`, `bolt-border`, `bracket-frame`, `chevron-scroll`, `circuit-trace`, `corner-pip`, `cross-reticle`, `data-border`, `drop-shadow`, `face-brackets`, `glow-border`, `grid-border`, `hash-border`, `notch-frame`, `pipe-network`, `pin-array`, `pulse-border`, `radar-border`, `scan-border`, `scope-border`, `signal-border`, `stitch-border`, `tread-track`, `zigzag-divider`, `chain-link`, `arrow-flow`, `breathing-grid`, `grid-distortion`
 
 ## Element Tags
 
