@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "interactjs": "^1.10.27",
     "lil-gui": "^0.20.0",
     "three": "^0.170.0"
   },

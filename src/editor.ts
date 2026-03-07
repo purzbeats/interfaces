@@ -33,15 +33,6 @@ import { ThumbnailGenerator } from './editor/thumbnail-generator';
 import { elementTypes } from './elements/registry';
 import { TOOLBAR_HEIGHT } from './gui/mobile-toolbar';
 
-/* ---------- Internal types ---------- */
-
-/** What kind of drag operation is active. */
-type ActiveDrag =
-  | { kind: 'palette'; elementType: string; startClientX: number; startClientY: number; isDragging: boolean }
-  | { kind: 'move'; regionId: string; startNX: number; startNY: number; startRegionX: number; startRegionY: number; lastX: number; lastY: number }
-  | { kind: 'resize'; regionId: string; handle: string; startRegion: EditorRegion; startClientX: number; startClientY: number; lastRegion: EditorRegion };
-
-
 /* ---------- Undo system ---------- */
 
 interface UndoSnapshot {
@@ -67,7 +58,6 @@ export class EditorMode {
   private elements: Map<string, BaseElement> = new Map();
   private wrappers: Map<string, THREE.Group> = new Map();
   private selectedRegionId: string | null = null;
-  private activeDrag: ActiveDrag | null = null;
   private palette!: Palette;
   private elapsed: number = 0;
   private stashedChildren: THREE.Object3D[] = [];
@@ -81,19 +71,13 @@ export class EditorMode {
   // Thumbnail generator
   private thumbGen: ThumbnailGenerator | null = null;
 
-  /**
-   * Full-screen transparent div that sets cursor during drag.
-   * Events are captured via document-level listeners for touch reliability.
-   */
-  private dragCapture: HTMLDivElement;
-  private activePointerId: number = -1;
+  // Drag state for interact.js callbacks
+  private moveState: { regionId: string; startX: number; startY: number } | null = null;
+  private resizeState: { regionId: string; handle: string; startRegion: EditorRegion } | null = null;
 
   // Bound event handlers
   private keyHandler: (e: KeyboardEvent) => void;
   private resizeHandler: () => void;
-  private boundDragMove: (e: PointerEvent) => void;
-  private boundDragEnd: (e: PointerEvent) => void;
-  private boundDragCancel: (e: PointerEvent) => void;
 
   constructor(
     ctx: RendererContext,
@@ -113,25 +97,6 @@ export class EditorMode {
     // Bind event handlers
     this.keyHandler = (e) => this.handleKey(e);
     this.resizeHandler = () => this.handleResize();
-    this.boundDragMove = (e) => this.onDragMove(e);
-    this.boundDragEnd = (e) => this.onDragEnd(e);
-    this.boundDragCancel = () => this.cancelDrag();
-
-    // Create drag-capture overlay (cursor display only — events via document)
-    this.dragCapture = document.createElement('div');
-    this.dragCapture.id = 'editor-drag-capture';
-    Object.assign(this.dragCapture.style, {
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      right: '0',
-      bottom: '0',
-      zIndex: '9999',
-      cursor: 'default',
-      display: 'none',
-      touchAction: 'none',
-    });
-    document.body.appendChild(this.dragCapture);
 
     // Create overlay
     this.overlay = new EditorOverlay({
@@ -156,6 +121,12 @@ export class EditorMode {
       onRenameLayout: (name) => this.renameLayout(name),
       onChangePalette: (pal) => this.changePalette(pal),
       onPanelResize: () => this.handleResize(),
+      onMoveStart: (id) => this.onMoveStart(id),
+      onMoveMove: (id, dx, dy) => this.onMoveMove(id, dx, dy),
+      onMoveEnd: (id, dx, dy) => this.onMoveEnd(id, dx, dy),
+      onResizeStart: (id, h) => this.onResizeStart(id, h),
+      onResizeMove: (id, h, dx, dy) => this.onResizeMove(id, h, dx, dy),
+      onResizeEnd: (id, h, dx, dy) => this.onResizeEnd(id, h, dx, dy),
     });
   }
 
@@ -239,184 +210,137 @@ export class EditorMode {
   }
 
   /* ============================================
-   *  DRAG CAPTURE
+   *  INTERACT.JS DRAG CALLBACKS
    * ============================================ */
 
-  private beginDrag(drag: ActiveDrag, e: PointerEvent): void {
-    this.activeDrag = drag;
-    this.activePointerId = e.pointerId;
-    this.dragCapture.style.display = '';
-    // Use document-level listeners — more reliable than setPointerCapture on touch
-    document.addEventListener('pointermove', this.boundDragMove);
-    document.addEventListener('pointerup', this.boundDragEnd);
-    document.addEventListener('pointercancel', this.boundDragCancel);
-    this.overlay.setDragTranslucent(true);
-  }
-
-  private endDragListeners(): void {
-    document.removeEventListener('pointermove', this.boundDragMove);
-    document.removeEventListener('pointerup', this.boundDragEnd);
-    document.removeEventListener('pointercancel', this.boundDragCancel);
-    this.activePointerId = -1;
-    this.dragCapture.style.display = 'none';
-    this.dragCapture.style.cursor = 'default';
-  }
-
   private cancelDrag(): void {
-    if (!this.activeDrag) return;
-
-    if (this.activeDrag.kind === 'move') {
-      const wrapper = this.wrappers.get(this.activeDrag.regionId);
+    if (this.moveState) {
+      const wrapper = this.wrappers.get(this.moveState.regionId);
       if (wrapper) wrapper.position.set(0, 0, 0);
+      this.moveState = null;
     }
-
-    this.activeDrag = null;
-    this.endDragListeners();
+    this.resizeState = null;
     this.overlay.hideGhostRect();
     this.overlay.setDragTranslucent(false);
   }
 
-  private onDragMove(e: PointerEvent): void {
-    if (!this.activeDrag || e.pointerId !== this.activePointerId) return;
-    e.preventDefault();
-    const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
+  /* --- Move --- */
 
-    switch (this.activeDrag.kind) {
-      case 'palette': {
-        const drag = this.activeDrag;
-        const dx = Math.abs(e.clientX - drag.startClientX);
-        const dy = Math.abs(e.clientY - drag.startClientY);
-        if (!drag.isDragging && (dx > 5 || dy > 5)) {
-          drag.isDragging = true;
-          this.dragCapture.style.cursor = 'copy';
-        }
-        if (drag.isDragging) {
-          const nx = (e.clientX - canvasRect.left) / canvasRect.width;
-          const ny = 1 - (e.clientY - canvasRect.top) / canvasRect.height;
-          const { w, h } = defaultRegionSize(drag.elementType);
-          const gx = this.snapEnabled ? snapToGrid(nx - w / 2) : nx - w / 2;
-          const gy = this.snapEnabled ? snapToGrid(ny - h / 2) : ny - h / 2;
-          this.overlay.showGhostRect(canvasRect, gx, gy, w, h);
-        }
-        break;
-      }
-
-      case 'move': {
-        const drag = this.activeDrag;
-        const nx = (e.clientX - canvasRect.left) / canvasRect.width;
-        const ny = 1 - (e.clientY - canvasRect.top) / canvasRect.height;
-        const ddx = nx - drag.startNX;
-        const ddy = ny - drag.startNY;
-
-        let newX = drag.startRegionX + ddx;
-        let newY = drag.startRegionY + ddy;
-        if (this.snapEnabled) {
-          newX = snapToGrid(newX);
-          newY = snapToGrid(newY);
-        }
-        drag.lastX = newX;
-        drag.lastY = newY;
-
-        const region = this.layout.regions.find(r => r.id === drag.regionId);
-        if (!region) break;
-
-        const wrapper = this.wrappers.get(drag.regionId);
-        if (wrapper) {
-          const pxDx = (newX - region.x) * this.config.width;
-          const pxDy = (newY - region.y) * this.config.height;
-          wrapper.position.set(pxDx, pxDy, 0);
-        }
-
-        this.overlay.showGhostRect(canvasRect, newX, newY, region.width, region.height);
-        break;
-      }
-
-      case 'resize': {
-        const drag = this.activeDrag;
-        const { handle, startRegion, startClientX, startClientY } = drag;
-
-        const dx = (e.clientX - startClientX) / canvasRect.width;
-        const dy = -(e.clientY - startClientY) / canvasRect.height;
-
-        let { x, y, width, height } = startRegion;
-
-        if (handle.includes('e')) { width += dx; }
-        if (handle.includes('w')) { x += dx; width -= dx; }
-        if (handle.includes('n')) { y += dy; height += dy; }
-        if (handle.includes('s')) { height -= dy; y += dy; }
-
-        if (this.snapEnabled) {
-          x = snapToGrid(x);
-          y = snapToGrid(y);
-          width = snapToGrid(width);
-          height = snapToGrid(height);
-        }
-
-        const clamped = clampRegion({ ...startRegion, x, y, width, height });
-        drag.lastRegion = clamped;
-
-        this.overlay.showGhostRect(canvasRect, clamped.x, clamped.y, clamped.width, clamped.height);
-        break;
-      }
-    }
+  private onMoveStart(regionId: string): void {
+    const region = this.layout.regions.find(r => r.id === regionId);
+    if (!region) return;
+    this.moveState = { regionId, startX: region.x, startY: region.y };
+    this.overlay.setDragTranslucent(true);
   }
 
-  private onDragEnd(e: PointerEvent): void {
-    if (!this.activeDrag || e.pointerId !== this.activePointerId) return;
+  private onMoveMove(regionId: string, dxPx: number, dyPx: number): void {
+    if (!this.moveState || this.moveState.regionId !== regionId) return;
     const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
+    const region = this.layout.regions.find(r => r.id === regionId);
+    if (!region) return;
 
-    switch (this.activeDrag.kind) {
-      case 'palette': {
-        const drag = this.activeDrag;
-        if (drag.isDragging) {
-          const nx = (e.clientX - canvasRect.left) / canvasRect.width;
-          const ny = 1 - (e.clientY - canvasRect.top) / canvasRect.height;
-          // Allow placement anywhere — clampRegion will keep it within bounds
-          this.placeElementAt(drag.elementType, Math.max(0, Math.min(1, nx)), Math.max(0, Math.min(1, ny)));
-        } else {
-          this.placeElementAtCenter(drag.elementType);
-        }
-        break;
-      }
-
-      case 'move': {
-        const drag = this.activeDrag;
-        const region = this.layout.regions.find(r => r.id === drag.regionId);
-        if (region) {
-          this.pushUndo();
-          const clamped = clampRegion({ ...region, x: drag.lastX, y: drag.lastY });
-          region.x = clamped.x;
-          region.y = clamped.y;
-          this.layout.modified = Date.now();
-          this.recreateElement(region.id);
-          this.showSelectionHandles();
-          this.overlay.showProperties(region);
-          this.updateStatus();
-        }
-        break;
-      }
-
-      case 'resize': {
-        const drag = this.activeDrag;
-        const region = this.layout.regions.find(r => r.id === drag.regionId);
-        if (region) {
-          this.pushUndo();
-          region.x = drag.lastRegion.x;
-          region.y = drag.lastRegion.y;
-          region.width = drag.lastRegion.width;
-          region.height = drag.lastRegion.height;
-          this.layout.modified = Date.now();
-          this.recreateElement(region.id);
-          this.showSelectionHandles();
-          this.overlay.showProperties(region);
-          this.updateStatus();
-        }
-        break;
-      }
+    // Convert pixel delta to normalized coords (Y is flipped)
+    let newX = this.moveState.startX + dxPx / canvasRect.width;
+    let newY = this.moveState.startY - dyPx / canvasRect.height;
+    if (this.snapEnabled) {
+      newX = snapToGrid(newX);
+      newY = snapToGrid(newY);
     }
 
-    this.activeDrag = null;
-    this.endDragListeners();
+    const wrapper = this.wrappers.get(regionId);
+    if (wrapper) {
+      const pxDx = (newX - region.x) * this.config.width;
+      const pxDy = (newY - region.y) * this.config.height;
+      wrapper.position.set(pxDx, pxDy, 0);
+    }
+
+    this.overlay.showGhostRect(canvasRect, newX, newY, region.width, region.height);
+  }
+
+  private onMoveEnd(regionId: string, dxPx: number, dyPx: number): void {
+    if (!this.moveState || this.moveState.regionId !== regionId) return;
+    const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
+    const region = this.layout.regions.find(r => r.id === regionId);
+    if (region) {
+      let newX = this.moveState.startX + dxPx / canvasRect.width;
+      let newY = this.moveState.startY - dyPx / canvasRect.height;
+      if (this.snapEnabled) {
+        newX = snapToGrid(newX);
+        newY = snapToGrid(newY);
+      }
+
+      this.pushUndo();
+      const clamped = clampRegion({ ...region, x: newX, y: newY });
+      region.x = clamped.x;
+      region.y = clamped.y;
+      this.layout.modified = Date.now();
+      this.recreateElement(region.id);
+      this.showSelectionHandles();
+      this.overlay.showProperties(region);
+      this.updateStatus();
+    }
+
+    this.moveState = null;
+    this.overlay.hideGhostRect();
+    this.overlay.setDragTranslucent(false);
+  }
+
+  /* --- Resize --- */
+
+  private onResizeStart(regionId: string, handle: string): void {
+    const region = this.layout.regions.find(r => r.id === regionId);
+    if (!region) return;
+    this.resizeState = { regionId, handle, startRegion: { ...region } };
+    this.overlay.setDragTranslucent(true);
+  }
+
+  private computeResize(handle: string, startRegion: EditorRegion, dxPx: number, dyPx: number): EditorRegion {
+    const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
+    const dx = dxPx / canvasRect.width;
+    const dy = -dyPx / canvasRect.height;
+
+    let { x, y, width, height } = startRegion;
+
+    if (handle.includes('e')) { width += dx; }
+    if (handle.includes('w')) { x += dx; width -= dx; }
+    if (handle.includes('n')) { y += dy; height += dy; }
+    if (handle.includes('s')) { height -= dy; y += dy; }
+
+    if (this.snapEnabled) {
+      x = snapToGrid(x);
+      y = snapToGrid(y);
+      width = snapToGrid(width);
+      height = snapToGrid(height);
+    }
+
+    return clampRegion({ ...startRegion, x, y, width, height });
+  }
+
+  private onResizeMove(regionId: string, handle: string, dxPx: number, dyPx: number): void {
+    if (!this.resizeState || this.resizeState.regionId !== regionId) return;
+    const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
+    const clamped = this.computeResize(handle, this.resizeState.startRegion, dxPx, dyPx);
+    this.overlay.showGhostRect(canvasRect, clamped.x, clamped.y, clamped.width, clamped.height);
+  }
+
+  private onResizeEnd(regionId: string, handle: string, dxPx: number, dyPx: number): void {
+    if (!this.resizeState || this.resizeState.regionId !== regionId) return;
+    const region = this.layout.regions.find(r => r.id === regionId);
+    if (region) {
+      const clamped = this.computeResize(handle, this.resizeState.startRegion, dxPx, dyPx);
+      this.pushUndo();
+      region.x = clamped.x;
+      region.y = clamped.y;
+      region.width = clamped.width;
+      region.height = clamped.height;
+      this.layout.modified = Date.now();
+      this.recreateElement(region.id);
+      this.showSelectionHandles();
+      this.overlay.showProperties(region);
+      this.updateStatus();
+    }
+
+    this.resizeState = null;
     this.overlay.hideGhostRect();
     this.overlay.setDragTranslucent(false);
   }
@@ -463,7 +387,8 @@ export class EditorMode {
     this.elapsed = 0;
     this.layout = layout;
     this.selectedRegionId = null;
-    this.activeDrag = null;
+    this.moveState = null;
+    this.resizeState = null;
     this.undoStack = [];
     this.redoStack = [];
 
@@ -490,8 +415,7 @@ export class EditorMode {
     window.addEventListener('keydown', this.keyHandler);
     window.addEventListener('resize', this.resizeHandler);
 
-    // Listen for pointerdown on the canvas AND on the overlay
-    this.overlay.onPointerDownOutside = (e) => this.handleOverlayPointerDown(e);
+    // Listen for pointerdown on the canvas for click-to-select
     const canvas = this.ctx.renderer.domElement;
     canvas.addEventListener('pointerdown', this.onCanvasPointerDown);
     // Prevent browser gestures (scroll/zoom) on canvas while editing
@@ -518,7 +442,6 @@ export class EditorMode {
 
     // Hide overlay
     this.overlay.hide();
-    this.overlay.onPointerDownOutside = null;
 
     // Remove event listeners
     window.removeEventListener('keydown', this.keyHandler);
@@ -708,7 +631,7 @@ export class EditorMode {
 
   private onCanvasPointerDown = (e: PointerEvent): void => {
     if (!this.active || this.subMode !== 'edit') return;
-    if (this.activeDrag) return;
+    if (this.moveState || this.resizeState) return;
 
     // Hide context menu on any click
     this.overlay.hideContextMenu();
@@ -721,72 +644,6 @@ export class EditorMode {
     this.selectRegionAt(nx, ny);
   };
 
-  private handleOverlayPointerDown(e: PointerEvent): void {
-    if (!this.active || this.subMode !== 'edit') return;
-    if (this.activeDrag) return;
-
-    // Hide context menu on any click
-    this.overlay.hideContextMenu();
-
-    const target = e.target as HTMLElement;
-
-    // --- Resize handle? ---
-    if (target.dataset.editorHandle) {
-      const handle = target.dataset.editorHandle;
-      const regionId = target.dataset.editorRegion!;
-      const region = this.layout.regions.find(r => r.id === regionId);
-      if (!region) return;
-
-      this.dragCapture.style.cursor = target.style.cursor;
-      this.beginDrag({
-        kind: 'resize',
-        regionId,
-        handle,
-        startRegion: { ...region },
-        startClientX: e.clientX,
-        startClientY: e.clientY,
-        lastRegion: { ...region },
-      }, e);
-      return;
-    }
-
-    // --- Selection outline body (move)? ---
-    if (target.dataset.editorOutline) {
-      const regionId = target.dataset.editorOutline;
-      const region = this.layout.regions.find(r => r.id === regionId);
-      if (!region) return;
-
-      const canvasRect = this.ctx.renderer.domElement.getBoundingClientRect();
-      const nx = (e.clientX - canvasRect.left) / canvasRect.width;
-      const ny = 1 - (e.clientY - canvasRect.top) / canvasRect.height;
-
-      this.dragCapture.style.cursor = 'move';
-      this.beginDrag({
-        kind: 'move',
-        regionId,
-        startNX: nx,
-        startNY: ny,
-        startRegionX: region.x,
-        startRegionY: region.y,
-        lastX: region.x,
-        lastY: region.y,
-      }, e);
-      return;
-    }
-
-    // --- Palette tile? ---
-    const tile = target.closest('[data-element-type]') as HTMLElement | null;
-    if (tile && tile.dataset.elementType) {
-      this.beginDrag({
-        kind: 'palette',
-        elementType: tile.dataset.elementType,
-        startClientX: e.clientX,
-        startClientY: e.clientY,
-        isDragging: false,
-      }, e);
-      return;
-    }
-  }
 
   /* ============================================
    *  SELECTION + HANDLES
@@ -1179,7 +1036,7 @@ export class EditorMode {
         e.preventDefault();
         if (this.overlay.helpVisible) {
           this.overlay.hideHelp();
-        } else if (this.activeDrag) {
+        } else if (this.moveState || this.resizeState) {
           this.cancelDrag();
         } else {
           this.exit();
@@ -1311,7 +1168,6 @@ export class EditorMode {
     if (this.active) {
       this.exit();
     }
-    this.dragCapture.remove();
     this.overlay.dispose();
   }
 }

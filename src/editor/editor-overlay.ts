@@ -2,6 +2,7 @@ import type { EditorRegion, EditorLayout } from './editor-layout';
 import { elementTypes } from '../elements/registry';
 import { getMeta } from '../elements/tags';
 import { paletteNames } from '../color/palettes';
+import interact from 'interactjs';
 
 /* ---------- Types ---------- */
 
@@ -27,6 +28,12 @@ export interface OverlayCallbacks {
   onRenameLayout: (name: string) => void;
   onChangePalette: (palette: string) => void;
   onPanelResize: () => void;
+  onMoveStart: (regionId: string) => void;
+  onMoveMove: (regionId: string, totalDxPx: number, totalDyPx: number) => void;
+  onMoveEnd: (regionId: string, totalDxPx: number, totalDyPx: number) => void;
+  onResizeStart: (regionId: string, handle: string) => void;
+  onResizeMove: (regionId: string, handle: string, totalDxPx: number, totalDyPx: number) => void;
+  onResizeEnd: (regionId: string, handle: string, totalDxPx: number, totalDyPx: number) => void;
 }
 
 type FilterTag = string | null;
@@ -178,10 +185,6 @@ export class EditorOverlay {
   // Thumbnail getter — set by editor
   getThumbnail: ((type: string) => string | undefined) | null = null;
 
-  /**
-   * EditorMode sets this callback for drag operations.
-   */
-  onPointerDownOutside: ((e: PointerEvent) => void) | null = null;
 
   constructor(callbacks: OverlayCallbacks) {
     this.callbacks = callbacks;
@@ -385,6 +388,10 @@ export class EditorOverlay {
   /* ---------- Handles ---------- */
 
   clearHandles(): void {
+    // Unset interact.js on all interactive elements before clearing
+    for (const el of this.handlesContainer.querySelectorAll('[data-editor-outline], [data-editor-handle]')) {
+      interact(el as HTMLElement).unset();
+    }
     this.handlesContainer.innerHTML = '';
   }
 
@@ -395,7 +402,7 @@ export class EditorOverlay {
     const w = region.width * canvasRect.width;
     const h = region.height * canvasRect.height;
 
-    // Outline (move target)
+    // Outline (move target via interact.js)
     const outline = document.createElement('div');
     outline.dataset.editorOutline = region.id;
     Object.assign(outline.style, {
@@ -405,15 +412,29 @@ export class EditorOverlay {
       pointerEvents: 'auto', cursor: 'move', zIndex: '910',
       touchAction: 'none',
     });
-    outline.addEventListener('pointerdown', (e) => {
-      e.stopPropagation(); e.preventDefault();
-      this.onPointerDownOutside?.(e);
-    });
     outline.addEventListener('contextmenu', (e) => {
       e.preventDefault(); e.stopPropagation();
       this.showContextMenu(e.clientX, e.clientY);
     });
     this.handlesContainer.appendChild(outline);
+
+    // Set up interact.js draggable for move
+    let moveDx = 0, moveDy = 0;
+    interact(outline).draggable({
+      listeners: {
+        start: () => {
+          moveDx = 0; moveDy = 0;
+          this.callbacks.onMoveStart(region.id);
+        },
+        move: (event) => {
+          moveDx += event.dx; moveDy += event.dy;
+          this.callbacks.onMoveMove(region.id, moveDx, moveDy);
+        },
+        end: () => {
+          this.callbacks.onMoveEnd(region.id, moveDx, moveDy);
+        },
+      },
+    });
 
     // Type label
     const label = document.createElement('div');
@@ -460,11 +481,26 @@ export class EditorOverlay {
         cursor: p.cur, pointerEvents: 'auto', zIndex: '920',
         touchAction: 'none',
       });
-      handle.addEventListener('pointerdown', (e) => {
-        e.stopPropagation(); e.preventDefault();
-        this.onPointerDownOutside?.(e);
-      });
       this.handlesContainer.appendChild(handle);
+
+      // Set up interact.js draggable for resize
+      const handleId = p.id;
+      let resDx = 0, resDy = 0;
+      interact(handle).draggable({
+        listeners: {
+          start: () => {
+            resDx = 0; resDy = 0;
+            this.callbacks.onResizeStart(region.id, handleId);
+          },
+          move: (event) => {
+            resDx += event.dx; resDy += event.dy;
+            this.callbacks.onResizeMove(region.id, handleId, resDx, resDy);
+          },
+          end: () => {
+            this.callbacks.onResizeEnd(region.id, handleId, resDx, resDy);
+          },
+        },
+      });
     }
   }
 
@@ -871,23 +907,9 @@ export class EditorOverlay {
         name.style.color = 'rgba(255,255,255,0.4)';
       });
 
-      // Interaction: mouse = pointerdown drag, touch = native click (tap only)
-      let lastPointerWasTouch = false;
-      tile.addEventListener('pointerdown', (e) => {
-        if (e.button !== 0) return;
-        lastPointerWasTouch = e.pointerType === 'touch';
-        if (!lastPointerWasTouch) {
-          e.stopPropagation();
-          e.preventDefault();
-          this.onPointerDownOutside?.(e);
-        }
-        // Touch: do nothing here — let browser handle scroll vs tap
-      });
-      // click only fires for real taps, never during scroll — perfect for touch
+      // Click-to-place for all platforms (tap or click)
       tile.addEventListener('click', () => {
-        if (lastPointerWasTouch) {
-          this.callbacks.onPaletteElementClick(type);
-        }
+        this.callbacks.onPaletteElementClick(type);
       });
 
       this.tileScroll.appendChild(tile);
