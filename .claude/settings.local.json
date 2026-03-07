@@ -25,7 +25,11 @@
       "Bash(git status:*)",
       "Bash(ls:*)",
       "Bash(grep:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm run:*)",
+      "Bash(sed:*)",
+      "Bash(wc:*)",
+      "Bash(xargs -n1 basename)"
     ]
   }
 }

@@ -93,6 +93,7 @@ export interface Config {
     cameraKickStrength: number;
   };
   hexLayout: boolean;
+  uniformElement: string;
   rollingSwap: boolean;
   rollingInterval: number;
   export: {
@@ -151,6 +152,7 @@ export const DEFAULT_CONFIG: Config = {
     cameraKickStrength: 1.0,
   },
   hexLayout: false,
+  uniformElement: '',
   rollingSwap: true,
   rollingInterval: 30,
   export: {

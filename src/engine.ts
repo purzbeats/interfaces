@@ -3,6 +3,8 @@ import { ShowcaseMode } from './showcase';
 import { GalleryMode } from './gallery';
 import { EditorMode } from './editor';
 import { MediaMode } from './media/media-mode';
+import { MicrogameMode } from './microgame/microgame-mode';
+import { AttractMode } from './attract';
 import { SeededRandom } from './random';
 import { createRenderer, resizeRenderer, type RendererContext } from './renderer/setup';
 import { getPalette, type Palette } from './color/palettes';
@@ -22,7 +24,7 @@ import { ShakeDetector } from './touch/shake-detector';
 import { loadConfig, saveConfig, updateURL } from './persistence';
 import { loadCustomPalettes } from './color/custom-palettes';
 import { setDividerBrightness, setDividerThickness } from './elements/separator';
-import { getMeta, BAND_INDEX } from './elements/tags';
+import { getMeta, BAND_INDEX, allElementNames } from './elements/tags';
 import { showToast } from './gui/toast';
 import { toggleHelp, isHelpVisible } from './gui/help-overlay';
 import type { Region } from './layout/region';
@@ -68,6 +70,8 @@ export class Engine {
   private gallery!: GalleryMode;
   private editor!: EditorMode;
   private media!: MediaMode;
+  private microgame!: MicrogameMode;
+  private attract!: AttractMode;
   private mobileToolbar: MobileToolbar | null = null;
   private mobileQuery!: MediaQueryList;
   private touchRipple: TouchRipple | null = null;
@@ -121,7 +125,8 @@ export class Engine {
     if (params.has('palette')) this.config.palette = params.get('palette')!;
     if (params.has('template')) this.config.template = params.get('template')!;
 
-    // Mode params: ?element=burning-ship, ?view=multi, ?gallery=1, ?perf=1
+    // Mode params: ?element=burning-ship, ?view=multi, ?gallery=1, ?perf=1, ?uniform=type
+    if (params.has('uniform')) this.config.uniformElement = params.get('uniform')!;
     if (params.has('element')) this.autoElement = params.get('element')!;
     if (params.has('view')) {
       const v = params.get('view')!;
@@ -249,6 +254,21 @@ export class Engine {
       this.generate(this.config.seed);
     }, () => !!this.mobileToolbar);
 
+    this.microgame = new MicrogameMode(this.ctx, this.pipeline, this.config, () => {
+      // On exit: restore aspect, regenerate the normal composition
+      this.applyAspect();
+      resizeRenderer(this.ctx, this.config.width, this.config.height);
+      this.pipeline.resize(this.config.width, this.config.height);
+      this.generate(this.config.seed);
+    }, () => !!this.mobileToolbar);
+
+    this.attract = new AttractMode(this.ctx, this.pipeline, this.config, () => {
+      this.applyAspect();
+      resizeRenderer(this.ctx, this.config.width, this.config.height);
+      this.pipeline.resize(this.config.width, this.config.height);
+      this.generate(this.config.seed);
+    }, () => !!this.mobileToolbar);
+
     // Wire audio-reactive → intensity system (per-band envelopes)
     this.audioReactive.onKick = (level) => {
       // Kick detected — boost bass and sub envelopes
@@ -332,13 +352,13 @@ export class Engine {
           },
           onScreenshot: () => takeScreenshot(this.ctx.renderer.domElement),
           onShowcase: () => {
-            if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive && !this.media.isActive) this.showcase.enter();
+            if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive && !this.media.isActive && !this.microgame.isActive && !this.attract.isActive) this.showcase.enter();
           },
           onGallery: () => {
-            if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive) this.gallery.enter();
+            if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive && !this.microgame.isActive && !this.attract.isActive) this.gallery.enter();
           },
           onEditor: () => {
-            if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.media.isActive) {
+            if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.media.isActive && !this.microgame.isActive && !this.attract.isActive) {
               this.editor.promptEntry(
                 this.current?.regions,
                 this.current ? this.current.elementTypeMap : undefined,
@@ -347,7 +367,7 @@ export class Engine {
             }
           },
           onMedia: () => {
-            if (!this.media.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive) {
+            if (!this.media.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.microgame.isActive && !this.attract.isActive) {
               this.media.enter();
             }
           },
@@ -436,6 +456,17 @@ export class Engine {
       borderWrappers: new Map(),
     };
 
+    // Uniform element mode: override all content regions, remove dividers
+    if (this.config.uniformElement) {
+      for (let i = regions.length - 1; i >= 0; i--) {
+        if (regions[i].isDivider) {
+          regions.splice(i, 1);
+        } else {
+          regions[i].elementType = this.config.uniformElement;
+        }
+      }
+    }
+
     const genPrefix = `g${this.generationCounter}_`;
     const elementRng = rng.fork();
     for (const region of regions) {
@@ -468,7 +499,9 @@ export class Engine {
     }
 
     // Create border overlay elements — same regions as content, rendered on top
+    // Skip borders in uniform mode to let the elements fill cleanly
     const borderRng = rng.fork();
+    if (this.config.uniformElement) borderOverlaySpecs.length = 0;
     for (const spec of borderOverlaySpecs) {
       // Find the region with the prefixed ID
       const region = spec.region; // already prefixed above
@@ -958,6 +991,14 @@ export class Engine {
       this.gallery.update(dt);
       return;
     }
+    if (this.microgame.isActive) {
+      this.microgame.update(dt);
+      return;
+    }
+    if (this.attract.isActive) {
+      this.attract.update(dt);
+      return;
+    }
     if (this.media.isActive) {
       this.media.update(dt);
       // Refresh debug overlay during media mode (~2Hz)
@@ -1170,6 +1211,7 @@ export class Engine {
     // Phase E: Rolling swap — start once elements are built and some are active
     if (
       this.config.rollingSwap &&
+      !this.config.uniformElement &&
       !this.timeline.paused &&
       this.pendingBuild.length === 0 &&
       this.outgoing === null
@@ -1296,6 +1338,14 @@ export class Engine {
       this.gallery.render();
       return;
     }
+    if (this.microgame.isActive) {
+      this.microgame.render();
+      return;
+    }
+    if (this.attract.isActive) {
+      this.attract.render();
+      return;
+    }
     if (this.media.isActive) {
       this.media.render();
       return;
@@ -1372,6 +1422,16 @@ export class Engine {
     if (!this.media.isActive) {
       this.generate(this.config.seed);
     }
+  }
+
+  private stepUniformElement(dir: number): void {
+    const names = allElementNames();
+    if (names.length === 0) return;
+    const idx = names.indexOf(this.config.uniformElement);
+    const next = (idx + dir + names.length) % names.length;
+    this.config.uniformElement = names[next];
+    showToast(`Uniform: ${this.config.uniformElement}`);
+    this.generate(this.config.seed);
   }
 
   private debugOverlay: HTMLDivElement | null = null;
@@ -1555,8 +1615,10 @@ export class Engine {
         if (intensityLevel >= 1 && intensityLevel <= 5) return;
       }
 
-      // Editor handles its own key events — don't interfere
+      // Editor/microgame handles its own key events — don't interfere
       if (this.editor.isActive) return;
+      if (this.microgame.isActive) return;
+      if (this.attract.isActive) return;
 
       switch (e.key.toLowerCase()) {
         case 'h':
@@ -1584,7 +1646,7 @@ export class Engine {
           }
           break;
         case 'v':
-          if (!this.media.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive) {
+          if (!this.media.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.microgame.isActive && !this.attract.isActive) {
             this.media.enter();
             showToast('Media mode');
           }
@@ -1626,13 +1688,13 @@ export class Engine {
           }
           break;
         case 'g':
-          if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive && !this.media.isActive) {
+          if (!this.showcase.isActive && !this.gallery.isActive && !this.editor.isActive && !this.media.isActive && !this.microgame.isActive && !this.attract.isActive) {
             this.showcase.enter();
             showToast('Showcase mode');
           }
           break;
         case 'b':
-          if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive) {
+          if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive && !this.microgame.isActive && !this.attract.isActive) {
             this.gallery.enter();
             showToast('Gallery mode');
           }
@@ -1644,8 +1706,33 @@ export class Engine {
             this.generate(this.config.seed);
           }
           break;
+        case 'u':
+          if (!this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive && !this.microgame.isActive && !this.attract.isActive) {
+            if (this.config.uniformElement) {
+              this.config.uniformElement = '';
+              showToast('Uniform mode: off');
+            } else {
+              const names = allElementNames();
+              this.config.uniformElement = names[0];
+              showToast(`Uniform: ${this.config.uniformElement}`);
+            }
+            this.generate(this.config.seed);
+          }
+          break;
+        case 'a':
+          if (!this.attract.isActive && !this.microgame.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive) {
+            this.attract.enter();
+            showToast('Attract mode');
+          }
+          break;
+        case 'w':
+          if (!this.microgame.isActive && !this.attract.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.editor.isActive && !this.media.isActive) {
+            this.microgame.enter();
+            showToast('Microgame mode');
+          }
+          break;
         case 'e':
-          if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.media.isActive) {
+          if (!this.editor.isActive && !this.gallery.isActive && !this.showcase.isActive && !this.media.isActive && !this.microgame.isActive && !this.attract.isActive) {
             this.editor.promptEntry(
               this.current?.regions,
               this.current ? this.current.elementTypeMap : undefined,
@@ -1667,6 +1754,9 @@ export class Engine {
             e.preventDefault();
             this.config.overscanX = Math.max(this.config.overscanX - 1, -100);
             this.applyAspect();
+          } else if (this.config.uniformElement && !this.media.isActive) {
+            e.preventDefault();
+            this.stepUniformElement(-1);
           }
           break;
         case 'arrowright':
@@ -1674,6 +1764,9 @@ export class Engine {
             e.preventDefault();
             this.config.overscanX = Math.min(this.config.overscanX + 1, 100);
             this.applyAspect();
+          } else if (this.config.uniformElement && !this.media.isActive) {
+            e.preventDefault();
+            this.stepUniformElement(1);
           }
           break;
         case 'arrowup':
