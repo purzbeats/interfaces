@@ -29,10 +29,10 @@ const yieldFrames = (n: number): Promise<void> => {
 };
 
 /** Stagger delay in frames between each tile appearing */
-const TILE_STAGGER_FRAMES = 8;
+const TILE_STAGGER_FRAMES = 18;
 
-/** Opacity fade speed per second */
-const FADE_SPEED = 1.8;
+/** Opacity fade speed per second (slow for dramatic CRT power-on) */
+const FADE_SPEED = 0.6;
 /** Seconds between rolling rearrangements */
 const ROLLING_INTERVAL = 30;
 
@@ -76,6 +76,7 @@ uniform vec2 uCoverOffset;
 uniform float uKenBurnsZoom;
 uniform vec2 uKenBurnsPan;
 uniform float uReveal;
+uniform float uRevealStyle; // 0.0 = smooth fade, 1.0 = CRT blink-in
 varying vec2 vUv;
 
 // --- Noise helpers ---
@@ -139,14 +140,30 @@ void main() {
   float grain = hash2(vUv * 300.0 + floor(t * 8.0) * 17.0) * grainAmt;
   col += grain;
 
-  // --- Boot-up reveal (top-to-bottom scan-on) ---
-  float revealEdge = smoothstep(uReveal - 0.06, uReveal, 1.0 - vUv.y);
-  col *= (1.0 - revealEdge);
-  // Bright scan line at the reveal edge
-  float revealLine = (1.0 - smoothstep(0.0, 0.015, abs((1.0 - vUv.y) - uReveal)));
-  col += revealLine * uPrimary * 0.3 * step(0.01, uReveal) * step(uReveal, 0.99);
+  // --- Reveal: smooth fade (default) or CRT blink-in ---
+  float reveal = uReveal;
+  vec3 fadeCol = col; // smooth fade just uses col as-is
 
-  gl_FragColor = vec4(col, opacity);
+  // CRT power-on (center-out expansion with static)
+  float distFromCenter = abs(vUv.y - 0.5) * 2.0;
+  float slitOpen = smoothstep(0.0, 0.3, reveal);
+  float inSlit = step(distFromCenter, slitOpen);
+  float imagePhase = smoothstep(0.2, 0.8, reveal);
+  float staticNoise = hash2(vUv * 200.0 + floor(uTime * 12.0) * 37.0);
+  vec3 staticCol = vec3(staticNoise) * uPrimary * 0.6;
+  vec3 crtCol = mix(staticCol, col, imagePhase) * inSlit;
+  float flare = smoothstep(0.0, 0.15, reveal) * (1.0 - smoothstep(0.15, 0.6, reveal));
+  crtCol += flare * uPrimary * 0.25;
+  float edgeDist = abs(distFromCenter - slitOpen);
+  float edgeLine = (1.0 - smoothstep(0.0, 0.02, edgeDist)) * step(0.01, reveal) * step(reveal, 0.95);
+  crtCol += edgeLine * uPrimary * 0.4 * inSlit;
+  crtCol += (1.0 - smoothstep(0.0, 0.5, reveal)) * (1.0 - distFromCenter) * 0.15 * uPrimary * inSlit;
+
+  // Mix based on reveal style
+  vec3 finalCol = mix(fadeCol, crtCol, uRevealStyle);
+  float finalAlpha = mix(opacity, opacity * step(0.001, reveal), uRevealStyle);
+
+  gl_FragColor = vec4(finalCol, finalAlpha);
 }
 `;
 
@@ -181,6 +198,7 @@ export class MediaMode {
   private rollingTimer = 0;
   private layoutSeed: number = 0;
   private spawnGeneration = 0;
+  private rearranging = false;
 
   // Stable layout snapshot for debug overlay (survives async tile spawning)
   private currentContentRegions: Region[] = [];
@@ -346,10 +364,12 @@ export class MediaMode {
       if (tile.opacity < tile.targetOpacity) {
         tile.opacity = Math.min(tile.targetOpacity, tile.opacity + FADE_SPEED * dt);
         this.setTileOpacity(tile, tile.opacity);
-        // Drive reveal uniform: 0→1 maps to top-to-bottom scan-on
+        // Drive reveal uniform: 0→1 maps to CRT center-out power-on
         const mat = tile.mesh.material as THREE.ShaderMaterial;
         if (mat.uniforms?.uReveal) {
-          mat.uniforms.uReveal.value = Math.min(1.0, tile.opacity * 1.2);
+          // Ease-out curve for more dramatic initial burst then slow resolve
+          const t = tile.opacity;
+          mat.uniforms.uReveal.value = Math.min(1.0, t * (2.0 - t) * 1.1);
         }
       }
     }
@@ -443,6 +463,7 @@ export class MediaMode {
   /** Nuclear cleanup: bump generation to cancel in-flight spawns, dispose all tracked tiles. */
   private cancelAndClearAll(): void {
     this.spawnGeneration++;
+    this.rearranging = false;
     for (const tile of this.tiles) {
       this.disposeTile(tile);
     }
@@ -591,6 +612,13 @@ export class MediaMode {
     const lib = loadLibrary();
     if (lib.items.length === 0) return;
 
+    // Guard against concurrent rearranges — if one is already running,
+    // cancel it via spawnGeneration and take over
+    if (this.rearranging) {
+      this.spawnGeneration++;
+    }
+    this.rearranging = true;
+
     // Cancel any in-flight spawn loop (but don't dispose tiles yet — crossfade them)
     this.spawnGeneration++;
 
@@ -639,9 +667,11 @@ export class MediaMode {
     const uniqueIds = [...new Set(shuffled.map(a => a.id))];
     await Promise.all(uniqueIds.map(id => getObjectUrl(id)));
 
-    this.spawnGeneration++;
-    const gen = this.spawnGeneration;
+    // After the await, check if a newer rearrange has taken over
+    const gen = ++this.spawnGeneration;
     const isStale = () => gen !== this.spawnGeneration;
+
+    if (isStale()) { this.rearranging = false; return; }
 
     // Create all tile meshes immediately (dim placeholders), staggered fade-in
     const allPaletteNames = paletteNames();
@@ -650,7 +680,13 @@ export class MediaMode {
     for (let i = 0; i < content.length; i++) {
       const item = shuffled[i % shuffled.length];
       const objectUrl = await getObjectUrl(item.id);
-      if (!objectUrl || isStale()) return;
+      if (!objectUrl || isStale()) {
+        // Dispose tiles this call already created — a newer call owns the layout now
+        for (const t of newTiles) { this.disposeTile(t); }
+        this.tiles = this.tiles.filter(t => !newTiles.includes(t));
+        this.rearranging = false;
+        return;
+      }
       const tilePal = this.multiPalette
         ? getPalette(allPaletteNames[palRng.int(0, allPaletteNames.length - 1)])
         : undefined;
@@ -664,10 +700,11 @@ export class MediaMode {
 
     // Load media in background with staggered fade-in — no blocking between tiles
     for (let i = 0; i < newTiles.length; i++) {
-      if (isStale()) return;
+      if (isStale()) { this.rearranging = false; return; }
       this.loadTileMedia(newTiles[i]); // fire-and-forget — loads in background
       await yieldFrames(TILE_STAGGER_FRAMES);
     }
+    this.rearranging = false;
   }
 
   private createTile(region: Region, item: MediaItem, objectUrl: string, canvasW: number, canvasH: number, tilePalette?: Palette): MediaTile {
@@ -704,6 +741,7 @@ export class MediaMode {
         uKenBurnsZoom: { value: 1.0 },
         uKenBurnsPan: { value: new THREE.Vector2(0, 0) },
         uReveal: { value: 0.0 },
+        uRevealStyle: { value: rng.float(0, 1) < 0.3 ? 1.0 : 0.0 },
       },
       vertexShader: PALETTE_REMAP_VERT,
       fragmentShader: PALETTE_REMAP_FRAG,
