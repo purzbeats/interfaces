@@ -1,5 +1,34 @@
 # Changelog
 
+## v5.6.0
+
+CLI video rendering tool for offline export via headless Chromium and FFmpeg.
+
+### Added
+- **CLI video renderer** (`cli/interfaces.ts`): render compositions to MP4 files without a browser window
+  - `--render` mode: procedural animation generation with configurable duration, seed, palette, template
+  - `--process` mode: pipe input videos through the palette/effects pipeline with tiled layout
+  - Supports all URL-style params: `--seed`, `--palette`, `--template`, `--uniform`, `--width`, `--height`, `--fps`
+- **Headless API** (`src/headless.ts`): browser-side frame-by-frame control for Playwright
+  - `initTiles()`, `loadFrames()`, `step()`, `capture()` for CLI orchestration
+  - WebCodecs H.264 encoder support for GPU-accelerated encoding
+  - Batch rendering (`renderBatchHttp()`) for reduced IPC overhead
+- **FFmpeg utilities** (`cli/ffmpeg.ts`): video probing, frame extraction, H.264 encoding/muxing
+- **HTTP frame server**: serves extracted frames to browser without base64 serialization overhead
+- **Engine.forceSize()**: bypass aspect ratio calculation for exact headless dimensions
+- **Electron renderer** (`cli/electron-render.ts`): alternative to Playwright (experimental)
+
+### Changed
+- Media mode `initHeadlessTiles()` now spawns divider/separator elements (were missing in CLI output)
+- CLI uses true headless mode for reliable viewport sizing at any resolution
+
+### Performance
+- JPEG capture (~137 fps) instead of PNG for 2x faster frame encoding
+- Batch rendering (30 frames per IPC call) reduces round-trip overhead
+- HTTP frame server eliminates base64 encoding overhead for input videos
+
+---
+
 ## v5.5.0
 
 Editor UX redesign with bottom-panel layout, element thumbnail previews, and polished styling.

@@ -96,6 +96,7 @@ export interface Config {
   uniformElement: string;
   rollingSwap: boolean;
   rollingInterval: number;
+  variedCrop: boolean;
   export: {
     fps: number;
     duration: number;
@@ -155,6 +156,7 @@ export const DEFAULT_CONFIG: Config = {
   uniformElement: '',
   rollingSwap: true,
   rollingInterval: 30,
+  variedCrop: false,
   export: {
     fps: 60,
     duration: 30,

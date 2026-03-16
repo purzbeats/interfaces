@@ -7,7 +7,7 @@ import { loadLibrary, addFile, removeItem, getObjectUrl, revokeAllObjectUrls, ty
 import { TOOLBAR_HEIGHT } from '../gui/mobile-toolbar';
 import { showToast } from '../gui/toast';
 import { SeededRandom } from '../random';
-import { regionToPixels, type Region } from '../layout/region';
+import { regionToPixels, createRegion, type Region } from '../layout/region';
 import { compose } from '../layout/compositor';
 import { createElement } from '../elements/registry';
 import { type BaseElement } from '../elements/base-element';
@@ -51,6 +51,12 @@ interface MediaTile {
   kenBurns: { zoomStart: number; zoomEnd: number; panX: number; panY: number } | null;
   /** Time offset when this tile was created (for Ken Burns interpolation) */
   spawnTime: number;
+  /** For videos: track peak currentTime to detect when first loop completes */
+  videoPeakTime?: number;
+  /** Varied crop: random offset (0-1) for non-center crop positioning */
+  cropBias: { x: number; y: number };
+  /** Headless mode: frame offset (tile appears this many frames later) */
+  frameOffset?: number;
 }
 
 /* Palette remap shader with per-tile glitch effects (shared by image + video tiles) */
@@ -181,6 +187,7 @@ export class MediaMode {
 
   private active = false;
   private stashedChildren: THREE.Object3D[] = [];
+  private stashedBloomStrength = 0;
   private palette!: Palette;
   private multiPalette = false;
   private elapsed = 0;
@@ -297,7 +304,7 @@ export class MediaMode {
     return this.isMobileCheck();
   }
 
-  enter(): void {
+  enter(headless = false): void {
     this.active = true;
     this.elapsed = 0;
     this.rollingTimer = 0;
@@ -309,12 +316,23 @@ export class MediaMode {
       this.ctx.scene.remove(child);
     }
 
+    // Reduce bloom for video content (less whitespace than widgets)
+    this.stashedBloomStrength = this.config.postfx.bloomStrength;
+    this.config.postfx.bloomStrength = 0.15;
+    this.pipeline.bloomPass.strength = 0.15;
+
     this.applyAspect();
     resizeRenderer(this.ctx, this.config.width, this.config.height);
     this.pipeline.resize(this.config.width, this.config.height);
 
     this.palette = getPalette(this.config.palette);
     this.ctx.scene.background = this.palette.bg;
+
+    // Skip UI setup for headless mode
+    if (headless) {
+      this.overlay.style.display = 'none';
+      return;
+    }
 
     window.addEventListener('keydown', this.keyHandler);
     window.addEventListener('resize', this.resizeHandler);
@@ -350,6 +368,10 @@ export class MediaMode {
       this.ctx.scene.add(child);
     }
     this.stashedChildren = [];
+
+    // Restore bloom strength
+    this.config.postfx.bloomStrength = this.stashedBloomStrength;
+    this.pipeline.bloomPass.strength = this.stashedBloomStrength;
 
     this.onExit();
   }
@@ -412,14 +434,41 @@ export class MediaMode {
     }
 
     // Rolling rearrangement using config interval
+    // Defer while any video is still on its first play-through
     if (this.tiles.length > 0 && this.config.rollingSwap) {
-      this.rollingTimer += dt;
-      const interval = this.config.rollingInterval || ROLLING_INTERVAL;
-      if (this.rollingTimer >= interval) {
-        this.rollingTimer = 0;
-        this.rollingRearrange();
+      const anyVideoPlaying = this.hasVideoOnFirstLoop();
+      if (!anyVideoPlaying) {
+        this.rollingTimer += dt;
+        const interval = this.config.rollingInterval || ROLLING_INTERVAL;
+        if (this.rollingTimer >= interval) {
+          this.rollingTimer = 0;
+          this.rollingRearrange();
+        }
       }
     }
+  }
+
+  /** Check if any video tile is still on its first play-through. */
+  private hasVideoOnFirstLoop(): boolean {
+    for (const tile of this.tiles) {
+      if (tile.item.type !== 'video') continue;
+      const video = tile.source as HTMLVideoElement | null;
+      if (!video || !video.duration || !isFinite(video.duration)) continue;
+
+      // Track peak time for this video
+      const current = video.currentTime;
+      const peak = tile.videoPeakTime ?? 0;
+      if (current > peak) {
+        tile.videoPeakTime = current;
+      }
+      // Detect loop: currentTime dropped significantly below peak (video restarted)
+      const hasLooped = peak > video.duration * 0.9 && current < peak * 0.5;
+      // Still on first loop if we haven't looped and haven't reached near-end
+      if (!hasLooped && peak < video.duration * 0.95) {
+        return true;
+      }
+    }
+    return false;
   }
 
   render(): void {
@@ -752,27 +801,39 @@ export class MediaMode {
     mesh.position.set(px.x + px.w / 2, px.y + px.h / 2, 0);
     this.ctx.scene.add(mesh);
 
+    // Varied crop: random bias (0-1) for positioning the crop region
+    const cropBias = { x: rng.float(0, 1), y: rng.float(0, 1) };
+
     return {
       mesh, texture, region, item, objectUrl,
       source: null, palette: pal, opacity: 0, targetOpacity: 1, loaded: false,
-      kenBurns, spawnTime: this.elapsed,
+      kenBurns, spawnTime: this.elapsed, cropBias,
     };
   }
 
-  /** Compute cover-fit UV scale/offset so media fills tile without stretching. */
+  /** Compute cover-fit UV scale/offset so media fills tile without stretching.
+   *  When variedCrop is enabled, uses tile.cropBias to position the crop region
+   *  at different locations (always within bounds). */
   private setCoverFitUniforms(tile: MediaTile, mediaW: number, mediaH: number): void {
     const px = regionToPixels(tile.region, this.config.width, this.config.height);
     const tileAspect = px.w / px.h;
     const mediaAspect = mediaW / mediaH;
     const uniforms = (tile.mesh.material as THREE.ShaderMaterial).uniforms;
+    const varied = this.config.variedCrop;
+    // bias 0 = left/top edge, 0.5 = center, 1 = right/bottom edge
+    const biasX = varied ? tile.cropBias.x : 0.5;
+    const biasY = varied ? tile.cropBias.y : 0.5;
+
     if (mediaAspect > tileAspect) {
+      // Media wider than tile: crop horizontally
       const scale = tileAspect / mediaAspect;
       uniforms.uCoverScale.value.set(scale, 1);
-      uniforms.uCoverOffset.value.set((1 - scale) / 2, 0);
+      uniforms.uCoverOffset.value.set((1 - scale) * biasX, 0);
     } else {
+      // Media taller than tile: crop vertically
       const scale = mediaAspect / tileAspect;
       uniforms.uCoverScale.value.set(1, scale);
-      uniforms.uCoverOffset.value.set(0, (1 - scale) / 2);
+      uniforms.uCoverOffset.value.set(0, (1 - scale) * biasY);
     }
   }
 
@@ -1187,5 +1248,247 @@ export class MediaMode {
     canvas.style.position = 'absolute';
     canvas.style.left = `${offsetX}px`;
     canvas.style.top = `${offsetY}px`;
+  }
+
+  /**
+   * Load an external frame image for headless CLI processing.
+   * Updates all tiles to display this frame (single full-screen tile mode).
+   */
+  async loadExternalFrame(img: HTMLImageElement): Promise<void> {
+    // For headless mode, we create tiles using the layout if none exist
+    if (this.tiles.length === 0) {
+      await this.initHeadlessTiles(img.width, img.height);
+    }
+
+    // Update all existing tiles with the new frame
+    for (const tile of this.tiles) {
+      this.updateTileTexture(tile, img);
+    }
+  }
+
+  /**
+   * Load frames for headless mode with per-tile offsets.
+   * @param getFrame - Function to get frame image by frame number (1-indexed), returns null if frame doesn't exist
+   * @param globalFrame - Current global frame number (1-indexed)
+   */
+  async loadHeadlessFrames(
+    getFrame: (frameNum: number) => HTMLImageElement | null,
+    globalFrame: number,
+  ): Promise<void> {
+    let updatedCount = 0;
+    for (const tile of this.tiles) {
+      const offset = tile.frameOffset ?? 0;
+      const tileFrame = globalFrame - offset;
+
+      // Skip tiles that haven't started yet or get the appropriate frame
+      if (tileFrame < 1) {
+        // Tile hasn't started - show black/nothing or first frame
+        continue;
+      }
+
+      const img = getFrame(tileFrame);
+      if (img) {
+        this.updateTileTexture(tile, img);
+        updatedCount++;
+      }
+      // If no frame (past end), keep showing the last loaded frame
+    }
+    if (globalFrame === 1 || globalFrame % 60 === 0) {
+      console.log(`[media] loadHeadlessFrames: globalFrame=${globalFrame}, updated ${updatedCount}/${this.tiles.length} tiles`);
+    }
+  }
+
+  /** Update a single tile's texture with an image */
+  private updateTileTexture(tile: MediaTile, img: HTMLImageElement): void {
+    const wasLoaded = tile.loaded;
+    tile.source = img;
+    tile.loaded = true;
+
+    // Reuse existing texture if possible (much faster for video/headless mode)
+    if (tile.texture && !(tile.texture instanceof THREE.DataTexture)) {
+      // Update existing texture's image and mark for upload
+      tile.texture.image = img;
+      tile.texture.needsUpdate = true;
+    } else {
+      // First time: create proper texture and dispose placeholder
+      const imgTex = new THREE.Texture(img);
+      imgTex.minFilter = THREE.LinearFilter;
+      imgTex.magFilter = THREE.LinearFilter;
+      imgTex.needsUpdate = true;
+
+      tile.texture.dispose();
+      tile.texture = imgTex;
+
+      const uniforms = (tile.mesh.material as THREE.ShaderMaterial).uniforms;
+      uniforms.tMedia.value = imgTex;
+    }
+
+    // Only update cover fit on first load (dimensions don't change for video)
+    if (!wasLoaded) {
+      this.setCoverFitUniforms(tile, img.width, img.height);
+    }
+  }
+
+  /** Update a single tile's texture with an ImageBitmap (faster than HTMLImageElement) */
+  private updateTileBitmap(tile: MediaTile, bitmap: ImageBitmap): void {
+    const wasLoaded = tile.loaded;
+    tile.loaded = true;
+
+    // Reuse existing texture if possible
+    if (tile.texture && !(tile.texture instanceof THREE.DataTexture)) {
+      tile.texture.image = bitmap;
+      tile.texture.needsUpdate = true;
+    } else {
+      // First time: create texture from bitmap
+      const tex = new THREE.Texture(bitmap as any); // THREE.js accepts ImageBitmap
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.needsUpdate = true;
+
+      tile.texture.dispose();
+      tile.texture = tex;
+
+      const uniforms = (tile.mesh.material as THREE.ShaderMaterial).uniforms;
+      uniforms.tMedia.value = tex;
+    }
+
+    if (!wasLoaded) {
+      this.setCoverFitUniforms(tile, bitmap.width, bitmap.height);
+    }
+  }
+
+  /**
+   * Load bitmaps for headless mode with per-tile offsets (faster than loadHeadlessFrames).
+   */
+  async loadHeadlessBitmaps(
+    getBitmap: (frameNum: number) => ImageBitmap | null,
+    globalFrame: number,
+  ): Promise<void> {
+    for (const tile of this.tiles) {
+      const offset = tile.frameOffset ?? 0;
+      const tileFrame = globalFrame - offset;
+
+      if (tileFrame < 1) continue;
+
+      const bitmap = getBitmap(tileFrame);
+      if (bitmap) {
+        this.updateTileBitmap(tile, bitmap);
+      }
+    }
+  }
+
+  /** Get the maximum frame offset across all tiles (for calculating total render frames) */
+  getMaxFrameOffset(): number {
+    let max = 0;
+    for (const tile of this.tiles) {
+      if (tile.frameOffset && tile.frameOffset > max) {
+        max = tile.frameOffset;
+      }
+    }
+    return max;
+  }
+
+  /** Get all tile frame offsets (for CLI to know which frames to load) */
+  getTileOffsets(): number[] {
+    return this.tiles.map(t => t.frameOffset ?? 0);
+  }
+
+  /** Initialize tiles for headless mode using the compositor layout */
+  async initHeadlessTiles(mediaWidth: number, mediaHeight: number): Promise<void> {
+    const w = this.config.width;
+    const h = this.config.height;
+
+    console.log(`[media] initHeadlessTiles: media=${mediaWidth}x${mediaHeight}, config=${w}x${h}`);
+
+    // Use compositor to generate layout
+    const { content, dividers } = this.generateLayout();
+    console.log(`[media] layout generated: ${content.length} regions, ${dividers.length} dividers`);
+
+    // Spawn divider elements (separators between tiles)
+    this.currentDividerRegions = dividers;
+    this.spawnDividers(dividers, w, h);
+
+    // Create a fake media item
+    const item: MediaItem = {
+      id: 'headless-frame',
+      name: 'Headless Frame',
+      type: 'image',
+      mimeType: 'image/png',
+      thumbUrl: '',
+      width: mediaWidth,
+      height: mediaHeight,
+      addedAt: Date.now(),
+    };
+
+    const rng = new SeededRandom(this.layoutSeed);
+    const allPaletteNames = paletteNames();
+    const palRng = new SeededRandom(this.layoutSeed + 777);
+
+    // Stagger offset in frames (similar to TILE_STAGGER_FRAMES but in frame units)
+    const staggerFrames = 18; // ~0.3s at 60fps
+
+    for (let i = 0; i < content.length; i++) {
+      const region = content[i];
+      const px = regionToPixels(region, w, h);
+      const geo = new THREE.PlaneGeometry(px.w, px.h);
+
+      // Placeholder texture (will be replaced on first frame load)
+      const texture = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+      texture.needsUpdate = true;
+
+      const tilePal = this.multiPalette
+        ? getPalette(allPaletteNames[palRng.int(0, allPaletteNames.length - 1)])
+        : this.palette;
+
+      const tileRng = new SeededRandom(this.layoutSeed + region.x * 1000 + region.y * 7777);
+
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          tMedia: { value: texture },
+          opacity: { value: 1 },
+          uTime: { value: 0 },
+          uSeed: { value: tileRng.float(0, 100) },
+          uBg: { value: tilePal.bg.clone() },
+          uDim: { value: tilePal.dim.clone() },
+          uPrimary: { value: tilePal.primary.clone() },
+          uSecondary: { value: tilePal.secondary.clone() },
+          uCoverScale: { value: new THREE.Vector2(1, 1) },
+          uCoverOffset: { value: new THREE.Vector2(0, 0) },
+          uKenBurnsZoom: { value: 1.0 },
+          uKenBurnsPan: { value: new THREE.Vector2(0, 0) },
+          uReveal: { value: 1.0 },
+          uRevealStyle: { value: 0.0 },
+        },
+        vertexShader: PALETTE_REMAP_VERT,
+        fragmentShader: PALETTE_REMAP_FRAG,
+        transparent: true,
+      });
+
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(px.x + px.w / 2, px.y + px.h / 2, 0);
+      this.ctx.scene.add(mesh);
+
+      // Varied crop bias
+      const cropBias = { x: tileRng.float(0, 1), y: tileRng.float(0, 1) };
+
+      const tile: MediaTile = {
+        mesh,
+        texture,
+        region,
+        item,
+        objectUrl: '',
+        source: null,
+        palette: tilePal,
+        opacity: 1,
+        targetOpacity: 1,
+        loaded: false,
+        kenBurns: null,
+        spawnTime: 0,
+        cropBias,
+        frameOffset: i * staggerFrames, // Stagger each tile
+      };
+
+      this.tiles.push(tile);
+    }
   }
 }

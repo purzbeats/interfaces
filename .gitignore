@@ -1,5 +1,8 @@
 node_modules
 dist
+dist-cli
 *.local
+*.mp4
+*.mov
 .DS_Store
 Thumbs.db

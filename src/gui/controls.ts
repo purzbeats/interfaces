@@ -92,6 +92,7 @@ export function createGUI(
     pbFolder.add({ loop: true }, 'loop').name('Continuous (L)').onChange(playback.onLoopToggle);
     pbFolder.add(config, 'rollingSwap').name('Rolling Swap');
     pbFolder.add(config, 'rollingInterval', 15, 120, 5).name('Swap Interval (s)');
+    pbFolder.add(config, 'variedCrop').name('Varied Crop');
   }
 
   // Audio

@@ -18,6 +18,50 @@ npm run build
 npm run preview
 ```
 
+## CLI Video Rendering
+
+Render compositions to video files offline via headless Chromium. Requires FFmpeg installed.
+
+```bash
+# Build the CLI
+npm run build:cli
+
+# Render procedural animation to video
+npm run cli -- --render --duration 30 --output out.mp4 --seed 12345 --palette cyber-pink
+
+# Process input video through palette/effects pipeline
+npm run cli -- --process input.mp4 --output out.mp4 --width 1080 --height 1920 --palette amber
+```
+
+### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `--render` | Render mode (procedural animation) |
+| `--process <file>` | Process mode (input video through effects) |
+| `--output <file>` | Output video path (required) |
+| `--width <n>` | Output width (default: 1920 or input) |
+| `--height <n>` | Output height (default: 1080 or input) |
+| `--fps <n>` | Frame rate (default: 60) |
+| `--duration <n>` | Duration in seconds (render mode only) |
+| `--seed <n>` | Random seed for reproducible output |
+| `--palette <name>` | Color palette |
+| `--template <name>` | Layout template |
+| `--uniform <name>` | Force single element type |
+
+### Examples
+
+```bash
+# 4K render with specific seed
+npm run cli -- --render --width 3840 --height 2160 --duration 60 --output 4k.mp4 --seed 42
+
+# Portrait video for social media
+npm run cli -- --process clip.mp4 --width 1080 --height 1920 --output story.mp4 --palette phosphor-green
+
+# Quick test render
+npm run cli -- --render --width 640 --height 480 --duration 5 --output test.mp4
+```
+
 ## Controls
 
 | Key | Action |

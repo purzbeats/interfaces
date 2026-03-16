@@ -1381,6 +1381,28 @@ export class Engine {
     return this.timeline.normalizedTime;
   }
 
+  /** Get the WebGL canvas element (for headless capture) */
+  get canvas(): HTMLCanvasElement {
+    return this.ctx.renderer.domElement;
+  }
+
+  /** Get media mode instance (for headless frame loading) */
+  get mediaMode(): MediaMode {
+    return this.media;
+  }
+
+  /** Force canvas to specific size (for headless rendering, bypasses aspect ratio) */
+  forceSize(width: number, height: number): void {
+    this.config.width = width;
+    this.config.height = height;
+    const canvas = this.ctx.renderer.domElement;
+    canvas.style.position = 'absolute';
+    canvas.style.left = '0px';
+    canvas.style.top = '0px';
+    resizeRenderer(this.ctx, width, height);
+    this.pipeline.resize(width, height);
+  }
+
   /** Broadcast intensity level to all visible, active elements. */
   broadcastIntensity(level: number): void {
     this.currentIntensity = level;
